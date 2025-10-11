@@ -4,6 +4,7 @@ const jobOffer: Template = {
   id: "job-offer-letter",
   title: "Job Offer Letter",
   description: "A formal letter to offer a position to a candidate.",
+  created_at: new Date().toISOString(),
   htmlContent: `
   <!DOCTYPE html>
   <html lang="en">

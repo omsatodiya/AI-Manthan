@@ -4,6 +4,7 @@ const partnershipProposal: Template = {
   id: "partnership-proposal",
   title: "Partnership Proposal",
   description: "A proposal to form a strategic alliance with another business.",
+  created_at: new Date().toISOString(),
   htmlContent: `
   <!DOCTYPE html>
   <html lang="en">

@@ -5,6 +5,7 @@ const businessProposal: Template = {
   title: "Business Proposal",
   description:
     "A professional proposal to outline your services and solutions.",
+  created_at: new Date().toISOString(),
   htmlContent: `
 <!DOCTYPE html>
 <html lang="en">

@@ -87,7 +87,7 @@ export async function updateTemplateAction(templateId: string, updates: {
     }
 
     const { updateTemplate } = await import("@/lib/database/templates");
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (updates.title) updateData.title = updates.title;
     if (updates.description) updateData.description = updates.description;
     if (updates.htmlContent) updateData.html_content = updates.htmlContent;

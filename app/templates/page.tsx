@@ -6,7 +6,7 @@ import { ArrowLeft, FileText, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/custom/data-table";
 import { Template } from "@/constants/templates";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState, Updater } from "@tanstack/react-table";
 import {
   Card,
   CardContent,
@@ -90,7 +90,7 @@ export default function TemplateSelectionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize] = useState(10);
-  const [sorting, setSorting] = useState([]);
+  const [sorting, setSorting] = useState<SortingState>([]);
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export default function TemplateSelectionPage() {
     setPageIndex(newPageIndex);
   };
 
-  const handleSortChange = (updater: any) => {
+  const handleSortChange = (updater: Updater<SortingState>) => {
     setSorting(updater);
   };
 

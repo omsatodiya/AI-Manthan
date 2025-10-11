@@ -116,7 +116,7 @@ export async function updateTemplate(
     throw new Error("Empty tenant ID provided");
   }
 
-  const updateData: any = {};
+  const updateData: Record<string, unknown> = {};
   if (updates.title) updateData.title = updates.title;
   if (updates.description) updateData.description = updates.description;
   if (updates.htmlContent) updateData.html_content = updates.htmlContent;

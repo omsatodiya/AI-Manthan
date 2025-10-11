@@ -2,8 +2,9 @@ import { Template } from "./index";
 
 const pitchDeck: Template = {
   id: "pitch-deck",
-  title: "Pitch Deck Content",
+  title: "Pitch Deck Content", 
   description: "The core textual content for a startup pitch deck.",
+  created_at: new Date().toISOString(),
   htmlContent: `
   <!DOCTYPE html>
   <html lang="en">

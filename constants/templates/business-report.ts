@@ -4,6 +4,7 @@ const businessReport: Template = {
   id: "business-report",
   title: "Business Report",
   description: "A comprehensive report for market and performance analysis.",
+  created_at: new Date().toISOString(),
   htmlContent: `
   <!DOCTYPE html>
   <html lang="en">
