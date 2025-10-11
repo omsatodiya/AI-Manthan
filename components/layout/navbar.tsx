@@ -15,26 +15,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, ArrowRight, User, LogOut, Settings, Shield } from "lucide-react";
+import { Menu, ArrowRight, User as UserIcon, LogOut, Settings, Shield } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { NAVBAR } from "@/constants/layout/navbar-constants";
 import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
+import { AuthUser } from "@/lib/types";
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -53,7 +47,7 @@ export function Navbar() {
     const checkUser = async () => {
       try {
         const currentUser = await getCurrentUserAction();
-        setUser(currentUser as User);
+        setUser(currentUser);
       } catch {
         setUser(null);
       } finally {
@@ -91,6 +85,14 @@ export function Navbar() {
       }
     } catch (error) {
       console.error("Logout failed:", error);
+      setUser(null);
+      const protectedPaths = ["/admin", "/user", "/dashboard"];
+      const isonProtectedPage = protectedPaths.some((path) =>
+        pathname.startsWith(path)
+      );
+      if (isonProtectedPage) {
+        router.push("/");
+      }
     }
   };
 
@@ -126,20 +128,20 @@ export function Navbar() {
             <div className="font-bold text-xl font-serif">
               <span
                 className={
-                  scrolled ? "text-primary-foreground" : "text-foreground"
+                  scrolled ? "text-primary-foreground" : "text-foreground dark:text-primary"
                 }>
                 {NAVBAR.name.primary}
               </span>
               <span
                 className={
-                  scrolled ? "text-primary-foreground" : "text-primary"
+                  scrolled ? "text-primary-foreground" : "text-primary dark:text-foreground"
                 }>
                 {NAVBAR.name.secondary}
               </span>
             </div>
           </Link>
 
-          <div className="hidden lg:flex items-center space-x-6">
+          <div className="hidden md:flex items-center space-x-6">
             {navItems.map((item) => (
               <NavItem key={item.href} {...item} isScrolled={scrolled} />
             ))}
@@ -150,13 +152,13 @@ export function Navbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     className={`transition-all duration-300 shadow-sm rounded-md border-2 ${
                       scrolled
-                        ? "border-primary-foreground/20 text-primary-foreground hover:border-primary-foreground/40 hover:bg-primary-foreground/10"
+                        ? "border-primary-foreground/20 text-primary hover:border-primary-foreground/40 hover:text-primary-foreground hover:bg-primary-foreground/10"
                         : "border-primary/20 text-primary hover:border-primary/40 hover:bg-primary/5"
                     }`}>
-                    <User className="h-4 w-4 mr-2" />
+                    <UserIcon className="h-4 w-4 mr-2" />
                     {user.name}
                   </Button>
                 </DropdownMenuTrigger>
@@ -171,7 +173,7 @@ export function Navbar() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="cursor-pointer">
+                    <Link href="/user" className="cursor-pointer">
                       <Settings className="mr-2 h-4 w-4" />
                       Dashboard
                     </Link>
@@ -214,7 +216,7 @@ export function Navbar() {
             )}
           </div>
 
-          <div className="lg:hidden justify-self-end">
+          <div className="md:hidden justify-self-end">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button
@@ -236,10 +238,10 @@ export function Navbar() {
                 <div className="flex flex-col h-full">
                   <div className="flex items-center p-4 border-b">
                     <div className="font-bold text-xl font-serif">
-                      <span className="text-foreground">
+                      <span className="text-foreground dark:text-primary">
                         {NAVBAR.name.primary}
                       </span>
-                      <span className="text-primary">
+                      <span className="text-primary dark:text-secondary">
                         {NAVBAR.name.secondary}
                       </span>
                     </div>
@@ -268,7 +270,7 @@ export function Navbar() {
                           </div>
                           <Button asChild variant="outline" className="w-full">
                             <Link
-                              href="/dashboard"
+                              href="/user"
                               className="flex items-center justify-center gap-2"
                               onClick={() => setIsOpen(false)}>
                               <Settings className="h-4 w-4" />

@@ -142,7 +142,7 @@ function ResetPasswordContent() {
   if (!email) return null;
 
   return (
-    <Card className="w-full max-w-md bg-card text-card-foreground shadow-lg overflow-hidden">
+    <Card className="w-full max-w-md bg-card text-card-foreground shadow-lg overflow-hidden dark:bg-card/60 dark:border-border">
       <AnimatePresence mode="wait">
         {step === "otp" && (
           <motion.div
@@ -282,7 +282,7 @@ function ResetPasswordContent() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
+    <div className="flex min-h-screen items-center justify-center bg-secondary p-4 dark:bg-background">
       <Suspense
         fallback={<Loader2 className="h-8 w-8 animate-spin text-primary" />}>
         <ResetPasswordContent />

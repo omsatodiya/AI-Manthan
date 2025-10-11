@@ -2,7 +2,7 @@
 
 import { ThemeProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes";
-import { TenantProvider } from "@/contexts/TenantContext";
+import { TenantProvider } from "@/contexts/tenant-context";
 
 export function Providers({ children }: ThemeProviderProps) {
   return (

@@ -5,18 +5,14 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ArrowLeft, Users, UserCheck, Loader2 } from "lucide-react";
 import { getAdminAnalyticsAction } from "@/app/actions/admin";
+import { AdminAnalytics } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 
-interface Analytics {
-  totalUsers: number;
-  totalAdmins: number;
-}
-
 export default function AdminDashboard() {
   const router = useRouter();
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +33,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-secondary p-4 sm:p-6 md:p-8">
+    <main className="min-h-screen bg-secondary p-4 sm:p-6 md:p-8 dark:bg-background">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>
@@ -54,7 +50,7 @@ export default function AdminDashboard() {
         >
           {/* Analytics Section */}
           <motion.div variants={itemVariants}>
-            <Card>
+            <Card className="dark:bg-card/60 dark:border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   Total Users
@@ -73,7 +69,7 @@ export default function AdminDashboard() {
             </Card>
           </motion.div>
           <motion.div variants={itemVariants}>
-            <Card>
+            <Card className="dark:bg-card/60 dark:border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
                   Total Admins
@@ -104,7 +100,7 @@ export default function AdminDashboard() {
           >
             <motion.div variants={itemVariants}>
               <Link href="/admin/users">
-                <Card className="hover:bg-accent hover:border-primary transition-colors">
+                <Card className="hover:bg-accent hover:border-primary transition-colors dark:bg-card/60 dark:border-border">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5 text-primary" />

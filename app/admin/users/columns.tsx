@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { User } from "@/lib/database/types";
+import { User } from "@/lib/types";
 import { ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,7 +40,14 @@ export const getColumns = (
   },
   {
     accessorKey: "role",
-    header: "Role",
+    header: ({ column }) => (
+      <Button
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+        Role
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
   },
   {
     id: "actions",

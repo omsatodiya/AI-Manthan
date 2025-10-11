@@ -37,7 +37,7 @@ export interface DashboardItem {
 
 export interface CTADashboard {
   title: string;
-  patientName: string; // Re-purposed for Community Name
+  patientName: string;
   items: DashboardItem[];
 }
 

@@ -10,7 +10,7 @@ export function Testimonials() {
 
   return (
     <section
-      className="py-20 px-4 bg-secondary font-sans"
+      className="py-20 px-4 bg-secondary font-sans dark:bg-background"
       id={TESTIMONIALS_CONTENT.id}>
       <div className="container mx-auto">
         <motion.div
@@ -51,7 +51,7 @@ export function Testimonials() {
               {communityAvatars.map((avatarUrl, i) => (
                 <div
                   key={i}
-                  className="w-10 h-10 rounded-full border-2 border-background overflow-hidden shadow-md">
+                  className="w-10 h-10 rounded-full border-2 border-background overflow-hidden shadow-md dark:border-foreground/10">
                   <Image
                     src={avatarUrl}
                     alt={`Practitioner ${i + 1}`}
@@ -89,7 +89,7 @@ function TestimonialCard({
 }) {
   return (
     <motion.div
-      className="bg-card rounded-xl border border-border p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full font-sans"
+      className="bg-card rounded-xl border border-border p-6 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col h-full font-sans dark:bg-card/60 dark:border-border"
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
@@ -97,26 +97,26 @@ function TestimonialCard({
       whileHover={{ y: -5 }}>
       <div className="mb-4">
         <div className="flex items-center mb-4">
-          <MessageSquare className="h-5 w-5 text-primary mr-2" />
+          <MessageSquare className="h-5 w-5 text-primary mr-2 dark:text-primary" />
           <div className="flex">
             {[...Array(5)].map((_, i) => (
               <Star
                 key={i}
                 className={`h-4 w-4 ${
                   i < testimonial.rating
-                    ? "text-primary fill-primary"
-                    : "text-muted"
+                    ? "text-primary fill-primary dark:text-primary dark:fill-primary"
+                    : "text-muted-foreground"
                 }`}
               />
             ))}
           </div>
         </div>
-        <p className="text-muted-foreground font-medium italic mb-6 font-sans">
+        <p className="text-foreground font-medium italic mb-6 font-sans">
           &quot; {testimonial.content} &quot;
         </p>
       </div>
       <div className="mt-auto flex items-center">
-        <div className="relative w-10 h-10 rounded-full overflow-hidden mr-3 flex-shrink-0 border-2 border-primary/10">
+        <div className="relative w-10 h-10 rounded-full overflow-hidden mr-3 flex-shrink-0 border-2 border-primary/10 dark:border-foreground/10">
           <Image
             src={testimonial.avatar}
             alt={testimonial.author}
@@ -126,10 +126,10 @@ function TestimonialCard({
           />
         </div>
         <div>
-          <h4 className="font-serif font-medium text-foreground">
+          <h4 className="font-serif font-medium text-foreground dark:text-foreground">
             {testimonial.author}
           </h4>
-          <p className="text-primary text-sm font-sans">{testimonial.role}</p>
+          <p className="text-primary text-sm font-sans dark:text-foreground">{testimonial.role}</p>
         </div>
       </div>
     </motion.div>

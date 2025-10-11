@@ -12,11 +12,11 @@ export type HeroHighlight = {
 export const HERO_CONTENT = {
   id: "hero",
   headline: {
-    primary: "Unify Your Community.",
+    primary: "ConnectIQ",
     secondary: "Amplify Your Impact.",
   },
   description:
-    "ConnectIQ is the AI-powered platform that brings your community's conversations, knowledge, and opportunities into a single, intelligent hub.",
+    "ConnectIQ is the AI-powered platform that connects and brings together business communities.",
   ctas: {
     primary: { href: "/signup", label: "Create Your Community" },
     secondary: { href: "/demo", label: "Watch a Demo" },

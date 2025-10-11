@@ -70,13 +70,13 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
+    <div className="flex min-h-screen items-center justify-center bg-secondary p-4 dark:bg-background">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full max-w-md">
-        <Card className="bg-card text-card-foreground shadow-lg">
+        <Card className="bg-card text-card-foreground shadow-lg dark:bg-card/60 dark:border-border">
           <CardHeader className="relative">
             <Button
               variant="ghost"

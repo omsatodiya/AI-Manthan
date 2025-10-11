@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getDb } from "@/lib/database";
-import { GetUsersParams } from "@/lib/database/types";
+import { GetUsersParams } from "@/lib/types";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 

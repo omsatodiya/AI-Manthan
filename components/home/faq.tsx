@@ -42,7 +42,7 @@ export function FAQ() {
                 viewport={{ once: true }}>
                 <AccordionItem
                   value={`item-${index}`}
-                  className="border border-border rounded-xl overflow-hidden bg-card shadow-sm font-sans">
+                  className="border border-border rounded-xl overflow-hidden bg-card shadow-sm font-sans dark:bg-card/60">
                   <AccordionTrigger className="px-6 py-4 hover:bg-primary/5 text-left font-serif font-medium text-foreground data-[state=open]:text-primary transition-all">
                     {faq.question}
                   </AccordionTrigger>

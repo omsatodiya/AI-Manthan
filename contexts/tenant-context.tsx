@@ -1,40 +1,44 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Tenant } from "@/lib/types";
 
 interface TenantContextType {
   tenantId: string | null;
   setTenantId: (tenantId: string) => void;
   isLoading: boolean;
+  availableTenants: Pick<Tenant, "id" | "name" | "slug">[];
+  setAvailableTenants: (tenants: Pick<Tenant, "id" | "name" | "slug">[]) => void;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 interface TenantProviderProps {
   children: React.ReactNode;
-  availableTenants?: Array<{ tenant_id: string; name?: string }>;
+  availableTenants?: Pick<Tenant, "id" | "name" | "slug">[];
 }
 
 export function TenantProvider({
   children,
-  availableTenants = [],
+  availableTenants: initialTenants = [],
 }: TenantProviderProps) {
   const [tenantId, setTenantIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [availableTenants, setAvailableTenants] =
+    useState<Pick<Tenant, "id" | "name" | "slug">[]>(
+      initialTenants
+    );
 
-  // Load tenant ID from localStorage on mount
   useEffect(() => {
     const savedTenantId = localStorage.getItem("selectedTenantId");
 
     if (
       savedTenantId &&
-      availableTenants.some((tenant) => tenant.tenant_id === savedTenantId)
+      availableTenants.some((tenant) => tenant.id === savedTenantId)
     ) {
-      // Use saved tenant if it's still available
       setTenantIdState(savedTenantId);
     } else if (availableTenants.length > 0) {
-      // Auto-select first tenant if no valid saved tenant
-      const firstTenantId = availableTenants[0].tenant_id;
+      const firstTenantId = availableTenants[0].id;
       setTenantIdState(firstTenantId);
       localStorage.setItem("selectedTenantId", firstTenantId);
     }
@@ -42,7 +46,6 @@ export function TenantProvider({
     setIsLoading(false);
   }, [availableTenants]);
 
-  // Update localStorage when tenant changes
   const setTenantId = (newTenantId: string) => {
     setTenantIdState(newTenantId);
     localStorage.setItem("selectedTenantId", newTenantId);
@@ -52,6 +55,8 @@ export function TenantProvider({
     tenantId,
     setTenantId,
     isLoading,
+    availableTenants,
+    setAvailableTenants,
   };
 
   return (

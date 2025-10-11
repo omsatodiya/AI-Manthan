@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SortingState } from "@tanstack/react-table";
 import { ArrowLeft, Loader2, PlusCircle } from "lucide-react";
-import { User } from "@/lib/database/types";
+import { User } from "@/lib/types";
 import { getUsersAction } from "@/app/actions/admin";
 import { DataTable } from "@/components/custom/data-table";
 import { getColumns } from "./columns";
@@ -66,7 +66,7 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <main className="min-h-screen bg-secondary p-4 sm:p-6 md:p-8">
+    <main className="min-h-screen bg-secondary p-4 sm:p-6 md:p-8 dark:bg-background">
       <div className="mx-auto max-w-7xl">
         <div className="mb-6 flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.back()}>

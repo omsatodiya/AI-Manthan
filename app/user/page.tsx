@@ -18,13 +18,15 @@ import {
   Save,
   LogIn,
   ArrowLeft,
-  LayoutDashboard,
   Moon,
   Sun,
+  Settings,
+  LucideIcon,
 } from "lucide-react";
 
 import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
 import { updateUserNameAction, deleteUserAction } from "@/app/actions/user";
+import { AuthUser } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,23 +58,37 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
-import { TenantSelector } from "@/components/TenantSelector";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
+import { TenantSelector } from "@/components/user/tenant-selector";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters."),
 });
 
+interface NavLink {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  roles?: string[];
+}
+
+const navLinks: NavLink[] = [
+  {
+    href: "/user/info",
+    label: "Change User Information",
+    icon: Settings,
+  },
+  {
+    href: "/admin",
+    label: "Go to Admin Panel",
+    icon: Shield,
+    roles: ["admin"],
+  },
+];
+
 export default function UserPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -99,8 +115,13 @@ export default function UserPage() {
   }, [form]);
 
   const handleLogout = async () => {
-    await logoutAction();
-    router.push("/");
+    try {
+      await logoutAction();
+      router.push("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      router.push("/");
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -138,8 +159,8 @@ export default function UserPage() {
 
   if (!user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
-        <Card className="w-full max-w-md text-center">
+      <div className="flex min-h-screen items-center justify-center bg-secondary p-4 dark:bg-background">
+        <Card className="w-full max-w-md text-center dark:bg-card/60 dark:border-border">
           <CardHeader>
             <CardTitle>Access Denied</CardTitle>
             <CardDescription>
@@ -156,13 +177,17 @@ export default function UserPage() {
     );
   }
 
+  const accessibleLinks = navLinks.filter(
+    (link) => !link.roles || link.roles.includes(user.role)
+  );
+
   const cardVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.1 } },
   };
 
   return (
-    <main className="min-h-screen bg-secondary p-4 sm:p-6 md:p-8">
+    <main className="min-h-screen bg-secondary p-4 sm:p-6 md:p-8 dark:bg-background">
       <div className="mx-auto max-w-6xl">
         <div className="mb-4 flex">
           <Button
@@ -184,7 +209,7 @@ export default function UserPage() {
         >
           {/* Left Side: User Profile */}
           <motion.div variants={cardVariants}>
-            <Card className="h-full shadow-lg">
+            <Card className="h-full shadow-lg dark:bg-card/60 dark:border-border">
               <CardHeader>
                 <CardTitle className="text-2xl font-serif">
                   My Profile
@@ -247,7 +272,7 @@ export default function UserPage() {
                   </form>
                 </Form>
               </CardContent>
-              <CardFooter className="flex flex-col items-start gap-4 border-t bg-muted/50 p-6">
+              <CardFooter className="flex flex-col items-start gap-4 border-t bg-muted/50 p-6 dark:bg-muted/30 dark:border-border">
                 <h3 className="font-semibold text-foreground">
                   Account Actions
                 </h3>
@@ -294,9 +319,8 @@ export default function UserPage() {
           {/* Right Side: Links & Settings */}
           <motion.div
             variants={cardVariants}
-            className="flex flex-col justify-between gap-6 lg:gap-8"
-          >
-            <Card className="shadow-lg">
+            className="flex flex-col justify-between gap-6 lg:gap-8">
+            <Card className="shadow-lg dark:bg-card/60 dark:border-border">
               <CardHeader>
                 <CardTitle className="text-2xl font-serif">
                   Quick Links
@@ -305,32 +329,21 @@ export default function UserPage() {
                   Navigate to other parts of the application.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                {user.role === "admin" ? (
-                  <Link href="/admin">
+              <CardContent className="space-y-8">
+                {accessibleLinks.map((link) => (
+                  <Link href={link.href} key={link.href}>
                     <Button
                       variant="outline"
-                      className="w-full justify-start text-base h-12"
-                    >
-                      <Shield className="mr-3 h-5 w-5 text-primary" />
-                      Go to Admin Panel
+                      className="w-full justify-start mb-2 text-base h-12">
+                      <link.icon className="mr-3 h-5 w-5 text-primary" />
+                      {link.label}
                     </Button>
                   </Link>
-                ) : (
-                  <Link href="/user">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start text-base h-12"
-                    >
-                      <LayoutDashboard className="mr-3 h-5 w-5 text-primary" />
-                      Go to User Dashboard
-                    </Button>
-                  </Link>
-                )}
+                ))}
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg">
+            <Card className="shadow-lg dark:bg-card/60 dark:border-border">
               <CardHeader>
                 <CardTitle className="font-serif">Appearance</CardTitle>
                 <CardDescription>

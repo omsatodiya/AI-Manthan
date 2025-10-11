@@ -1,8 +1,8 @@
-import { getSupabaseClient } from "./clients";
-import { DatabaseAdapter, User } from "./types";
+import { getSupabaseClient } from "../database/clients";
+import { User } from "../types/user";
 
-export const SupabaseAdapter: DatabaseAdapter = {
-  async findUserByEmail(email) {
+export const userFunctions = {
+  async findUserByEmail(email: string): Promise<User | null> {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("users")
@@ -12,7 +12,8 @@ export const SupabaseAdapter: DatabaseAdapter = {
     if (error && error.code !== "PGRST116") console.error(error);
     return data as User | null;
   },
-  async findUserById(id) {
+
+  async findUserById(id: string): Promise<User | null> {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("users")
@@ -22,7 +23,10 @@ export const SupabaseAdapter: DatabaseAdapter = {
     if (error && error.code !== "PGRST116") console.error(error);
     return data as User | null;
   },
-  async createUser(user) {
+
+  async createUser(
+    user: Omit<User, "otp" | "otpExpires" | "createdAt" | "updatedAt">
+  ): Promise<User | null> {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("users")
@@ -32,7 +36,8 @@ export const SupabaseAdapter: DatabaseAdapter = {
     if (error) console.error(error);
     return data as User | null;
   },
-  async updateUser(id, userData) {
+
+  async updateUser(id: string, userData: Partial<User>): Promise<User | null> {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("users")
@@ -43,12 +48,14 @@ export const SupabaseAdapter: DatabaseAdapter = {
     if (error) console.error(error);
     return data as User | null;
   },
-  async deleteUserById(id) {
+
+  async deleteUserById(id: string): Promise<boolean> {
     const supabase = await getSupabaseClient();
     const { error } = await supabase.from("users").delete().eq("id", id);
     if (error) console.error(error);
     return !error;
   },
+
   async getAdminAnalytics() {
     const supabase = await getSupabaseClient();
     const { count: totalUsers, error: totalError } = await supabase
@@ -61,7 +68,18 @@ export const SupabaseAdapter: DatabaseAdapter = {
     if (totalError || adminError) console.error(totalError || adminError);
     return { totalUsers: totalUsers ?? 0, totalAdmins: totalAdmins ?? 0 };
   },
-  async getPaginatedUsers({ pageIndex, pageSize, query, sort }) {
+
+  async getPaginatedUsers({
+    pageIndex,
+    pageSize,
+    query,
+    sort,
+  }: {
+    pageIndex: number;
+    pageSize: number;
+    query?: string;
+    sort?: { id: string; desc: boolean };
+  }) {
     const supabase = await getSupabaseClient();
     let queryBuilder = supabase.from("users").select("*", { count: "exact" });
 

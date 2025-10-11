@@ -7,26 +7,26 @@ import { Background } from "@/components/home/background";
 
 export function Hero() {
   return (
-    <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden font-sans pt-24 md:pt-0 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3]">
+    <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden font-sans pt-28 sm:pt-4 md:pt-24 lg:pt-28 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3] dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220]">
       <Background />
 
       <div className="container relative z-10 mx-auto px-4 sm:px-6 py-16 md:py-0">
         <div className="flex flex-col items-center justify-center text-center max-w-3xl mx-auto">
           <motion.h1
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tight text-foreground lg:mt-24 mb-6 sm:mb-8"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl tracking-tight text-foreground dark:text-primary mb-6 sm:mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}>
             <span className="font-serif font-medium">
               {HERO_CONTENT.headline.primary}
             </span>
-            <span className="block font-sans font-bold text-primary mt-1 md:mt-2">
+            <span className="block font-sans font-bold text-primary dark:text-foreground mt-1 md:mt-2">
               {HERO_CONTENT.headline.secondary}
             </span>
           </motion.h1>
 
           <motion.p
-            className="text-lg md:text-xl text-foreground/80 mb-10 max-w-2xl font-sans"
+            className="text-lg md:text-xl text-foreground/80 dark:text-foreground mb-10 max-w-2xl font-sans"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}>
@@ -58,7 +58,7 @@ export function Hero() {
           </motion.div>
 
           <motion.div
-            className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 w-full max-w-4xl"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 pb-16 gap-4 md:gap-6 w-full max-w-4xl"
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, amount: 0.3 }}
@@ -68,7 +68,7 @@ export function Hero() {
               return (
                 <HighlightCard
                   key={i}
-                  icon={<Icon className="h-8 w-8" />}
+                  icon={<Icon className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8" />}
                   title={h.title}
                   description={h.description}
                 />
@@ -97,15 +97,15 @@ function HighlightCard({
 }) {
   return (
     <motion.div
-      className="bg-card border border-border/70 rounded-xl p-5 flex flex-col items-center text-center transition-all duration-300 shadow-sm"
+      className="bg-card border border-border/70 rounded-xl p-4 sm:p-5 flex flex-col items-center text-center transition-all duration-300 shadow-sm"
       variants={cardVariants}>
-      <div className="p-3 bg-secondary rounded-full mb-4 text-primary">
+      <div className="p-2.5 sm:p-3 bg-secondary rounded-full mb-3 sm:mb-4 text-primary">
         {icon}
       </div>
-      <h3 className="font-serif text-3xl font-medium text-foreground mb-1">
+      <h3 className="font-serif text-lg sm:text-xl md:text-2xl font-medium text-foreground mb-1">
         {title}
       </h3>
-      <p className="text-foreground/70 text-sm font-sans">{description}</p>
+      <p className="text-foreground/70 text-xs sm:text-sm font-sans">{description}</p>
     </motion.div>
   );
 }

@@ -9,10 +9,10 @@ export function CTA() {
   const { badge, heading, features, buttons, dashboard } = ctaConfig;
 
   return (
-    <section className="py-24 px-4 relative overflow-hidden bg-gradient-to-b from-primary/50 to-primary/50 font-sans">
+    <section className="py-24 px-4 relative overflow-hidden bg-gradient-to-b from-primary/50 to-primary/50 dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220] font-sans">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          className="absolute top-0 left-0 w-96 h-96 bg-primary-foreground/5 rounded-full blur-3xl"
+          className="absolute top-0 left-0 w-72 sm:w-80 md:w-96 h-72 sm:h-80 md:h-96 bg-primary-foreground/5 rounded-full blur-3xl dark:bg-primary/20"
           animate={{
             x: [0, 50, 0],
             y: [0, 30, 0],
@@ -24,7 +24,7 @@ export function CTA() {
           }}
         />
         <motion.div
-          className="absolute bottom-0 right-0 w-96 h-96 bg-accent/10 rounded-full blur-3xl"
+          className="absolute bottom-0 right-0 w-72 sm:w-80 md:w-96 h-72 sm:h-80 md:h-96 bg-accent/10 rounded-full blur-3xl dark:bg-accent/20"
           animate={{
             x: [0, -50, 0],
             y: [0, -30, 0],
@@ -38,7 +38,7 @@ export function CTA() {
       </div>
 
       <div className="container mx-auto relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             whileInView={{ opacity: 1, x: 0 }}
@@ -47,10 +47,10 @@ export function CTA() {
             <div className="bg-accent text-accent-foreground font-semibold px-4 py-1.5 rounded-full inline-block mb-4 text-sm font-sans">
               {badge.text}
             </div>
-            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-semibold mb-6 text-primary-foreground leading-tight">
+            <h2 className="font-serif text-3xl md:text-4xl lg:text-5xl font-semibold mb-6 text-primary-foreground leading-tight dark:text-foreground">
               {heading.title}
             </h2>
-            <p className="text-primary-foreground/80 text-lg mb-8 max-w-lg font-sans">
+            <p className="text-primary-foreground/80 text-lg mb-8 max-w-lg font-sans dark:text-muted-foreground">
               {heading.subtitle}
             </p>
 
@@ -58,15 +58,15 @@ export function CTA() {
               {features.map((feature, index) => (
                 <div
                   key={index}
-                  className="flex items-start bg-primary-foreground/10 p-4 rounded-xl backdrop-blur-sm">
+                  className="flex items-start bg-primary-foreground/10 p-4 rounded-xl backdrop-blur-sm dark:bg-foreground/5">
                   <div className="bg-accent p-2.5 rounded-full mr-4 shadow-lg">
                     <feature.icon className="h-5 w-5 text-accent-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-serif font-medium mb-1 text-primary-foreground">
+                    <h3 className="font-serif font-medium mb-1 text-primary-foreground dark:text-foreground">
                       {feature.title}
                     </h3>
-                    <p className="text-primary-foreground/70 text-sm font-sans">
+                    <p className="text-primary-foreground/70 text-sm font-sans dark:text-muted-foreground">
                       {feature.description}
                     </p>
                   </div>
@@ -84,8 +84,8 @@ export function CTA() {
                     variant={isPrimary ? "default" : "outline"}
                     className={
                       isPrimary
-                        ? "bg-background hover:bg-background/90 text-foreground font-medium shadow-lg font-sans"
-                        : "bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 font-medium backdrop-blur-sm font-sans"
+                        ? "bg-background hover:bg-background/90 text-foreground font-medium shadow-lg font-sans dark:bg-foreground dark:text-background"
+                        : "bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 font-medium backdrop-blur-sm font-sans dark:border-foreground dark:text-foreground dark:hover:bg-foreground/10"
                     }
                     asChild>
                     <Link href={button.href}>

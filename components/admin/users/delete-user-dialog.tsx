@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { User } from "@/lib/database/types";
+import { User } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,
