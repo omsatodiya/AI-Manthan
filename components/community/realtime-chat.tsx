@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils'
 import { ChatMessageItem } from '@/components/community/chat-message'
+import { EditMessageDialog } from '@/components/community/edit-message-dialog'
 import { useChatScroll } from '@/hooks/use-chat-scroll'
 import { useRealtimeChat } from '@/hooks/use-realtime-chat'
 import type { ChatMessageWithUser } from '@/lib/types/chat'
@@ -40,13 +41,15 @@ export const RealtimeChat = ({
     messages: realtimeMessages,
     sendMessage,
     deleteMessage,
+    updateMessage,
     isConnected,
   } = useRealtimeChat({
     userId,
     username,
-    tenantId, // Pass tenantId to hook
+    tenantId,
   })
   const [newMessage, setNewMessage] = useState('')
+  const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null)
 
   // Merge realtime messages with initial messages
   const allMessages = useMemo(() => {
@@ -90,6 +93,22 @@ export const RealtimeChat = ({
     [deleteMessage]
   )
 
+  const handleEditMessage = useCallback(
+    (messageId: string, content: string) => {
+      setEditingMessage({ id: messageId, content })
+    },
+    []
+  )
+
+  const handleConfirmEdit = useCallback(
+    (newContent: string) => {
+      if (editingMessage) {
+        updateMessage(editingMessage.id, newContent)
+      }
+    },
+    [editingMessage, updateMessage]
+  )
+
   return (
     <div className="flex flex-col h-full w-full bg-background text-foreground antialiased">
       {/* Messages */}
@@ -111,9 +130,10 @@ export const RealtimeChat = ({
               >
                 <ChatMessageItem
                   message={message}
-                  currentUserId={userId}  // Fixed: use currentUserId instead of isOwnMessage
+                  currentUserId={userId}
                   showHeader={showHeader}
                   onDelete={handleDeleteMessage}
+                  onEdit={handleEditMessage}
                 />
               </div>
             )
@@ -143,6 +163,13 @@ export const RealtimeChat = ({
           </Button>
         )}
       </form>
+
+      <EditMessageDialog
+        open={!!editingMessage}
+        onOpenChange={(open) => !open && setEditingMessage(null)}
+        initialContent={editingMessage?.content || ''}
+        onConfirm={handleConfirmEdit}
+      />
     </div>
   )
 }

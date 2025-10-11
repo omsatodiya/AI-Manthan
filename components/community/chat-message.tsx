@@ -7,18 +7,21 @@ interface ChatMessageItemProps {
   currentUserId: string // Changed to use userId instead of username
   showHeader: boolean
   onDelete: (messageId: string) => void
+  onEdit: (messageId: string, content: string) => void
 }
 
-export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete }: ChatMessageItemProps) => {
+export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete, onEdit }: ChatMessageItemProps) => {
   const isOwnMessage = message.user.id === currentUserId
 
   return (
     <div className={`flex mt-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
       <MessageContextMenu
         messageId={message.id}
+        messageContent={message.content}
         createdAt={message.createdAt}
         isOwnMessage={isOwnMessage}
         onDelete={onDelete}
+        onEdit={onEdit}
       >
         <div
           className={cn('max-w-[75%] w-fit flex flex-col gap-1', {
@@ -47,7 +50,10 @@ export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete }
               isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
             )}
           >
-            {message.content}
+            <div>{message.content}</div>
+            {message.isEdited && (
+              <span className="text-xs opacity-70 italic ml-2">(edited)</span>
+            )}
           </div>
         </div>
       </MessageContextMenu>

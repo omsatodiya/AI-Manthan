@@ -1,5 +1,6 @@
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import type { ChatMessageWithUser } from '@/lib/types/chat'
+import { isMessageEdited } from '@/lib/utils/chat-utils'
 
 export class ChatService {
   private supabase: ReturnType<typeof createBrowserClient>
@@ -22,6 +23,7 @@ export class ChatService {
           id,
           content,
           created_at,
+          updated_at,
           user_id,
           tenant_id,
           users!chat_messages_user_id_fkey (
@@ -55,6 +57,8 @@ export class ChatService {
           name: row.users?.fullName || 'Unknown User',
         },
         createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        isEdited: isMessageEdited(row.created_at, row.updated_at),
       }))
     } catch (err) {
       console.error('Error fetching messages', err)
@@ -82,6 +86,7 @@ export class ChatService {
         id,
         content,
         created_at,
+        updated_at,
         user_id,
         tenant_id,
         users!chat_messages_user_id_fkey (
@@ -104,6 +109,8 @@ export class ChatService {
         name: (data.users as any)?.[0]?.fullName || (data.users as any)?.fullName || username,
       },
       createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      isEdited: false,
     }
   }
 
@@ -140,6 +147,7 @@ export class ChatService {
         id,
         content,
         created_at,
+        updated_at,
         user_id,
         tenant_id,
         users!chat_messages_user_id_fkey (
@@ -162,6 +170,8 @@ export class ChatService {
         name: (data.users as any)?.fullName || 'Unknown User',
       },
       createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      isEdited: isMessageEdited(data.created_at, data.updated_at),
     }
   }
 }

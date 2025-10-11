@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import type { ChatMessageWithUser, DeleteMessagePayload } from '@/lib/types/chat'
+import type { ChatMessageWithUser, DeleteMessagePayload, UpdateMessagePayload } from '@/lib/types/chat'
 import { chatService } from '@/lib/services/chat-service'
 
 interface UseRealtimeChatProps {
@@ -13,6 +13,7 @@ interface UseRealtimeChatProps {
 
 const EVENT_MESSAGE_TYPE = 'message'
 const EVENT_DELETE_MESSAGE_TYPE = 'delete-message'
+const EVENT_UPDATE_MESSAGE_TYPE = 'update-message'
 const GLOBAL_CHANNEL_NAME = 'global-chat'
 
 export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatProps) {
@@ -57,6 +58,16 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       .on('broadcast', { event: EVENT_DELETE_MESSAGE_TYPE }, (payload) => {
         const { messageId } = payload.payload as DeleteMessagePayload
         setMessages((current) => current.filter((msg) => msg.id !== messageId))
+      })
+      .on('broadcast', { event: EVENT_UPDATE_MESSAGE_TYPE }, (payload) => {
+        const { messageId, content, updatedAt } = payload.payload as UpdateMessagePayload
+        setMessages((current) =>
+          current.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, content, updatedAt, isEdited: true }
+              : msg
+          )
+        )
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -125,5 +136,42 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
     [channel, isConnected, userId]
   )
 
-  return { messages, sendMessage, deleteMessage, isConnected }
+  const updateMessage = useCallback(
+    async (messageId: string, content: string) => {
+      if (!channel || !isConnected) return
+
+      try {
+        // Update message in database using service
+        const updatedMessage = await chatService.updateMessage(messageId, userId, content)
+
+        const updatePayload: UpdateMessagePayload = {
+          messageId,
+          content,
+          userId,
+          updatedAt: updatedMessage.updatedAt || new Date().toISOString(),
+        }
+
+        // Broadcast update to other clients
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_UPDATE_MESSAGE_TYPE,
+          payload: updatePayload,
+        })
+
+        // Update local state
+        setMessages((current) =>
+          current.map((msg) =>
+            msg.id === messageId
+              ? { ...msg, content, updatedAt: updatePayload.updatedAt, isEdited: true }
+              : msg
+          )
+        )
+      } catch (error) {
+        console.error('Failed to update message:', error)
+      }
+    },
+    [channel, isConnected, userId]
+  )
+
+  return { messages, sendMessage, deleteMessage, updateMessage, isConnected }
 }

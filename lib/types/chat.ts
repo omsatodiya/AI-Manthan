@@ -15,6 +15,8 @@ export interface ChatMessageWithUser {
     name: string;
   };
   createdAt: string;
+  updatedAt?: string;
+  isEdited?: boolean;
 }
 
 export interface ChatUser {
@@ -25,4 +27,11 @@ export interface ChatUser {
 export interface DeleteMessagePayload {
   messageId: string;
   userId: string;
+}
+
+export interface UpdateMessagePayload {
+  messageId: string;
+  content: string;
+  userId: string;
+  updatedAt: string;
 }
