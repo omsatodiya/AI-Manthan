@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Home,
+  Megaphone,
 } from "lucide-react";
 
 export type NavLink = {
@@ -25,5 +26,6 @@ export const NAVBAR = {
   },
   links: [
     { href: "/", label: "Home", icon: Home },
+    { href: "/announcements", label: "Announcements", icon: Megaphone },
   ] as NavLink[],
 } as const;

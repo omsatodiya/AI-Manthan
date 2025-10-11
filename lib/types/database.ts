@@ -1,6 +1,8 @@
 import { User } from "./user";
 import { UserInfo } from "./user-info";
 import { Tenant, TenantMember, TenantInvitation } from "./tenant";
+import { Announcement, CreateAnnouncementData, UpdateAnnouncementData } from "./announcement";
+import { AnnouncementOpportunity, CreateAnnouncementOpportunityData } from "./announcement-opportunity";
 
 export interface DatabaseAdapter {
   findUserByEmail(email: string): Promise<User | null>;
@@ -53,6 +55,39 @@ export interface DatabaseAdapter {
     userId: string
   ): Promise<TenantMember | null>;
   deleteTenantInvitation(id: string): Promise<boolean>;
+
+  createAnnouncement(
+    data: CreateAnnouncementData,
+    tenantId: string,
+    createdBy: string
+  ): Promise<Announcement | null>;
+  getAnnouncements(tenantId: string): Promise<Announcement[]>;
+  getAnnouncementById(id: string, tenantId: string): Promise<Announcement | null>;
+  updateAnnouncement(
+    id: string,
+    data: UpdateAnnouncementData,
+    tenantId: string
+  ): Promise<Announcement | null>;
+  deleteAnnouncement(id: string, tenantId: string): Promise<boolean>;
+
+  createAnnouncementOpportunity(
+    data: CreateAnnouncementOpportunityData
+  ): Promise<AnnouncementOpportunity | null>;
+  getAnnouncementOpportunities(tenantId: string): Promise<AnnouncementOpportunity[]>;
+  getAnnouncementOpportunityById(
+    id: string,
+    tenantId: string
+  ): Promise<AnnouncementOpportunity | null>;
+  getUserAnnouncementOpportunities(
+    userId: string,
+    tenantId: string
+  ): Promise<AnnouncementOpportunity[]>;
+  updateAnnouncementOpportunity(
+    id: string,
+    data: Partial<CreateAnnouncementOpportunityData>,
+    tenantId: string
+  ): Promise<AnnouncementOpportunity | null>;
+  deleteAnnouncementOpportunity(id: string, tenantId: string): Promise<boolean>;
 }
 
 export interface AdminAnalytics {

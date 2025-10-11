@@ -4,6 +4,10 @@ export type { UserInfo } from "./user-info";
 
 export type { Tenant, TenantMember, TenantInvitation } from "./tenant";
 
+export type { Announcement, CreateAnnouncementData, UpdateAnnouncementData } from "./announcement";
+
+export type { AnnouncementOpportunity, CreateAnnouncementOpportunityData } from "./announcement-opportunity";
+
 export type {
   DatabaseAdapter,
   AdminAnalytics,

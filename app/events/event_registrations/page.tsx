@@ -1,17 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default function EventRegistrationPage() {
   const router = useRouter();
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userTenantId, setUserTenantId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -26,32 +27,33 @@ export default function EventRegistrationPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const fetchCurrentUserAndTenant = async () => {
-      try {
-        const user = await getCurrentUserAction();
-        setCurrentUser(user);
-        
-        if (user?.id) {
-          // Fetch user's tenant_id from Supabase users table
-          const { data: userData, error } = await supabase
-            .from("users")
-            .select("tenant_id")
-            .eq("id", user.id)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching user tenant:", error);
-          } else {
-            setUserTenantId(userData?.tenant_id || null);
-          }
+  const fetchCurrentUserAndTenant = useCallback(async () => {
+    try {
+      const user = await getCurrentUserAction();
+      setCurrentUser(user);
+      
+      if (user?.id) {
+        // Fetch user's tenant_id from Supabase users table
+        const { data: userData, error } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("id", user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching user tenant:", error);
+        } else {
+          setUserTenantId(userData?.tenant_id || null);
         }
-      } catch (error) {
-        console.error("Error fetching current user:", error);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
     fetchCurrentUserAndTenant();
-  }, []);
+  }, [fetchCurrentUserAndTenant]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -234,9 +236,11 @@ export default function EventRegistrationPage() {
               />
               {form.image && (
                 <div className="mt-3 rounded-xl overflow-hidden border-2 border-gray-200">
-                  <img
+                  <Image
                     src={form.image}
                     alt="Preview"
+                    width={400}
+                    height={192}
                     className="w-full h-48 object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
