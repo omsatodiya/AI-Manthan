@@ -132,7 +132,7 @@ export default function AdminAnnouncementsPage() {
                 </p>
               </div>
               <Button
-                onClick={() => router.push("/admin/create_announcement")}
+                onClick={() => router.push("/announcements/create_announcement")}
                 size="lg"
                 className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
@@ -168,7 +168,7 @@ export default function AdminAnnouncementsPage() {
                   Get started by creating your first announcement to keep your team informed
                 </p>
                 <Button
-                  onClick={() => router.push("/admin/create_announcement")}
+                  onClick={() => router.push("/announcements/create_announcement")}
                   size="lg"
                   className="shadow-lg hover:shadow-xl transition-all duration-300"
                 >
@@ -248,7 +248,7 @@ export default function AdminAnnouncementsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => router.push(`/admin/edit_announcement/${announcement.id}`)}
+                              onClick={() => router.push(`/announcements/edit_announcement/${announcement.id}`)}
                               className="gap-2"
                             >
                               <Edit className="h-4 w-4" />

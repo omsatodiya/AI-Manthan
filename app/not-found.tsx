@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Network, Home } from "lucide-react";
+import {  Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
@@ -23,7 +23,6 @@ export default function NotFound() {
             ease: "easeInOut",
             repeatDelay: 0.5,
           }}>
-          <Network className="absolute top-1/2 left-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 text-accent opacity-40 md:h-24 md:w-24" />
           <h1 className="text-8xl font-bold font-serif text-primary md:text-9xl">
             404
           </h1>
