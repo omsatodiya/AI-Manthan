@@ -100,7 +100,6 @@ export default function UserInfoPage() {
         }
 
         if (userInfoResult.success && userInfoResult.data) {
-          console.log("Raw user info data from database:", userInfoResult.data);
           setUserInfo(userInfoResult.data);
           const answers = {
             role: userInfoResult.data.role || undefined,
@@ -122,13 +121,11 @@ export default function UserInfoPage() {
             eventScale: userInfoResult.data.eventScale || undefined,
             eventFormat: userInfoResult.data.eventFormat || [],
           };
-          console.log("Processed saved answers:", answers);
           setSavedAnswers(answers);
 
           setCurrentQuestionIndex(0);
         }
-      } catch (error) {
-        console.error("Failed to fetch data", error);
+      } catch {
       } finally {
         setIsLoading(false);
       }
@@ -138,7 +135,6 @@ export default function UserInfoPage() {
 
   useEffect(() => {
     if (Object.keys(savedAnswers).length > 0) {
-      console.log("Resetting form with saved answers:", savedAnswers);
       form.reset({
         role: savedAnswers.role || undefined,
         organizationType: savedAnswers.organizationType || undefined,
@@ -166,10 +162,6 @@ export default function UserInfoPage() {
       const currentValue =
         savedAnswers[currentQuestion.id as keyof typeof savedAnswers];
       if (currentValue !== undefined) {
-        console.log(
-          `Setting form value for ${currentQuestion.id}:`,
-          currentValue
-        );
         form.setValue(currentQuestion.id, currentValue);
       }
     }
@@ -178,7 +170,6 @@ export default function UserInfoPage() {
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === currentQuestion?.id) {
-        console.log(`Form value for ${name}:`, value[name]);
       }
     });
     return () => subscription.unsubscribe();
@@ -240,15 +231,45 @@ export default function UserInfoPage() {
         dataToSave.eventFormat = values.eventFormat;
       }
 
-      const result = await saveUserInfoAction(dataToSave, tenantId || undefined);
+      const result = await saveUserInfoAction(
+        dataToSave,
+        tenantId || undefined
+      );
 
       if (result.success) {
         setSavedAnswers((prev) => ({ ...prev, ...dataToSave }));
 
         if (isLastQuestion) {
-          toast.success(
-            "All information saved successfully! You can continue editing or go back to your profile."
-          );
+          // Automatically generate embedding when user completes the last question
+          try {
+            const embeddingResponse = await fetch(
+              "/api/users/generate-embedding",
+              {
+                method: "POST",
+              }
+            );
+
+            if (embeddingResponse.ok) {
+              const embeddingResult = await embeddingResponse.json();
+              if (embeddingResult.success) {
+                toast.success(
+                  `All information saved and embedding generated using ${embeddingResult.embeddingSource} method! You can continue editing or go back to your profile.`
+                );
+              } else {
+                toast.success(
+                  "All information saved successfully! You can continue editing or go back to your profile."
+                );
+              }
+            } else {
+              toast.success(
+                "All information saved successfully! You can continue editing or go back to your profile."
+              );
+            }
+          } catch {
+            toast.success(
+              "All information saved successfully! You can continue editing or go back to your profile."
+            );
+          }
         } else {
           toast.success("Answer saved! Moving to next question.");
           setCurrentQuestionIndex((prev) => prev + 1);
@@ -305,7 +326,8 @@ export default function UserInfoPage() {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground"
-            onClick={() => router.back()}>
+            onClick={() => router.back()}
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -314,7 +336,8 @@ export default function UserInfoPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}>
+          transition={{ duration: 0.5 }}
+        >
           <Card className="shadow-lg dark:bg-card/60 dark:border-border">
             <CardHeader>
               <div className="mb-4">
@@ -353,14 +376,16 @@ export default function UserInfoPage() {
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(handleNext)}
-                  className="space-y-6">
+                  className="space-y-6"
+                >
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={currentQuestion.id}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
-                      transition={{ duration: 0.3 }}>
+                      transition={{ duration: 0.3 }}
+                    >
                       {/* Reusable Question Renderer */}
                       <QuestionRenderer
                         question={currentQuestion}
@@ -377,7 +402,8 @@ export default function UserInfoPage() {
                         variant="outline"
                         onClick={handleCancel}
                         disabled={isSubmitting}
-                        className="w-full sm:w-auto">
+                        className="w-full sm:w-auto"
+                      >
                         <X className="mr-2 h-4 w-4" />
                         Back to Profile
                       </Button>
@@ -387,7 +413,8 @@ export default function UserInfoPage() {
                           variant="outline"
                           onClick={handlePrevious}
                           disabled={isSubmitting}
-                          className="w-full sm:w-auto">
+                          className="w-full sm:w-auto"
+                        >
                           <ChevronLeft className="mr-2 h-4 w-4" />
                           Previous
                         </Button>
@@ -396,7 +423,8 @@ export default function UserInfoPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full sm:w-auto">
+                      className="w-full sm:w-auto"
+                    >
                       {isSubmitting ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (

@@ -30,10 +30,8 @@ export const userInfoFunctions = {
         scoped.error.code === "PGRST204"
       ) {
       } else {
-        console.error(scoped.error);
       }
     } else if (error && error.code !== "PGRST116") {
-      console.error(error);
     }
 
     if (!data) return null;
@@ -112,7 +110,6 @@ export const userInfoFunctions = {
         .single();
       data = retry.data;
     }
-    if (error) console.error(error);
 
     if (!data) return null;
 
@@ -147,11 +144,9 @@ export const userInfoFunctions = {
     userId: string,
     userInfoData: Partial<
       Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">
-    >,
-    tenantId?: string
+    >
   ): Promise<UserInfo | null> {
     const supabase = await getSupabaseClient();
-    console.log("🔵 updateUserInfo: Starting update", { userId, tenantId, hasEmbedding: !!userInfoData.embedding });
     
     const updateData = {
       role: userInfoData.role,
@@ -200,7 +195,6 @@ export const userInfoFunctions = {
         .maybeSingle();
       data = retry.data;
     }
-    if (error) console.error(error);
 
     if (!data) return null;
 
@@ -240,11 +234,6 @@ export const userInfoFunctions = {
       tenantId?: string;
     }
   ): Promise<UserMatch[]> {
-    console.log("🔵 findUserMatches: Starting user matching", {
-      userId,
-      embeddingLength: embedding.length,
-      options
-    });
 
     const supabase = await getSupabaseClient();
 
@@ -259,58 +248,132 @@ export const userInfoFunctions = {
 
       if (matchError) {
         console.error("🔴 findUserMatches: Database function error", matchError);
-        throw matchError;
+
+        // Fallback: Try direct query if RPC function fails
+        console.log("🔶 findUserMatches: Trying direct query fallback");
+        const { data: directMatches, error: directError } = await supabase
+          .from('user_info')
+          .select('user_id, embedding')
+          .neq('user_id', userId)
+          .not('embedding', 'is', null);
+
+        if (directError) {
+          console.error("🔴 findUserMatches: Direct query also failed", directError);
+          throw matchError; // Throw original error
+        }
+
+        // Process direct matches manually (cosine similarity calculation)
+        const processedMatches = directMatches
+          ?.map((match: { user_id: string; embedding: number[] }) => {
+            if (!match.embedding || !Array.isArray(match.embedding)) return null;
+            
+            // Calculate cosine similarity
+            const dotProduct = embedding.reduce((sum, val, i) => sum + val * match.embedding[i], 0);
+            const magnitude1 = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+            const magnitude2 = Math.sqrt(match.embedding.reduce((sum: number, val: number) => sum + val * val, 0));
+            const similarity = dotProduct / (magnitude1 * magnitude2);
+
+            if (similarity > options.threshold) {
+              return {
+                user_id: match.user_id,
+                similarity: similarity
+              };
+            }
+            return null;
+          })
+          .filter(Boolean)
+          .sort((a: { similarity: number }, b: { similarity: number }) => b.similarity - a.similarity)
+          .slice(0, options.limit) || [];
+
+        console.log("🔵 findUserMatches: Fallback matches processed", {
+          matchCount: processedMatches.length,
+          matches: processedMatches
+        });
+
+        // Get user details for fallback matches
+        const fallbackUserIds = processedMatches.map((match: { user_id: string }) => match.user_id);
+        const { data: fallbackUsers, error: fallbackUsersError } = await supabase
+          .from('users')
+          .select('id, fullName, email')
+          .in('id', fallbackUserIds);
+
+        if (fallbackUsersError) {
+          console.error("🔴 findUserMatches: Error fetching fallback user details", fallbackUsersError);
+          return processedMatches.map((match: { user_id: string; similarity: number }) => ({
+            userId: match.user_id,
+            similarity: match.similarity
+          }));
+        }
+
+        // Combine fallback match data with user details
+        const fallbackDetailedMatches: UserMatch[] = processedMatches.map((match: { user_id: string; similarity: number }) => {
+          const foundUser = fallbackUsers?.find(u => u.id === match.user_id);
+          return {
+            userId: match.user_id,
+            similarity: match.similarity,
+            user: foundUser ? {
+              id: foundUser.id,
+              name: foundUser.fullName,
+              email: foundUser.email
+            } : undefined
+          };
+        });
+
+        return fallbackDetailedMatches;
       }
 
       console.log("🔵 findUserMatches: Raw matches from database", {
         matchCount: matches?.length || 0,
-        matches: matches?.map((m: { user_id: string; similarity: number }) => ({
-          userId: m.user_id,
-          similarity: m.similarity
-        }))
+        rawMatches: matches
       });
 
       if (!matches || matches.length === 0) {
-        console.log("🔵 findUserMatches: No matches found");
         return [];
       }
 
       // Get user details for the matched users
-      const userIds = matches.map((match: { user_id: string; similarity: number }) => match.user_id);
+      const userIds = matches.map((match: { userId?: string; user_id?: string }) => match.userId || match.user_id);
+      console.log("🔵 findUserMatches: Extracted user IDs", { userIds });
+      
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id, name, email')
+        .select('id, fullName, email')
         .in('id', userIds);
+
+      console.log("🔵 findUserMatches: User details fetched", {
+        userCount: users?.length || 0,
+        users: users
+      });
 
       if (usersError) {
         console.error("🔴 findUserMatches: Error fetching user details", usersError);
         // Return matches without user details if we can't fetch them
-        return matches.map((match: { user_id: string; similarity: number }) => ({
-          userId: match.user_id,
+        return matches.map((match: { userId?: string; user_id?: string; similarity: number }) => ({
+          userId: match.userId || match.user_id,
           similarity: match.similarity
         }));
       }
 
-      console.log("🔵 findUserMatches: User details fetched", {
-        userCount: users?.length || 0
+      // Combine match data with user details, handling both userId and user_id fields
+      const detailedMatches: UserMatch[] = matches.map((match: { userId?: string; user_id?: string; similarity: number }) => {
+        const userId = match.userId || match.user_id;
+        const foundUser = users?.find(u => u.id === userId);
+        
+        return {
+          userId: userId,
+          similarity: match.similarity,
+          user: foundUser ? {
+            id: foundUser.id,
+            name: foundUser.fullName,
+            email: foundUser.email
+          } : undefined
+        };
       });
 
-      // Combine match data with user details
-      const detailedMatches: UserMatch[] = matches.map((match: { user_id: string; similarity: number }) => ({
-        userId: match.user_id,
-        similarity: match.similarity,
-        user: users?.find(u => u.id === match.user_id) || undefined
-      }));
-
-      console.log("🔵 findUserMatches: Final matches prepared", {
-        matchCount: detailedMatches.length,
-        matchesWithDetails: detailedMatches.filter(m => m.user).length
-      });
 
       return detailedMatches;
 
     } catch (error) {
-      console.error("🔴 findUserMatches: Error in matching process", error);
       throw error;
     }
   },

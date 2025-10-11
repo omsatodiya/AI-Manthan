@@ -73,41 +73,41 @@ export default function UserMatchPage() {
     fetchUser();
   }, []);
 
-  const generateEmbedding = async () => {
-    if (!user) return;
+  // const generateEmbedding = async () => {
+  //   if (!user) return;
 
-    setIsRefreshing(true);
-    setError(null);
+  //   setIsRefreshing(true);
+  //   setError(null);
 
-    try {
-      const response = await fetch("/api/users/generate-embedding", {
-        method: "POST",
-      });
+  //   try {
+  //     const response = await fetch("/api/users/generate-embedding", {
+  //       method: "POST",
+  //     });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate embedding");
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.error || "Failed to generate embedding");
+  //     }
 
-      const result = await response.json();
+  //     const result = await response.json();
 
-      if (result.success) {
-        toast.success(
-          `Embedding generated using ${result.embeddingSource} method!`
-        );
-        // Try to fetch matches after generating embedding
-        await fetchMatches();
-      } else {
-        throw new Error("Failed to generate embedding");
-      }
-    } catch (error) {
-      console.error("Failed to generate embedding", error);
-      setError("Failed to generate embedding. Please try again.");
-      toast.error("Failed to generate embedding");
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  //     if (result.success) {
+  //       toast.success(
+  //         `Embedding generated using ${result.embeddingSource} method!`
+  //       );
+  //       // Try to fetch matches after generating embedding
+  //       await fetchMatches();
+  //     } else {
+  //       throw new Error("Failed to generate embedding");
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to generate embedding", error);
+  //     setError("Failed to generate embedding. Please try again.");
+  //     toast.error("Failed to generate embedding");
+  //   } finally {
+  //     setIsRefreshing(false);
+  //   }
+  // };
 
   const fetchMatches = useCallback(async () => {
     if (!user) return;
@@ -254,17 +254,6 @@ export default function UserMatchPage() {
                   <div className="flex gap-2">
                     <Button onClick={() => router.push("/user/info")} size="sm">
                       Go to Profile Settings
-                    </Button>
-                    <Button
-                      onClick={generateEmbedding}
-                      size="sm"
-                      variant="outline"
-                      disabled={isRefreshing}
-                    >
-                      {isRefreshing ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : null}
-                      Generate Embedding
                     </Button>
                   </div>
                 </div>

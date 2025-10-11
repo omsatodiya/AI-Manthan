@@ -91,7 +91,6 @@ export default function UserPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGeneratingEmbedding, setIsGeneratingEmbedding] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -106,8 +105,7 @@ export default function UserPage() {
           setUser(currentUser);
           form.reset({ fullName: currentUser.name });
         }
-      } catch (error) {
-        console.error("Failed to fetch user", error);
+      } catch {
       } finally {
         setIsLoading(false);
       }
@@ -119,8 +117,7 @@ export default function UserPage() {
     try {
       await logoutAction();
       router.push("/");
-    } catch (error) {
-      console.error("Logout failed:", error);
+    } catch {
       router.push("/");
     }
   };
@@ -150,37 +147,36 @@ export default function UserPage() {
     setIsSubmitting(false);
   }
 
-  const generateEmbedding = async () => {
-    if (!user) return;
+  // const generateEmbedding = async () => {
+  //   if (!user) return;
 
-    setIsGeneratingEmbedding(true);
+  //   setIsGeneratingEmbedding(true);
 
-    try {
-      const response = await fetch("/api/users/generate-embedding", {
-        method: "POST",
-      });
+  //   try {
+  //     const response = await fetch("/api/users/generate-embedding", {
+  //       method: "POST",
+  //     });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate embedding");
-      }
+  //     if (!response.ok) {
+  //       const errorData = await response.json();
+  //       throw new Error(errorData.error || "Failed to generate embedding");
+  //     }
 
-      const result = await response.json();
+  //     const result = await response.json();
 
-      if (result.success) {
-        toast.success(
-          `Embedding generated using ${result.embeddingSource} method!`
-        );
-      } else {
-        throw new Error("Failed to generate embedding");
-      }
-    } catch (error) {
-      console.error("Failed to generate embedding", error);
-      toast.error("Failed to generate embedding. Please try again.");
-    } finally {
-      setIsGeneratingEmbedding(false);
-    }
-  };
+  //     if (result.success) {
+  //       toast.success(
+  //         `Embedding generated using ${result.embeddingSource} method!`
+  //       );
+  //     } else {
+  //       throw new Error("Failed to generate embedding");
+  //     }
+  //   } catch (error) {
+  //     toast.error("Failed to generate embedding. Please try again.");
+  //   } finally {
+  //     setIsGeneratingEmbedding(false);
+  //   }
+  // };
 
   if (isLoading) {
     return (
@@ -313,18 +309,7 @@ export default function UserPage() {
                   <Button variant="outline" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" /> Logout
                   </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={generateEmbedding}
-                    disabled={isGeneratingEmbedding}
-                  >
-                    {isGeneratingEmbedding ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Users className="mr-2 h-4 w-4" />
-                    )}
-                    Generate Embedding
-                  </Button>
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive">

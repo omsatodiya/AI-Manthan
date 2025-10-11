@@ -168,7 +168,19 @@ export class ChatService {
 
       if (!data) return []
 
-      return (data as any[]).map((row) => ({
+      return data.map((row: {
+        id: string;
+        content: string;
+        user_id: string;
+        created_at: string;
+        updated_at: string;
+        attachment_id?: string;
+        attachment_name?: string;
+        attachment_size?: number;
+        attachment_type?: string;
+        attachment_url?: string;
+        users?: { fullName: string };
+      }) => ({
         id: row.id,
         content: row.content,
         user: {
@@ -181,10 +193,10 @@ export class ChatService {
         attachment: row.attachment_id
           ? {
               id: row.attachment_id,
-              fileName: row.attachment_name,
-              fileSize: row.attachment_size,
-              fileType: row.attachment_type,
-              fileUrl: row.attachment_url,
+              fileName: row.attachment_name || '',
+              fileSize: row.attachment_size || 0,
+              fileType: row.attachment_type || '',
+              fileUrl: row.attachment_url || '',
             }
           : null,
       }))

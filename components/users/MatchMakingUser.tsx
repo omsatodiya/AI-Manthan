@@ -69,10 +69,6 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
         }
         setError(null);
 
-        console.log("🔵 MatchMakingUser: Fetching matches", {
-          tenantId,
-        });
-
         const params = new URLSearchParams({
           threshold: "0.7",
           count: "5",
@@ -83,11 +79,6 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
         }
 
         const response = await fetch(`/api/users/match?${params}`);
-
-        console.log("🔵 MatchMakingUser: API response", {
-          status: response.status,
-          ok: response.ok,
-        });
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -104,12 +95,6 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
 
         const data: MatchResponse = await response.json();
 
-        console.log("🔵 MatchMakingUser: Matches received", {
-          success: data.success,
-          matchCount: data.data?.length || 0,
-          meta: data.meta,
-        });
-
         if (data.success && data.data) {
           setMatches(data.data);
           toast.success(`Found ${data.data.length} potential matches!`);
@@ -117,7 +102,6 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
           throw new Error("Invalid response format");
         }
       } catch (err: unknown) {
-        console.error("🔴 MatchMakingUser: Error fetching matches", err);
         const errorMessage =
           err instanceof Error ? err.message : "Unknown error occurred";
         setError(errorMessage);
