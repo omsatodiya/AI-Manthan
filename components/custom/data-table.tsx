@@ -34,6 +34,7 @@ interface DataTableProps<TData, TValue> {
   pageSize: number;
   sorting: SortingState;
   children?: React.ReactNode;
+  searchPlaceholder?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -49,6 +50,7 @@ export function DataTable<TData, TValue>({
   pageSize,
   sorting,
   children,
+  searchPlaceholder = "Search by name or email...",
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -74,7 +76,7 @@ export function DataTable<TData, TValue>({
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Input
-            placeholder="Search by name or email..."
+            placeholder={searchPlaceholder}
             onChange={(event) => onFilterChange(event.target.value)}
             className="max-w-sm"
           />
