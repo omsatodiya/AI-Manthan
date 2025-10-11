@@ -2,66 +2,50 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Tenant } from "@/lib/types";
+import { getCurrentUserAction } from "@/app/actions/auth";
 
 interface TenantContextType {
   tenantId: string | null;
   setTenantId: (tenantId: string) => void;
   isLoading: boolean;
-  availableTenants: Pick<Tenant, "id" | "name" | "slug">[];
-  setAvailableTenants: (
-    tenants: Pick<Tenant, "id" | "name" | "slug">[]
-  ) => void;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 interface TenantProviderProps {
   children: React.ReactNode;
-  availableTenants?: Pick<Tenant, "id" | "name" | "slug">[];
 }
 
-export function TenantProvider({
-  children,
-  availableTenants: initialTenants = [],
-}: TenantProviderProps) {
+export function TenantProvider({ children }: TenantProviderProps) {
   const [tenantId, setTenantIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [availableTenants, setAvailableTenants] =
-    useState<Pick<Tenant, "id" | "name" | "slug">[]>(initialTenants);
 
   useEffect(() => {
-    const savedTenantId = localStorage.getItem("selectedTenantId");
+    const initializeTenant = async () => {
+      try {
+        const savedTenantId = localStorage.getItem("selectedTenantId");
 
-    let subdomainSlug: string | null = null;
-    if (typeof window !== "undefined") {
-      const host = window.location.host.split(":")[0];
-      const parts = host.split(".");
-      if (parts.length > 2) {
-        const first = parts[0].toLowerCase();
-        if (first !== "www") subdomainSlug = first;
+        if (savedTenantId) {
+          setTenantIdState(savedTenantId);
+          setIsLoading(false);
+          return;
+        }
+
+        const currentUser = await getCurrentUserAction();
+
+        if (currentUser?.tenantId) {
+          setTenantIdState(currentUser.tenantId);
+          localStorage.setItem("selectedTenantId", currentUser.tenantId);
+        }
+      } catch (error) {
+        console.error("Error initializing tenant:", error);
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
 
-    const tenantFromSubdomain = subdomainSlug
-      ? availableTenants.find((t) => t.slug?.toLowerCase() === subdomainSlug)
-      : undefined;
-
-    if (tenantFromSubdomain) {
-      setTenantIdState(tenantFromSubdomain.id);
-      localStorage.setItem("selectedTenantId", tenantFromSubdomain.id);
-    } else if (
-      savedTenantId &&
-      availableTenants.some((tenant) => tenant.id === savedTenantId)
-    ) {
-      setTenantIdState(savedTenantId);
-    } else if (availableTenants.length > 0) {
-      const firstTenantId = availableTenants[0].id;
-      setTenantIdState(firstTenantId);
-      localStorage.setItem("selectedTenantId", firstTenantId);
-    }
-
-    setIsLoading(false);
-  }, [availableTenants]);
+    initializeTenant();
+  }, []);
 
   const setTenantId = (newTenantId: string) => {
     setTenantIdState(newTenantId);
@@ -72,8 +56,6 @@ export function TenantProvider({
     tenantId,
     setTenantId,
     isLoading,
-    availableTenants,
-    setAvailableTenants,
   };
 
   return (
