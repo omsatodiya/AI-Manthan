@@ -9,7 +9,7 @@ import { useRealtimeChat } from '@/hooks/use-realtime-chat'
 import type { ChatMessageWithUser } from '@/lib/types/chat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Send } from 'lucide-react'
+import { Send, MessageCircle } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 interface RealtimeChatProps {
@@ -44,8 +44,6 @@ export const RealtimeChat = ({
     sendMessageWithFile,
     deleteMessage,
     updateMessage,
-    addReaction,
-    removeReaction,
     isConnected,
   } = useRealtimeChat({
     userId,
@@ -123,13 +121,33 @@ export const RealtimeChat = ({
 
   return (
     <div className="flex flex-col h-full w-full bg-background text-foreground antialiased">
-      <div ref={containerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Chat Header */}
+      <div className="px-6 py-4 border-b border-border bg-card/40 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            <h2 className="text-lg font-semibold font-sans text-foreground">General Chat</h2>
+          </div>
+          <div className="text-sm font-sans text-muted-foreground">
+            {allMessages.length} message{allMessages.length !== 1 ? 's' : ''}
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/30">
         {allMessages.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground">
-            No messages yet. Start the conversation!
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <MessageCircle className="h-8 w-8 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold font-sans text-foreground mb-2">Welcome to the Community!</h3>
+            <p className="text-sm font-sans text-muted-foreground max-w-sm">
+              Start the conversation by sending your first message. Your team members will see it here.
+            </p>
           </div>
         ) : null}
-        <div className="space-y-1">
+        <div className="space-y-4">
           {allMessages.map((message, index) => {
             const prevMessage = index > 0 ? allMessages[index - 1] : null
             const showHeader = !prevMessage || prevMessage.user.name !== message.user.name
@@ -137,7 +155,7 @@ export const RealtimeChat = ({
             return (
               <div
                 key={message.id}
-                className="animate-in fade-in slide-in-from-bottom-4 duration-300"
+                className="animate-in fade-in slide-in-from-bottom-4 duration-500"
               >
                 <ChatMessageItem
                   message={message}
@@ -145,8 +163,6 @@ export const RealtimeChat = ({
                   showHeader={showHeader}
                   onDelete={handleDeleteMessage}
                   onEdit={handleEditMessage}
-                  onReactionAdd={addReaction}
-                  onReactionRemove={removeReaction}
                 />
               </div>
             )
@@ -154,29 +170,56 @@ export const RealtimeChat = ({
         </div>
       </div>
 
-      <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-t border-border p-4">
-        <FileUploadButton onFileSelect={handleFileUpload} disabled={!isConnected} />
-        <Input
-          className={cn(
-            'rounded-full bg-background text-sm transition-all duration-300',
-            isConnected && newMessage.trim() ? 'w-[calc(100%-80px)]' : 'w-full'
-          )}
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
-          disabled={!isConnected}
-        />
-        {isConnected && newMessage.trim() && (
-          <Button
-            className="aspect-square rounded-full animate-in fade-in slide-in-from-right-4 duration-300"
-            type="submit"
-            disabled={!isConnected}
-          >
-            <Send className="size-4" />
-          </Button>
-        )}
-      </form>
+      {/* Message Input */}
+      <div className="p-6 bg-card/60 backdrop-blur-sm border-t border-border">
+        <form onSubmit={handleSendMessage} className="flex w-full gap-3">
+          <div className="flex-1 relative">
+            <div className="absolute inset-0 bg-primary/10 rounded-2xl blur-sm"></div>
+            <div className="relative bg-card rounded-2xl border border-border shadow-sm">
+              <div className="flex items-center gap-3 p-3">
+                <FileUploadButton onFileSelect={handleFileUpload} disabled={!isConnected} />
+                <Input
+                  className={cn(
+                    'flex-1 border-0 bg-transparent text-sm font-sans placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0',
+                    !isConnected && 'opacity-50'
+                  )}
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder={isConnected ? "Type a message..." : "Connecting..."}
+                  disabled={!isConnected}
+                />
+                {isConnected && newMessage.trim() && (
+                  <Button
+                    className="aspect-square rounded-xl bg-primary hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-200 animate-in fade-in slide-in-from-right-4"
+                    type="submit"
+                    disabled={!isConnected}
+                    size="sm"
+                  >
+                    <Send className="size-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </form>
+        
+        {/* Connection Status */}
+        <div className="flex items-center justify-center mt-3">
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium font-sans transition-colors",
+            isConnected 
+              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" 
+              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+          )}>
+            <div className={cn(
+              "w-2 h-2 rounded-full",
+              isConnected ? "bg-green-500 animate-pulse" : "bg-yellow-500"
+            )}></div>
+            {isConnected ? "Connected" : "Connecting..."}
+          </div>
+        </div>
+      </div>
 
       <EditMessageDialog
         open={!!editingMessage}

@@ -45,7 +45,7 @@ export const MessageContextMenu = ({
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
       <ContextMenuContent className="w-48">
-        <ContextMenuItem disabled className="flex items-center gap-2 text-xs text-muted-foreground">
+        <ContextMenuItem disabled className="flex items-center gap-2 text-xs font-sans text-muted-foreground">
           <Clock className="size-3" />
           <span>{formattedDate}</span>
         </ContextMenuItem>
@@ -54,7 +54,7 @@ export const MessageContextMenu = ({
             <ContextMenuSeparator />
             {canEdit && (
               <ContextMenuItem
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 font-sans"
                 onClick={() => onEdit(messageId, messageContent)}
               >
                 <Pencil className="size-4" />
@@ -62,7 +62,7 @@ export const MessageContextMenu = ({
               </ContextMenuItem>
             )}
             <ContextMenuItem
-              className="flex items-center gap-2 text-destructive focus:text-destructive"
+              className="flex items-center gap-2 font-sans text-destructive focus:text-destructive"
               onClick={() => onDelete(messageId)}
             >
               <Trash2 className="size-4" />

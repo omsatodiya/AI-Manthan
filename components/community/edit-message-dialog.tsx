@@ -44,8 +44,8 @@ export const EditMessageDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Message</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="font-sans">Edit Message</DialogTitle>
+          <DialogDescription className="font-sans">
             Make changes to your message. You can only edit within 1 minute of sending.
           </DialogDescription>
         </DialogHeader>
@@ -53,7 +53,7 @@ export const EditMessageDialog = ({
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Type your message..."
-          className="min-h-[100px]"
+          className="min-h-[100px] font-sans"
           autoFocus
         />
         <DialogFooter>

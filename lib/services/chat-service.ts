@@ -6,10 +6,14 @@ export class ChatService {
   private supabase: ReturnType<typeof createBrowserClient>
 
   constructor() {
-    this.supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration for Chat Service');
+    }
+    
+    this.supabase = createBrowserClient(supabaseUrl, supabaseKey);
   }
 
   /**
@@ -548,4 +552,26 @@ export class ChatService {
 }
 
 // Export a singleton instance
-export const chatService = new ChatService()
+// Lazy initialization to avoid SSR issues
+let _chatService: ChatService | null = null;
+
+export const chatService = {
+  get instance() {
+    if (!_chatService) {
+      _chatService = new ChatService();
+    }
+    return _chatService;
+  }
+};
+
+// Proxy all methods to the lazy instance
+const methodNames = [
+  'uploadFile', 'fetchMessages', 'createMessage', 'createMessageWithAttachment',
+  'updateMessage', 'deleteMessage', 'addReaction', 'removeReaction', 'fetchReactions'
+] as const;
+
+methodNames.forEach(methodName => {
+  (chatService as any)[methodName] = function(...args: any[]) {
+    return (chatService.instance as any)[methodName](...args);
+  };
+});

@@ -44,8 +44,8 @@ export const FileAttachment = ({ attachment, isOwnMessage }: FileAttachmentProps
     >
       <div className="text-2xl">{getFileIcon(attachment.fileType)}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate">{attachment.fileName}</p>
-        <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
+        <p className="text-sm font-medium font-sans truncate">{attachment.fileName}</p>
+        <p className="text-xs font-sans text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
       </div>
       <Button size="icon" variant="ghost" onClick={handleDownload}>
         <Download className="size-4" />
