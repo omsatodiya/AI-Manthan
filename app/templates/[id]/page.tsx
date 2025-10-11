@@ -1,7 +1,7 @@
 "use client";
 
 import { notFound } from "next/navigation";
-import React, { useMemo, useRef, useState, use } from "react";
+import React, { useMemo, useRef, useState, use, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,7 +9,9 @@ import { jsPDF } from "jspdf";
 import { toPng } from "html-to-image";
 import { Download, Loader2, Sparkles, RotateCcw } from "lucide-react";
 
-import { templates } from "@/constants/templates";
+import { Template } from "@/constants/templates";
+import { useTenant } from "@/contexts/tenant-context";
+import { getTemplateAction } from "@/app/actions/templates";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -86,15 +88,38 @@ export default function TemplateEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
+  const { tenantId, isLoading: tenantLoading } = useTenant();
   const previewRef = useRef<HTMLIFrameElement>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAiGenerated, setIsAiGenerated] = useState(false);
 
-  const template = useMemo(
-    () => templates.find((t) => t.id === resolvedParams.id),
-    [resolvedParams.id]
-  );
+  // Load template when tenant and params are available
+  useEffect(() => {
+    const loadTemplate = async () => {
+      if (!tenantId || tenantLoading) return;
+      
+      setIsLoading(true);
+      try {
+        const result = await getTemplateAction(tenantId, resolvedParams.id);
+        if (result.success && result.data) {
+          setTemplate(result.data);
+        } else {
+          console.error('Failed to load template:', result.message);
+          setTemplate(null);
+        }
+      } catch (error) {
+        console.error('Error loading template:', error);
+        setTemplate(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadTemplate();
+  }, [tenantId, tenantLoading, resolvedParams.id]);
 
   const initialHtml = useMemo(() => {
     if (!template) return "";
@@ -127,6 +152,29 @@ export default function TemplateEditorPage({
       {} as Record<string, string>
     ) || {},
   });
+
+  // Show loading state
+  if (tenantLoading || isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading template...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if no tenant
+  if (!tenantId) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No tenant selected. Please select a tenant to view templates.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!template) {
     notFound();
