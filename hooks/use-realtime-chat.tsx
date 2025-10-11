@@ -112,12 +112,13 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       if (!channel || !isConnected) return
 
       try {
-        // Delete message from database using service
-        await chatService.deleteMessage(messageId, userId)
+        // Delete message from database (and attachment from storage)
+        const attachmentId = await chatService.deleteMessage(messageId, userId)
 
         const deletePayload: DeleteMessagePayload = {
           messageId,
           userId,
+          attachmentId,
         }
 
         // Broadcast deletion to other clients
@@ -131,6 +132,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
         setMessages((current) => current.filter((msg) => msg.id !== messageId))
       } catch (error) {
         console.error('Failed to delete message:', error)
+        throw error
       }
     },
     [channel, isConnected, userId]

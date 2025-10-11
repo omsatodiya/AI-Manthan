@@ -37,6 +37,7 @@ export interface ChatUser {
 export interface DeleteMessagePayload {
   messageId: string;
   userId: string;
+  attachmentId?: string | null;
 }
 
 export interface UpdateMessagePayload {

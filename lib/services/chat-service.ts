@@ -242,19 +242,67 @@ export class ChatService {
   }
 
   /**
-   * Delete a message (only by the owner)
+   * Delete a file from Supabase Storage
    */
-  async deleteMessage(messageId: string, userId: string): Promise<void> {
-    const { error } = await this.supabase
+  async deleteFile(filePath: string): Promise<void> {
+    try {
+      const bucket = 'chat-attachments'
+      
+      const { error } = await this.supabase.storage
+        .from(bucket)
+        .remove([filePath])
+
+      if (error) {
+        console.error('Failed to delete file from storage:', error)
+        throw error
+      }
+    } catch (error) {
+      console.error('Error deleting file:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Delete a message (only by the owner) and its attachment if exists
+   */
+  async deleteMessage(messageId: string, userId: string): Promise<string | null> {
+    // First, fetch the message to get attachment info
+    const { data: messageData, error: fetchError } = await this.supabase
+      .from('chat_messages')
+      .select('attachment_id, attachment_url')
+      .eq('id', messageId)
+      .eq('user_id', userId)
+      .single()
+
+    if (fetchError) {
+      console.error('Failed to fetch message for deletion:', fetchError)
+      throw fetchError
+    }
+
+    // Delete the message from database
+    const { error: deleteError } = await this.supabase
       .from('chat_messages')
       .delete()
       .eq('id', messageId)
-      .eq('user_id', userId) // Ensure only the owner can delete
+      .eq('user_id', userId)
 
-    if (error) {
-      console.error('Failed to delete message:', error)
-      throw error
+    if (deleteError) {
+      console.error('Failed to delete message:', deleteError)
+      throw deleteError
     }
+
+    // If message had an attachment, delete the file from storage
+    if (messageData?.attachment_id) {
+      try {
+        await this.deleteFile(messageData.attachment_id)
+      } catch (error) {
+        // Log error but don't fail the operation if file deletion fails
+        console.error('Failed to delete attachment file, but message was deleted:', error)
+      }
+    }
+
+    // Return the attachment_id if it existed (for cleanup purposes)
+    return messageData?.attachment_id || null
   }
 
   /**
