@@ -44,6 +44,8 @@ export const RealtimeChat = ({
     sendMessageWithFile,
     deleteMessage,
     updateMessage,
+    addReaction,
+    removeReaction,
     isConnected,
   } = useRealtimeChat({
     userId,
@@ -163,6 +165,8 @@ export const RealtimeChat = ({
                   showHeader={showHeader}
                   onDelete={handleDeleteMessage}
                   onEdit={handleEditMessage}
+                  onReactionAdd={addReaction}
+                  onReactionRemove={removeReaction}
                 />
               </div>
             )

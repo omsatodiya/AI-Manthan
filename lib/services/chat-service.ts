@@ -614,8 +614,10 @@ const methodNames = [
   'updateMessage', 'deleteMessage', 'addReaction', 'removeReaction', 'fetchReactions'
 ] as const;
 
-methodNames.forEach(methodName => {
-  (chatService as any)[methodName] = function(...args: any[]) {
-    return (chatService.instance as any)[methodName](...args);
+type MethodName = typeof methodNames[number];
+
+methodNames.forEach((methodName: MethodName) => {
+  (chatService as Record<string, unknown>)[methodName] = function(...args: unknown[]) {
+    return (chatService.instance as Record<string, (...args: unknown[]) => unknown>)[methodName](...args);
   };
 });

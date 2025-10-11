@@ -6,12 +6,8 @@ import { getCurrentUserAction } from "@/app/actions/auth";
 import {
   Users,
   MessageCircle,
-  Brain,
   Crown,
   ArrowLeft,
-  Settings,
-  Megaphone,
-  Calendar,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -131,6 +127,7 @@ const CommunityPage = async () => {
           />
         </div>
       </div>
+    </div>
     </div>
   );
 };
