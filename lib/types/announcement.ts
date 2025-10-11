@@ -6,6 +6,7 @@ export interface Announcement {
   tenantId: string;
   createdBy: string;
   createdAt: string;
+  isOpportunity?: boolean;
 }
 
 export interface CreateAnnouncementData {

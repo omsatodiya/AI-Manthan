@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import EventCard from "@/components/events/EventCard";
 
@@ -28,7 +28,7 @@ export default function EventPage() {
   
   const [events, setEvents] = useState<Event[]>([]);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     const { data, error } = await supabase
       .from("events")
       .select("*")
@@ -42,11 +42,11 @@ export default function EventPage() {
       }));
       setEvents(eventsWithDefaults);
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [fetchEvents]);
 
   const handleEventUpdate = (updatedEvent: Event) => {
     setEvents(prevEvents => 

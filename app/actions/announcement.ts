@@ -2,9 +2,13 @@
 
 import { getDb } from "@/lib/database";
 import { getCurrentUserAction } from "./auth";
-import { CreateAnnouncementData, UpdateAnnouncementData } from "@/lib/types";
+import { CreateAnnouncementData, UpdateAnnouncementData, Announcement } from "@/lib/types";
+import { CreateAnnouncementOpportunityData } from "@/lib/types";
+import { revalidatePath } from "next/cache";
 
-export async function createAnnouncementAction(data: CreateAnnouncementData) {
+export async function createAnnouncementAction(
+  data: CreateAnnouncementData & { isOpportunity?: boolean; response?: Record<string, unknown> }
+) {
   try {
     const user = await getCurrentUserAction();
     if (!user || user.role !== "admin") {
@@ -16,17 +20,49 @@ export async function createAnnouncementAction(data: CreateAnnouncementData) {
     }
 
     const db = await getDb();
-    const announcement = await db.createAnnouncement(
-      data,
-      user.tenantId,
-      user.id
-    );
+    
+    if (data.isOpportunity) {
+      // Create opportunity announcement
+      const opportunityData: CreateAnnouncementOpportunityData = {
+        title: data.title,
+        description: data.description,
+        link: data.link,
+        tenantId: user.tenantId,
+        userId: user.id,
+        response: data.response,
+      };
+      
+      const opportunity = await db.createAnnouncementOpportunity(opportunityData);
+      
+      if (!opportunity) {
+        return { success: false, error: "Failed to create opportunity announcement" };
+      }
 
-    if (!announcement) {
-      return { success: false, error: "Failed to create announcement" };
+      revalidatePath("/admin/announcements");
+      revalidatePath("/announcements");
+      
+      return { success: true, data: { ...opportunity, createdBy: opportunity.userId } as Announcement };
+    } else {
+      // Create regular announcement
+      const announcement = await db.createAnnouncement(
+        {
+          title: data.title,
+          description: data.description,
+          link: data.link,
+        },
+        user.tenantId,
+        user.id
+      );
+
+      if (!announcement) {
+        return { success: false, error: "Failed to create announcement" };
+      }
+
+      revalidatePath("/admin/announcements");
+      revalidatePath("/announcements");
+
+      return { success: true, data: announcement };
     }
-
-    return { success: true, data: announcement };
   } catch (error) {
     console.error("Error creating announcement:", error);
     return { success: false, error: "Internal server error" };
@@ -45,9 +81,23 @@ export async function getAnnouncementsAction() {
     }
 
     const db = await getDb();
-    const announcements = await db.getAnnouncements(user.tenantId);
+    
+    // Fetch both regular announcements and opportunities
+    const [announcements, opportunities] = await Promise.all([
+      db.getAnnouncements(user.tenantId),
+      db.getAnnouncementOpportunities(user.tenantId)
+    ]);
 
-    return { success: true, data: announcements };
+    // Combine and sort by creation date
+    const allAnnouncements = [
+      ...announcements,
+      ...opportunities.map(opp => ({
+        ...opp,
+        isOpportunity: true
+      }))
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    return { success: true, data: allAnnouncements };
   } catch (error) {
     console.error("Error fetching announcements:", error);
     return { success: false, error: "Internal server error" };

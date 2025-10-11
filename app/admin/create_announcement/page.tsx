@@ -7,8 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { createAnnouncementAction } from "@/app/actions/announcement";
+import QuestionRenderer from "@/components/announcements/question-renderer";
 import { toast } from "sonner";
 
 export default function CreateAnnouncementPage() {
@@ -18,6 +20,8 @@ export default function CreateAnnouncementPage() {
     title: "",
     description: "",
     link: "",
+    isOpportunity: false,
+    response: {},
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +45,7 @@ export default function CreateAnnouncementPage() {
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: string | boolean | Record<string, unknown>) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -110,6 +114,28 @@ export default function CreateAnnouncementPage() {
                   disabled={isLoading}
                 />
               </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="isOpportunity"
+                    checked={formData.isOpportunity}
+                    onCheckedChange={(checked) => handleInputChange("isOpportunity", checked)}
+                    disabled={isLoading}
+                  />
+                  <Label htmlFor="isOpportunity">This is an opportunity announcement</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Check this if this announcement is for opportunities that require application responses.
+                </p>
+              </div>
+
+              {formData.isOpportunity && (
+                <QuestionRenderer
+                  responses={formData.response}
+                  onResponseChange={(responses) => handleInputChange("response", responses)}
+                />
+              )}
 
               <div className="flex gap-4">
                 <Button

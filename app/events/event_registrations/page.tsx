@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
@@ -27,32 +27,33 @@ export default function EventRegistrationPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    const fetchCurrentUserAndTenant = async () => {
-      try {
-        const user = await getCurrentUserAction();
-        setCurrentUser(user);
-        
-        if (user?.id) {
-          // Fetch user's tenant_id from Supabase users table
-          const { data: userData, error } = await supabase
-            .from("users")
-            .select("tenant_id")
-            .eq("id", user.id)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching user tenant:", error);
-          } else {
-            setUserTenantId(userData?.tenant_id || null);
-          }
+  const fetchCurrentUserAndTenant = useCallback(async () => {
+    try {
+      const user = await getCurrentUserAction();
+      setCurrentUser(user);
+      
+      if (user?.id) {
+        // Fetch user's tenant_id from Supabase users table
+        const { data: userData, error } = await supabase
+          .from("users")
+          .select("tenant_id")
+          .eq("id", user.id)
+          .single();
+          
+        if (error) {
+          console.error("Error fetching user tenant:", error);
+        } else {
+          setUserTenantId(userData?.tenant_id || null);
         }
-      } catch (error) {
-        console.error("Error fetching current user:", error);
       }
-    };
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  }, [supabase]);
+
+  useEffect(() => {
     fetchCurrentUserAndTenant();
-  }, []);
+  }, [fetchCurrentUserAndTenant]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });

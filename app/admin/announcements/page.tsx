@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Edit, Trash2, ExternalLink, Loader2, Calendar } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, ExternalLink, Loader2, Calendar, Megaphone } from "lucide-react";
 import { getAnnouncementsAction, deleteAnnouncementAction } from "@/app/actions/announcement";
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
@@ -35,7 +35,10 @@ export default function AdminAnnouncementsPage() {
     try {
       const result = await getAnnouncementsAction();
       if (result.success) {
-        setAnnouncements(result.data || []);
+        setAnnouncements((result.data || []).map(announcement => ({
+          ...announcement,
+          createdBy: 'userId' in announcement ? announcement.userId : announcement.createdBy
+        })));
       } else {
         toast.error(result.error || "Failed to fetch announcements");
       }
@@ -183,13 +186,24 @@ export default function AdminAnnouncementsPage() {
                           </CardDescription>
                         )}
                       </div>
-                      <Badge 
-                        variant="secondary" 
-                        className="shrink-0 gap-1.5 px-3 py-1.5 font-normal shadow-sm"
-                      >
-                        <Calendar className="h-3.5 w-3.5" />
-                        {formatDate(announcement.createdAt)}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {announcement.isOpportunity && (
+                          <Badge 
+                            variant="default" 
+                            className="shrink-0 gap-1.5 px-3 py-1.5 font-normal shadow-sm bg-green-600 hover:bg-green-700"
+                          >
+                            <Megaphone className="h-3.5 w-3.5" />
+                            Opportunity
+                          </Badge>
+                        )}
+                        <Badge 
+                          variant="secondary" 
+                          className="shrink-0 gap-1.5 px-3 py-1.5 font-normal shadow-sm"
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          {formatDate(announcement.createdAt)}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   

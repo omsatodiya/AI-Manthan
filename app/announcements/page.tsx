@@ -21,7 +21,10 @@ export default function AnnouncementsPage() {
     try {
       const result = await getAnnouncementsAction();
       if (result.success) {
-        setAnnouncements(result.data || []);
+        setAnnouncements(result.data?.map(item => ({
+          ...item,
+          createdBy: 'createdBy' in item ? item.createdBy : item.userId
+        })) || []);
       } else {
         toast.error(result.error || "Failed to fetch announcements");
       }
@@ -89,14 +92,14 @@ export default function AnnouncementsPage() {
                         </CardDescription>
                       )}
                     </div>
-                    <Badge variant="outline" className="ml-4 flex items-center gap-1">
+                    <Badge variant="outline" className="flex items-center gap-1">
                       <Calendar className="h-3 w-3" />
                       {formatDate(announcement.createdAt)}
                     </Badge>
                   </div>
                 </CardHeader>
-                {announcement.link && (
-                  <CardContent className="pt-0">
+                <CardContent className="pt-0">
+                  {announcement.link && (
                     <Button
                       variant="outline"
                       onClick={() => announcement.link && window.open(announcement.link, "_blank")}
@@ -105,8 +108,8 @@ export default function AnnouncementsPage() {
                       <ExternalLink className="h-4 w-4" />
                       Learn More
                     </Button>
-                  </CardContent>
-                )}
+                  )}
+                </CardContent>
               </Card>
             ))}
           </div>

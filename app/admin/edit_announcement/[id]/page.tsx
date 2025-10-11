@@ -13,9 +13,8 @@ export default async function EditAnnouncementPage({ params }: EditAnnouncementP
   
   const result = await getAnnouncementsAction();
   let announcement: Announcement | null = null;
-  
   if (result.success && result.data) {
-    announcement = result.data.find(ann => ann.id === id) || null;
+    announcement = result.data.find(ann => ann.id === id) as Announcement | null;
   }
 
   return <EditAnnouncementForm announcement={announcement} announcementId={id} />;
