@@ -4,24 +4,29 @@ import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 import EventCard from "@/components/events/EventCard";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-function formatDate(dateString: string) {
-  if (!dateString) return "No date";
-  const d = new Date(dateString);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function formatTime(dateString: string) {
-  if (!dateString) return "No time";
-  const d = new Date(dateString);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+interface Event {
+  id: string;
+  title: string;
+  description: string;
+  start_at: string;
+  end_at: string;
+  location: string;
+  capacity: number | null;
+  image: string | null;
+  tag: string | null;
+  is_public: boolean;
+  tenant_id: string;
+  organizer_id: string;
+  registered_users?: string[];
+  current_capacity?: number;
 }
 
 export default function EventPage() {
-  const [events, setEvents] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  
+  const [events, setEvents] = useState<Event[]>([]);
 
   const fetchEvents = async () => {
     const { data, error } = await supabase
@@ -43,8 +48,7 @@ export default function EventPage() {
     fetchEvents();
   }, []);
 
-
-  const handleEventUpdate = (updatedEvent: any) => {
+  const handleEventUpdate = (updatedEvent: Event) => {
     setEvents(prevEvents => 
       prevEvents.map(event => 
         event.id === updatedEvent.id ? updatedEvent : event
@@ -74,7 +78,6 @@ export default function EventPage() {
             />
           ))}
         </div>
-
       </div>
     </div>
   );

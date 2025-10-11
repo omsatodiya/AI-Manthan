@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 
@@ -135,7 +136,7 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
 
       // Try to update the event with registered_users field
       // If the column doesn't exist, we'll handle it gracefully
-      const { data: updatedEvent, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from("events")
         .update({
           registered_users: updatedRegisteredUsers,
@@ -209,9 +210,11 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
       <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
         {event.image && (
           <div className="md:w-1/3 h-64 md:h-auto">
-            <img
+            <Image
               src={event.image}
               alt={event.title}
+              width={400}
+              height={256}
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -305,7 +308,7 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                 Confirm Registration
               </h3>
               <p className="text-gray-600 mb-6">
-                Do you want to register for <strong>"{event.title}"</strong>?
+                Do you want to register for <strong>&quot;{event.title}&quot;</strong>?
               </p>
               <div className="flex gap-3 justify-center">
                 <button

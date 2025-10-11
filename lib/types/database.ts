@@ -1,6 +1,7 @@
 import { User } from "./user";
 import { UserInfo } from "./user-info";
 import { Tenant, TenantMember, TenantInvitation } from "./tenant";
+import { Announcement, CreateAnnouncementData, UpdateAnnouncementData } from "./announcement";
 
 export interface DatabaseAdapter {
   findUserByEmail(email: string): Promise<User | null>;
@@ -53,6 +54,20 @@ export interface DatabaseAdapter {
     userId: string
   ): Promise<TenantMember | null>;
   deleteTenantInvitation(id: string): Promise<boolean>;
+
+  createAnnouncement(
+    data: CreateAnnouncementData,
+    tenantId: string,
+    createdBy: string
+  ): Promise<Announcement | null>;
+  getAnnouncements(tenantId: string): Promise<Announcement[]>;
+  getAnnouncementById(id: string, tenantId: string): Promise<Announcement | null>;
+  updateAnnouncement(
+    id: string,
+    data: UpdateAnnouncementData,
+    tenantId: string
+  ): Promise<Announcement | null>;
+  deleteAnnouncement(id: string, tenantId: string): Promise<boolean>;
 }
 
 export interface AdminAnalytics {

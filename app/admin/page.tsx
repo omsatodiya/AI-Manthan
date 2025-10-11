@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, UserCheck, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, Loader2, Megaphone } from "lucide-react";
 import { getAdminAnalyticsAction } from "@/app/actions/admin";
 import { AdminAnalytics } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -121,7 +121,23 @@ export default function AdminDashboard() {
                 </Card>
               </Link>
             </motion.div>
-            {/* Add more link cards here */}
+            <motion.div variants={itemVariants}>
+              <Link href="/admin/announcements">
+                <Card className="hover:bg-accent hover:border-primary transition-colors dark:bg-card/60 dark:border-border">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Megaphone className="h-5 w-5 text-primary" />
+                      Announcements
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Create and manage announcements for your organization.
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
           </motion.div>
         </div>
       </div>

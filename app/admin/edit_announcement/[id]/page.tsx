@@ -1,0 +1,22 @@
+import { getAnnouncementsAction } from "@/app/actions/announcement";
+import { Announcement } from "@/lib/types";
+import EditAnnouncementForm from "@/app/admin/edit_announcement/[id]/edit-form";
+
+interface EditAnnouncementPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
+export default async function EditAnnouncementPage({ params }: EditAnnouncementPageProps) {
+  const { id } = await params;
+  
+  const result = await getAnnouncementsAction();
+  let announcement: Announcement | null = null;
+  
+  if (result.success && result.data) {
+    announcement = result.data.find(ann => ann.id === id) || null;
+  }
+
+  return <EditAnnouncementForm announcement={announcement} announcementId={id} />;
+}

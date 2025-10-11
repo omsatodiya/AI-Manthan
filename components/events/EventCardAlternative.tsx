@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 
@@ -100,7 +101,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
     };
 
     fetchRegistrationData();
-  }, [event.id, currentUser?.id]);
+  }, [event.id, event.capacity, currentUser?.id]);
 
   const handleRegister = async () => {
     if (!currentUser?.id) {
@@ -148,7 +149,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
       }
 
       // Create registration record
-      const { data: registration, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("event_registrations")
         .insert({
           event_id: event.id,
@@ -221,9 +222,11 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
       <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
         {event.image && (
           <div className="md:w-1/3 h-64 md:h-auto">
-            <img
+            <Image
               src={event.image}
               alt={event.title}
+              width={400}
+              height={256}
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -317,7 +320,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
                 Confirm Registration
               </h3>
               <p className="text-gray-600 mb-6">
-                Do you want to register for <strong>"{event.title}"</strong>?
+                Do you want to register for <strong>&quot;{event.title}&quot;</strong>?
               </p>
               <div className="flex gap-3 justify-center">
                 <button

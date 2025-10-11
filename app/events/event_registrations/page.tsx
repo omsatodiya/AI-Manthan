@@ -3,15 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
+import Image from "next/image";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default function EventRegistrationPage() {
   const router = useRouter();
+  
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const supabase = createClient(supabaseUrl, supabaseKey);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userTenantId, setUserTenantId] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -234,9 +235,11 @@ export default function EventRegistrationPage() {
               />
               {form.image && (
                 <div className="mt-3 rounded-xl overflow-hidden border-2 border-gray-200">
-                  <img
+                  <Image
                     src={form.image}
                     alt="Preview"
+                    width={400}
+                    height={192}
                     className="w-full h-48 object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
