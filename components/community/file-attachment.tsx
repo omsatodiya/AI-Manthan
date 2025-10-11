@@ -1,8 +1,7 @@
-import { Download, FileIcon } from 'lucide-react'
+import { Download } from 'lucide-react'
 import type { MessageAttachment } from '@/lib/types/chat'
 import { formatFileSize, getFileIcon, isImageFile } from '@/lib/utils/file-utils'
 import { Button } from '@/components/ui/button'
-import Image from 'next/image'
 
 interface FileAttachmentProps {
   attachment: MessageAttachment
@@ -17,11 +16,10 @@ export const FileAttachment = ({ attachment, isOwnMessage }: FileAttachmentProps
   if (isImageFile(attachment.fileType)) {
     return (
       <div className="relative group">
-        <Image
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
           src={attachment.fileUrl}
           alt={attachment.fileName}
-          width={300}
-          height={200}
           className="rounded-lg max-w-[300px] h-auto cursor-pointer"
           onClick={handleDownload}
         />
