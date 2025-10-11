@@ -19,6 +19,7 @@ export interface UserInfo {
   eventType?: string[] | null;
   eventScale?: string | null;
   eventFormat?: string[] | null;
+  embedding?: number[] | null;
   createdAt: string;
   updatedAt: string;
 }

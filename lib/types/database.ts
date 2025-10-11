@@ -26,6 +26,15 @@ export interface DatabaseAdapter {
     data: Partial<Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">>,
     tenantId?: string
   ): Promise<UserInfo | null>;
+  findUserMatches(
+    userId: string,
+    embedding: number[],
+    options: {
+      threshold: number;
+      limit: number;
+      tenantId?: string;
+    }
+  ): Promise<UserMatch[]>;
 
   findTenantById(id: string): Promise<Tenant | null>;
   findTenantBySlug(slug: string): Promise<Tenant | null>;
@@ -107,4 +116,14 @@ export interface GetUsersParams {
   query?: string;
   sort?: { id: string; desc: boolean };
   tenantId?: string;
+}
+
+export interface UserMatch {
+  userId: string;
+  similarity: number;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
 }

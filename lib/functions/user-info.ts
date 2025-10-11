@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "../database/clients";
 import { UserInfo } from "../types/user-info";
+import { UserMatch } from "../types/database";
 
 export const userInfoFunctions = {
   async getUserInfo(
@@ -58,6 +59,7 @@ export const userInfoFunctions = {
       eventType: data.event_type,
       eventScale: data.event_scale,
       eventFormat: data.event_format,
+      embedding: data.embedding,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     } as UserInfo;
@@ -135,6 +137,7 @@ export const userInfoFunctions = {
       eventType: data.event_type,
       eventScale: data.event_scale,
       eventFormat: data.event_format,
+      embedding: data.embedding,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     } as UserInfo;
@@ -148,6 +151,8 @@ export const userInfoFunctions = {
     tenantId?: string
   ): Promise<UserInfo | null> {
     const supabase = await getSupabaseClient();
+    console.log("🔵 updateUserInfo: Starting update", { userId, tenantId, hasEmbedding: !!userInfoData.embedding });
+    
     const updateData = {
       role: userInfoData.role,
       organization_type: userInfoData.organizationType,
@@ -166,6 +171,7 @@ export const userInfoFunctions = {
       event_type: userInfoData.eventType,
       event_scale: userInfoData.eventScale,
       event_format: userInfoData.eventFormat,
+      embedding: userInfoData.embedding,
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>;
 
@@ -176,7 +182,6 @@ export const userInfoFunctions = {
       .from("user_info")
       .update(updateData)
       .eq("user_id", userId)
-      .eq("tenant_id", tenantId ?? null)
       .select()
       .maybeSingle();
     let data = firstUpdateData;
@@ -220,8 +225,93 @@ export const userInfoFunctions = {
       eventType: data.event_type,
       eventScale: data.event_scale,
       eventFormat: data.event_format,
+      embedding: data.embedding,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     } as UserInfo;
+  },
+
+  async findUserMatches(
+    userId: string,
+    embedding: number[],
+    options: {
+      threshold: number;
+      limit: number;
+      tenantId?: string;
+    }
+  ): Promise<UserMatch[]> {
+    console.log("🔵 findUserMatches: Starting user matching", {
+      userId,
+      embeddingLength: embedding.length,
+      options
+    });
+
+    const supabase = await getSupabaseClient();
+
+    try {
+      // Call the database function to find matches using vector similarity
+      const { data: matches, error: matchError } = await supabase.rpc('match_users', {
+        query_embedding: embedding,
+        match_user_id: userId,
+        match_threshold: options.threshold,
+        match_count: options.limit
+      });
+
+      if (matchError) {
+        console.error("🔴 findUserMatches: Database function error", matchError);
+        throw matchError;
+      }
+
+      console.log("🔵 findUserMatches: Raw matches from database", {
+        matchCount: matches?.length || 0,
+        matches: matches?.map((m: { user_id: string; similarity: number }) => ({
+          userId: m.user_id,
+          similarity: m.similarity
+        }))
+      });
+
+      if (!matches || matches.length === 0) {
+        console.log("🔵 findUserMatches: No matches found");
+        return [];
+      }
+
+      // Get user details for the matched users
+      const userIds = matches.map((match: { user_id: string; similarity: number }) => match.user_id);
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, email')
+        .in('id', userIds);
+
+      if (usersError) {
+        console.error("🔴 findUserMatches: Error fetching user details", usersError);
+        // Return matches without user details if we can't fetch them
+        return matches.map((match: { user_id: string; similarity: number }) => ({
+          userId: match.user_id,
+          similarity: match.similarity
+        }));
+      }
+
+      console.log("🔵 findUserMatches: User details fetched", {
+        userCount: users?.length || 0
+      });
+
+      // Combine match data with user details
+      const detailedMatches: UserMatch[] = matches.map((match: { user_id: string; similarity: number }) => ({
+        userId: match.user_id,
+        similarity: match.similarity,
+        user: users?.find(u => u.id === match.user_id) || undefined
+      }));
+
+      console.log("🔵 findUserMatches: Final matches prepared", {
+        matchCount: detailedMatches.length,
+        matchesWithDetails: detailedMatches.filter(m => m.user).length
+      });
+
+      return detailedMatches;
+
+    } catch (error) {
+      console.error("🔴 findUserMatches: Error in matching process", error);
+      throw error;
+    }
   },
 };

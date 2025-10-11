@@ -22,6 +22,7 @@ import {
   Sun,
   Settings,
   LucideIcon,
+  Users,
 } from "lucide-react";
 
 import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
@@ -58,7 +59,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
- 
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters."),
@@ -91,6 +91,7 @@ export default function UserPage() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingEmbedding, setIsGeneratingEmbedding] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -148,6 +149,38 @@ export default function UserPage() {
     }
     setIsSubmitting(false);
   }
+
+  const generateEmbedding = async () => {
+    if (!user) return;
+
+    setIsGeneratingEmbedding(true);
+
+    try {
+      const response = await fetch("/api/users/generate-embedding", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate embedding");
+      }
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(
+          `Embedding generated using ${result.embeddingSource} method!`
+        );
+      } else {
+        throw new Error("Failed to generate embedding");
+      }
+    } catch (error) {
+      console.error("Failed to generate embedding", error);
+      toast.error("Failed to generate embedding. Please try again.");
+    } finally {
+      setIsGeneratingEmbedding(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -280,6 +313,18 @@ export default function UserPage() {
                   <Button variant="outline" onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" /> Logout
                   </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={generateEmbedding}
+                    disabled={isGeneratingEmbedding}
+                  >
+                    {isGeneratingEmbedding ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Users className="mr-2 h-4 w-4" />
+                    )}
+                    Generate Embedding
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="destructive">
@@ -319,7 +364,8 @@ export default function UserPage() {
           {/* Right Side: Links & Settings */}
           <motion.div
             variants={cardVariants}
-            className="flex flex-col justify-between gap-6 lg:gap-8">
+            className="flex flex-col justify-between gap-6 lg:gap-8"
+          >
             <Card className="shadow-lg dark:bg-card/60 dark:border-border">
               <CardHeader>
                 <CardTitle className="text-2xl font-serif">
@@ -334,7 +380,8 @@ export default function UserPage() {
                   <Link href={link.href} key={link.href}>
                     <Button
                       variant="outline"
-                      className="w-full justify-start mb-2 text-base h-12">
+                      className="w-full justify-start mb-2 text-base h-12"
+                    >
                       <link.icon className="mr-3 h-5 w-5 text-primary" />
                       {link.label}
                     </Button>
@@ -363,8 +410,28 @@ export default function UserPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            <Card className="shadow-lg dark:bg-card/60 dark:border-border">
+              <CardHeader>
+                <CardTitle className="font-serif">
+                  Match with other users
+                </CardTitle>
+                <CardDescription>Match with other users.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <span className="font-medium">Match with other users</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => router.push("/user/match")}
+                >
+                  <Users className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <Users className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="sr-only">Match with other users</span>
+                </Button>
+              </CardContent>
+            </Card>
           </motion.div>
-          
         </motion.div>
       </div>
     </main>
