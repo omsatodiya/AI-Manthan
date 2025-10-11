@@ -1,6 +1,6 @@
 import { getAnnouncementsAction } from "@/app/actions/announcement";
 import { Announcement } from "@/lib/types";
-import EditAnnouncementForm from "@/app/admin/edit_announcement/[id]/edit-form";
+import EditAnnouncementForm from "./edit-form";
 
 interface EditAnnouncementPageProps {
   params: Promise<{

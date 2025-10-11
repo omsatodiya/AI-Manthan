@@ -2,19 +2,37 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
+import { createClient } from "@supabase/supabase-js";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  ArrowLeft,
+  Loader2,
+  Calendar,
+  MapPin,
+  Users,
+  Tag,
+  Image as ImageIcon,
+} from "lucide-react";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
+import { toast } from "sonner";
 
 export default function EventRegistrationPage() {
   const router = useRouter();
-  
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userTenantId, setUserTenantId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -31,15 +49,19 @@ export default function EventRegistrationPage() {
     try {
       const user = await getCurrentUserAction();
       setCurrentUser(user);
-      
+
       if (user?.id) {
-        // Fetch user's tenant_id from Supabase users table
+        const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        );
+
         const { data: userData, error } = await supabase
           .from("users")
           .select("tenant_id")
           .eq("id", user.id)
           .single();
-          
+
         if (error) {
           console.error("Error fetching user tenant:", error);
         } else {
@@ -48,265 +70,334 @@ export default function EventRegistrationPage() {
       }
     } catch (error) {
       console.error("Error fetching current user:", error);
+      toast.error("Failed to load user data");
+    } finally {
+      setIsLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     fetchCurrentUserAndTenant();
   }, [fetchCurrentUserAndTenant]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    if (isSubmitting) {
+      return;
+    }
+
+    if (!form.title.trim()) {
+      toast.error("Please enter an event title");
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Validate that we have both tenant ID and organizer ID
     if (!userTenantId) {
-      alert("User tenant information not found. Please contact support.");
+      toast.error("User tenant information not found. Please contact support.");
       setIsSubmitting(false);
       return;
     }
 
     if (!currentUser?.id) {
-      alert("User not authenticated. Please log in again.");
+      toast.error("User not authenticated. Please log in again.");
       setIsSubmitting(false);
       return;
     }
 
-    const eventPayload = {
-      title: form.title,
-      description: form.description,
-      start_at: form.start_at ? new Date(form.start_at).toISOString() : null,
-      end_at: form.end_at ? new Date(form.end_at).toISOString() : null,
-      location: form.location,
-      capacity: form.capacity ? Number(form.capacity) : null,
-      image: form.image || null,
-      tag: form.tag || null,
-      is_public: true,
-      tenant_id: userTenantId,
-      organizer_id: currentUser.id,
-    };
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
 
-    const { error } = await supabase.from("events").insert([eventPayload]);
-    if (error) {
-      console.error(error);
-      alert("Error creating event");
-    } else {
-      alert("Event created successfully!");
-      router.push("/events");
+      const eventPayload = {
+        title: form.title,
+        description: form.description,
+        start_at: form.start_at ? new Date(form.start_at).toISOString() : null,
+        end_at: form.end_at ? new Date(form.end_at).toISOString() : null,
+        location: form.location,
+        capacity: form.capacity ? Number(form.capacity) : null,
+        image: form.image || null,
+        tag: form.tag || null,
+        is_public: true,
+        tenant_id: userTenantId,
+        organizer_id: currentUser.id,
+      };
+
+      const { error } = await supabase.from("events").insert([eventPayload]);
+      if (error) {
+        console.error(error);
+        toast.error("Error creating event");
+      } else {
+        toast.success("Event created successfully!");
+        router.push("/events");
+      }
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-16 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-5xl font-bold text-gray-900 mb-3 tracking-tight">
-            Create New Event
-          </h1>
-          <p className="text-gray-600 text-lg">
-            Fill in the details to create an amazing event
-          </p>
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="container mx-auto py-8 px-4">
+          <div className="flex items-center justify-center min-h-[600px]">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading...</p>
+            </div>
+          </div>
         </div>
+      </div>
+    );
+  }
 
-        <div className="bg-white rounded-3xl shadow-2xl p-10 backdrop-blur-sm bg-opacity-95">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title */}
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.back()}
+              className="mb-4 -ml-2 hover:bg-accent"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Event Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                name="title"
-                value={form.title}
-                onChange={handleChange}
-                placeholder="Enter event title"
-                required
-                className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-              />
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Create Event
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Organize and manage events for your organization
+              </p>
             </div>
+          </div>
 
-            {/* Description */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Description <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Describe your event"
-                required
-                className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none resize-none"
-                rows={5}
-              />
-            </div>
-
-            {/* Date Range */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Start Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="start_at"
-                  value={form.start_at}
-                  onChange={handleChange}
-                  required
-                  className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  End Date <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="end_at"
-                  value={form.end_at}
-                  onChange={handleChange}
-                  required
-                  className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Location <span className="text-red-500">*</span>
-              </label>
-              <input
-                name="location"
-                value={form.location}
-                onChange={handleChange}
-                placeholder="Event location or venue"
-                required
-                className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-              />
-            </div>
-
-            {/* Capacity and Tag */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Capacity
-                </label>
-                <input
-                  type="number"
-                  name="capacity"
-                  value={form.capacity}
-                  onChange={handleChange}
-                  placeholder="Max attendees"
-                  min="1"
-                  className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Tag
-                </label>
-                <input
-                  name="tag"
-                  value={form.tag}
-                  onChange={handleChange}
-                  placeholder="e.g., Workshop, Conference"
-                  className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Image URL */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Image URL
-              </label>
-              <input
-                name="image"
-                value={form.image}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg"
-                type="url"
-                className="w-full border-2 border-gray-200 rounded-xl px-5 py-3.5 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all outline-none"
-              />
-              {form.image && (
-                <div className="mt-3 rounded-xl overflow-hidden border-2 border-gray-200">
-                  <Image
-                    src={form.image}
-                    alt="Preview"
-                    width={400}
-                    height={192}
-                    className="w-full h-48 object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
+          {/* Form Card */}
+          <Card className="shadow-lg border-none bg-card/50 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-2xl">Event Details</CardTitle>
+              <CardDescription>
+                Fill in the details for your event. All fields except title are
+                optional.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Title */}
+                <div className="space-y-2">
+                  <Label htmlFor="title" className="text-sm font-medium">
+                    Event Title <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={form.title}
+                    onChange={handleChange}
+                    placeholder="Enter event title"
+                    required
+                    suppressHydrationWarning
+                    className="w-full"
                   />
                 </div>
-              )}
-            </div>
 
-            {/* Submit Button */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold py-4 rounded-xl hover:from-indigo-700 hover:to-purple-700 transform hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-              >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="animate-spin h-5 w-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
+                {/* Description */}
+                <div className="space-y-2">
+                  <Label htmlFor="description" className="text-sm font-medium">
+                    Description
+                  </Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    placeholder="Describe your event..."
+                    rows={4}
+                    suppressHydrationWarning
+                    className="w-full resize-none"
+                  />
+                </div>
+
+                {/* Location */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="location"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    Location
+                  </Label>
+                  <Input
+                    id="location"
+                    name="location"
+                    value={form.location}
+                    onChange={handleChange}
+                    placeholder="Event location or venue"
+                    suppressHydrationWarning
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Date and Time */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="start_at"
+                      className="text-sm font-medium flex items-center gap-2"
                     >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
-                    </svg>
-                    Creating Event...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
+                      <Calendar className="h-4 w-4" />
+                      Start Date & Time
+                    </Label>
+                    <Input
+                      id="start_at"
+                      name="start_at"
+                      type="datetime-local"
+                      value={form.start_at}
+                      onChange={handleChange}
+                      suppressHydrationWarning
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="end_at"
+                      className="text-sm font-medium flex items-center gap-2"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 4v16m8-8H4"
+                      <Calendar className="h-4 w-4" />
+                      End Date & Time
+                    </Label>
+                    <Input
+                      id="end_at"
+                      name="end_at"
+                      type="datetime-local"
+                      value={form.end_at}
+                      onChange={handleChange}
+                      suppressHydrationWarning
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Capacity and Tag */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="capacity"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
+                      <Users className="h-4 w-4" />
+                      Max Attendees
+                    </Label>
+                    <Input
+                      id="capacity"
+                      name="capacity"
+                      type="number"
+                      value={form.capacity}
+                      onChange={handleChange}
+                      placeholder="Max attendees"
+                      min="1"
+                      suppressHydrationWarning
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="tag"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
+                      <Tag className="h-4 w-4" />
+                      Event Tag
+                    </Label>
+                    <Input
+                      id="tag"
+                      name="tag"
+                      value={form.tag}
+                      onChange={handleChange}
+                      placeholder="e.g., Workshop, Conference"
+                      suppressHydrationWarning
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Image URL */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="image"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    Image URL
+                  </Label>
+                  <Input
+                    id="image"
+                    name="image"
+                    value={form.image}
+                    onChange={handleChange}
+                    placeholder="https://example.com/image.jpg"
+                    suppressHydrationWarning
+                    className="w-full"
+                  />
+                  {form.image && (
+                    <div className="mt-2">
+                      <Image
+                        src={form.image}
+                        alt="Event preview"
+                        width={400}
+                        height={192}
+                        className="w-full h-48 object-cover rounded-lg border"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
                       />
-                    </svg>
-                    Create Event
-                  </span>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
+                    </div>
+                  )}
+                </div>
 
-        <p className="text-center text-gray-500 text-sm mt-6">
-          Fields marked with <span className="text-red-500">*</span> are required
-        </p>
+                {/* Submit Button */}
+                <div className="flex gap-4 pt-6">
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="flex-1 shadow-lg hover:shadow-xl transition-all duration-300"
+                    suppressHydrationWarning
+                  >
+                    {isSubmitting && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    {isSubmitting ? "Creating Event..." : "Create Event"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.back()}
+                    disabled={isSubmitting}
+                    className="px-8"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

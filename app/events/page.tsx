@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Calendar } from "lucide-react";
 import EventCard from "@/components/events/EventCard";
 
 interface Event {
@@ -22,27 +24,36 @@ interface Event {
 }
 
 export default function EventPage() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const supabase = createClient(supabaseUrl, supabaseKey);
-  
   const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchEvents = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("events")
-      .select("*")
-      .order("start_at", { ascending: true });
-    if (!error && data) {
-      // Initialize registered_users array for events that don't have it
-      const eventsWithDefaults = data.map(event => ({
-        ...event,
-        registered_users: event.registered_users || [],
-        current_capacity: event.registered_users?.length || 0,
-      }));
-      setEvents(eventsWithDefaults);
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      
+      const { data, error } = await supabase
+        .from("events")
+        .select("*")
+        .order("start_at", { ascending: true });
+        
+      if (!error && data) {
+        // Initialize registered_users array for events that don't have it
+        const eventsWithDefaults = data.map(event => ({
+          ...event,
+          registered_users: event.registered_users || [],
+          current_capacity: event.registered_users?.length || 0,
+        }));
+        setEvents(eventsWithDefaults);
+      }
+    } catch (error) {
+      console.error("Error fetching events:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     fetchEvents();
@@ -56,27 +67,61 @@ export default function EventPage() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <div className="container mx-auto py-8 px-4">
+          <div className="flex items-center justify-center min-h-[600px]">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Loading events...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-200 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8 text-center tracking-tight">
-          Upcoming Events
-        </h1>
-        <div className="space-y-8">
-          {events.length === 0 && (
-            <div className="text-center text-gray-500 py-12">
-              <div className="text-6xl mb-4">📅</div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">No events found</h3>
-              <p className="text-gray-500">Check back later for upcoming events!</p>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Header Section */}
+          <div className="mb-8">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Upcoming Events
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Discover and join exciting events in your organization
+              </p>
+            </div>
+          </div>
+
+          {/* Events Grid */}
+          {events.length === 0 ? (
+            <Card className="border-dashed border-2 shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <div className="rounded-full bg-muted/50 p-6 mb-6">
+                  <Calendar className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h3 className="text-2xl font-semibold mb-2">No events found</h3>
+                <p className="text-muted-foreground mb-6 text-center max-w-md">
+                  Check back later for upcoming events or create your own event!
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {events.map((event) => (
+                <EventCard
+                  key={event.id}
+                  event={event}
+                  onEventUpdate={handleEventUpdate}
+                />
+              ))}
             </div>
           )}
-          {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onEventUpdate={handleEventUpdate}
-            />
-          ))}
         </div>
       </div>
     </div>

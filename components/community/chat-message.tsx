@@ -15,7 +15,7 @@ export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete, 
   const isOwnMessage = message.user.id === currentUserId
 
   return (
-    <div className={`flex mt-2 ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group`}>
       <MessageContextMenu
         messageId={message.id}
         messageContent={message.content}
@@ -25,18 +25,22 @@ export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete, 
         onEdit={onEdit}
       >
         <div
-          className={cn('max-w-[75%] w-fit flex flex-col gap-1', {
+          className={cn('max-w-[70%] w-fit flex flex-col gap-2', {
             'items-end': isOwnMessage,
+            'items-start': !isOwnMessage,
           })}
         >
           {showHeader && (
             <div
-              className={cn('flex items-center gap-2 text-xs px-3', {
+              className={cn('flex items-center gap-2 text-xs px-2', {
                 'justify-end flex-row-reverse': isOwnMessage,
               })}
             >
-              <span className={'font-medium'}>{message.user.name}</span>
-              <span className="text-foreground/50 text-xs">
+              <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                <span className="text-xs font-bold text-white">{message.user.name.charAt(0).toUpperCase()}</span>
+              </div>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{message.user.name}</span>
+              <span className="text-slate-500 dark:text-slate-400">
                 {new Date(message.createdAt).toLocaleTimeString('en-US', {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -47,22 +51,37 @@ export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete, 
           )}
           <div
             className={cn(
-              'py-2 px-3 rounded-xl text-sm w-fit',
-              isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+              'relative py-3 px-4 text-sm w-fit shadow-sm transition-all duration-200 group-hover:shadow-md',
+              isOwnMessage 
+                ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md' 
+                : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-2xl rounded-bl-md border border-slate-200 dark:border-slate-700'
             )}
           >
+            {/* Message bubble tail */}
+            <div className={cn(
+              'absolute w-3 h-3 transform rotate-45',
+              isOwnMessage 
+                ? 'bg-primary bottom-0 right-0 translate-x-1 translate-y-1' 
+                : 'bg-white dark:bg-slate-800 border-r border-b border-slate-200 dark:border-slate-700 bottom-0 left-0 -translate-x-1 translate-y-1'
+            )}></div>
+            
             {message.attachment ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <FileAttachment attachment={message.attachment} isOwnMessage={isOwnMessage} />
                 {message.content && message.content !== `Sent ${message.attachment.fileName}` && (
-                  <div>{message.content}</div>
+                  <div className="leading-relaxed">{message.content}</div>
                 )}
               </div>
             ) : (
-              <div>{message.content}</div>
+              <div className="leading-relaxed">{message.content}</div>
             )}
             {message.isEdited && (
-              <span className="text-xs opacity-70 italic ml-2">(edited)</span>
+              <div className={cn(
+                "text-xs mt-1",
+                isOwnMessage ? "text-blue-100" : "text-slate-500 dark:text-slate-400"
+              )}>
+                (edited)
+              </div>
             )}
           </div>
         </div>

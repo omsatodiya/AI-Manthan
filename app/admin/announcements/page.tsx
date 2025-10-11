@@ -3,9 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Edit, Trash2, ExternalLink, Loader2, Calendar, Megaphone } from "lucide-react";
+import { ArrowLeft, Plus, Edit, Trash2, ExternalLink, Loader2, Calendar, Megaphone, MoreHorizontal } from "lucide-react";
 import { getAnnouncementsAction, deleteAnnouncementAction } from "@/app/actions/announcement";
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
@@ -20,6 +19,20 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function AdminAnnouncementsPage() {
   const router = useRouter();
@@ -96,7 +109,7 @@ export default function AdminAnnouncementsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto py-8 px-4">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Header Section */}
           <div className="mb-8">
             <Button
@@ -119,7 +132,7 @@ export default function AdminAnnouncementsPage() {
                 </p>
               </div>
               <Button
-                onClick={() => router.push("/admin/create_announcement")}
+                onClick={() => router.push("/announcements/create_announcement")}
                 size="lg"
                 className="shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
               >
@@ -131,24 +144,22 @@ export default function AdminAnnouncementsPage() {
 
           {/* Stats Bar */}
           <div className="mb-6">
-            <Card className="border-none shadow-sm bg-card/50 backdrop-blur">
-              <CardContent className="py-4">
-                <div className="flex items-center gap-6">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                    <span className="text-sm font-medium">
-                      {announcements.length} Total Announcement{announcements.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
+            <div className="bg-card/50 backdrop-blur border rounded-lg p-4 shadow-sm">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  <span className="text-sm font-medium">
+                    {announcements.length} Total Announcement{announcements.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
-          {/* Announcements Grid */}
+          {/* Table */}
           {announcements.length === 0 ? (
-            <Card className="border-dashed border-2 shadow-lg hover:shadow-xl transition-shadow duration-300">
-              <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="border-dashed border-2 rounded-lg shadow-lg hover:shadow-xl transition-shadow duration-300">
+              <div className="flex flex-col items-center justify-center py-16">
                 <div className="rounded-full bg-muted/50 p-6 mb-6">
                   <Plus className="h-12 w-12 text-muted-foreground" />
                 </div>
@@ -157,121 +168,131 @@ export default function AdminAnnouncementsPage() {
                   Get started by creating your first announcement to keep your team informed
                 </p>
                 <Button
-                  onClick={() => router.push("/admin/create_announcement")}
+                  onClick={() => router.push("/announcements/create_announcement")}
                   size="lg"
                   className="shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <Plus className="h-5 w-5 mr-2" />
                   Create Your First Announcement
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : (
-            <div className="space-y-4">
-              {announcements.map((announcement, index) => (
-                <Card 
-                  key={announcement.id}
-                  className="group hover:shadow-xl transition-all duration-300 border-l-4 border-l-primary/50 hover:border-l-primary overflow-hidden"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <CardTitle className="text-2xl group-hover:text-primary transition-colors duration-200">
+            <div className="bg-card rounded-lg border shadow-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="font-semibold">Title</TableHead>
+                    <TableHead className="font-semibold">Description</TableHead>
+                    <TableHead className="font-semibold">Type</TableHead>
+                    <TableHead className="font-semibold">Created Date</TableHead>
+                    <TableHead className="font-semibold">Link</TableHead>
+                    <TableHead className="font-semibold w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {announcements.map((announcement) => (
+                    <TableRow key={announcement.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <div className="max-w-[200px] truncate" title={announcement.title}>
                           {announcement.title}
-                        </CardTitle>
-                        {announcement.description && (
-                          <CardDescription className="text-base leading-relaxed">
-                            {announcement.description}
-                          </CardDescription>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {announcement.isOpportunity && (
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="max-w-[300px] truncate" title={announcement.description || ''}>
+                          {announcement.description || '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {announcement.isOpportunity ? (
                           <Badge 
                             variant="default" 
-                            className="shrink-0 gap-1.5 px-3 py-1.5 font-normal shadow-sm bg-green-600 hover:bg-green-700"
+                            className="gap-1.5 px-2 py-1 font-normal shadow-sm bg-green-600 hover:bg-green-700"
                           >
-                            <Megaphone className="h-3.5 w-3.5" />
+                            <Megaphone className="h-3 w-3" />
                             Opportunity
                           </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="px-2 py-1 font-normal">
+                            Announcement
+                          </Badge>
                         )}
-                        <Badge 
-                          variant="secondary" 
-                          className="shrink-0 gap-1.5 px-3 py-1.5 font-normal shadow-sm"
-                        >
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                           <Calendar className="h-3.5 w-3.5" />
                           {formatDate(announcement.createdAt)}
-                        </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent>
-                    <div className="flex items-center justify-between pt-2 border-t">
-                      <div className="flex items-center gap-3">
-                        {announcement.link && (
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {announcement.link ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => announcement.link && window.open(announcement.link, "_blank")}
+                            onClick={() => window.open(announcement.link!, "_blank")}
                             className="gap-2 hover:bg-accent transition-all duration-200"
                           >
-                            <ExternalLink className="h-4 w-4" />
-                            View Link
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            View
                           </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">-</span>
                         )}
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/admin/edit_announcement/${announcement.id}`)}
-                          className="gap-2 hover:bg-accent transition-all duration-200"
-                        >
-                          <Edit className="h-4 w-4" />
-                          Edit
-                        </Button>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="max-w-md">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle className="text-xl">Delete Announcement</AlertDialogTitle>
-                              <AlertDialogDescription className="text-base pt-2">
-                                Are you sure you want to delete &quot;{announcement.title}&quot;? This action cannot be undone and the announcement will be permanently removed.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(announcement.id)}
-                                disabled={deletingId === announcement.id}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                {deletingId === announcement.id && (
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                )}
-                                Delete Permanently
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => router.push(`/announcements/edit_announcement/${announcement.id}`)}
+                              className="gap-2"
+                            >
+                              <Edit className="h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                  className="gap-2 text-destructive focus:text-destructive"
+                                  onSelect={(e) => e.preventDefault()}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="max-w-md">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-xl">Delete Announcement</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-base pt-2">
+                                    Are you sure you want to delete &quot;{announcement.title}&quot;? This action cannot be undone and the announcement will be permanently removed.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(announcement.id)}
+                                    disabled={deletingId === announcement.id}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    {deletingId === announcement.id && (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    )}
+                                    Delete Permanently
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>

@@ -1,5 +1,6 @@
 import { getSupabaseClient } from "../database/clients";
 import { UserInfo } from "../types/user-info";
+import { UserMatch } from "../types/database";
 
 export const userInfoFunctions = {
   async getUserInfo(
@@ -29,10 +30,8 @@ export const userInfoFunctions = {
         scoped.error.code === "PGRST204"
       ) {
       } else {
-        console.error(scoped.error);
       }
     } else if (error && error.code !== "PGRST116") {
-      console.error(error);
     }
 
     if (!data) return null;
@@ -58,6 +57,7 @@ export const userInfoFunctions = {
       eventType: data.event_type,
       eventScale: data.event_scale,
       eventFormat: data.event_format,
+      embedding: data.embedding,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     } as UserInfo;
@@ -110,7 +110,6 @@ export const userInfoFunctions = {
         .single();
       data = retry.data;
     }
-    if (error) console.error(error);
 
     if (!data) return null;
 
@@ -135,6 +134,7 @@ export const userInfoFunctions = {
       eventType: data.event_type,
       eventScale: data.event_scale,
       eventFormat: data.event_format,
+      embedding: data.embedding,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     } as UserInfo;
@@ -144,10 +144,10 @@ export const userInfoFunctions = {
     userId: string,
     userInfoData: Partial<
       Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">
-    >,
-    tenantId?: string
+    >
   ): Promise<UserInfo | null> {
     const supabase = await getSupabaseClient();
+    
     const updateData = {
       role: userInfoData.role,
       organization_type: userInfoData.organizationType,
@@ -166,6 +166,7 @@ export const userInfoFunctions = {
       event_type: userInfoData.eventType,
       event_scale: userInfoData.eventScale,
       event_format: userInfoData.eventFormat,
+      embedding: userInfoData.embedding,
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>;
 
@@ -176,7 +177,6 @@ export const userInfoFunctions = {
       .from("user_info")
       .update(updateData)
       .eq("user_id", userId)
-      .eq("tenant_id", tenantId ?? null)
       .select()
       .maybeSingle();
     let data = firstUpdateData;
@@ -195,7 +195,6 @@ export const userInfoFunctions = {
         .maybeSingle();
       data = retry.data;
     }
-    if (error) console.error(error);
 
     if (!data) return null;
 
@@ -220,8 +219,162 @@ export const userInfoFunctions = {
       eventType: data.event_type,
       eventScale: data.event_scale,
       eventFormat: data.event_format,
+      embedding: data.embedding,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     } as UserInfo;
+  },
+
+  async findUserMatches(
+    userId: string,
+    embedding: number[],
+    options: {
+      threshold: number;
+      limit: number;
+      tenantId?: string;
+    }
+  ): Promise<UserMatch[]> {
+
+    const supabase = await getSupabaseClient();
+
+    try {
+      // Call the database function to find matches using vector similarity
+      const { data: matches, error: matchError } = await supabase.rpc('match_users', {
+        query_embedding: embedding,
+        match_user_id: userId,
+        match_threshold: options.threshold,
+        match_count: options.limit
+      });
+
+      if (matchError) {
+        console.error("🔴 findUserMatches: Database function error", matchError);
+
+        // Fallback: Try direct query if RPC function fails
+        console.log("🔶 findUserMatches: Trying direct query fallback");
+        const { data: directMatches, error: directError } = await supabase
+          .from('user_info')
+          .select('user_id, embedding')
+          .neq('user_id', userId)
+          .not('embedding', 'is', null);
+
+        if (directError) {
+          console.error("🔴 findUserMatches: Direct query also failed", directError);
+          throw matchError; // Throw original error
+        }
+
+        // Process direct matches manually (cosine similarity calculation)
+        const processedMatches = directMatches
+          ?.map((match: { user_id: string; embedding: number[] }) => {
+            if (!match.embedding || !Array.isArray(match.embedding)) return null;
+            
+            // Calculate cosine similarity
+            const dotProduct = embedding.reduce((sum, val, i) => sum + val * match.embedding[i], 0);
+            const magnitude1 = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+            const magnitude2 = Math.sqrt(match.embedding.reduce((sum: number, val: number) => sum + val * val, 0));
+            const similarity = dotProduct / (magnitude1 * magnitude2);
+
+            if (similarity > options.threshold) {
+              return {
+                user_id: match.user_id,
+                similarity: similarity
+              };
+            }
+            return null;
+          })
+          .filter((match): match is { user_id: string; similarity: number } => match !== null)
+          .sort((a, b) => b.similarity - a.similarity)
+          .slice(0, options.limit) || [];
+
+        console.log("🔵 findUserMatches: Fallback matches processed", {
+          matchCount: processedMatches.length,
+          matches: processedMatches
+        });
+
+        // Get user details for fallback matches
+        const fallbackUserIds = processedMatches.map((match: { user_id: string }) => match.user_id);
+        const { data: fallbackUsers, error: fallbackUsersError } = await supabase
+          .from('users')
+          .select('id, fullName, email')
+          .in('id', fallbackUserIds);
+
+        if (fallbackUsersError) {
+          console.error("🔴 findUserMatches: Error fetching fallback user details", fallbackUsersError);
+          return processedMatches.map((match: { user_id: string; similarity: number }) => ({
+            userId: match.user_id,
+            similarity: match.similarity
+          }));
+        }
+
+        // Combine fallback match data with user details
+        const fallbackDetailedMatches: UserMatch[] = processedMatches.map((match: { user_id: string; similarity: number }) => {
+          const foundUser = fallbackUsers?.find(u => u.id === match.user_id);
+          return {
+            userId: match.user_id,
+            similarity: match.similarity,
+            user: foundUser ? {
+              id: foundUser.id,
+              name: foundUser.fullName,
+              email: foundUser.email
+            } : undefined
+          };
+        });
+
+        return fallbackDetailedMatches;
+      }
+
+      console.log("🔵 findUserMatches: Raw matches from database", {
+        matchCount: matches?.length || 0,
+        rawMatches: matches
+      });
+
+      if (!matches || matches.length === 0) {
+        return [];
+      }
+
+      // Get user details for the matched users
+      const userIds = matches.map((match: { userId?: string; user_id?: string }) => match.userId || match.user_id);
+      console.log("🔵 findUserMatches: Extracted user IDs", { userIds });
+      
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('id, fullName, email')
+        .in('id', userIds);
+
+      console.log("🔵 findUserMatches: User details fetched", {
+        userCount: users?.length || 0,
+        users: users
+      });
+
+      if (usersError) {
+        console.error("🔴 findUserMatches: Error fetching user details", usersError);
+        // Return matches without user details if we can't fetch them
+        return matches.map((match: { userId?: string; user_id?: string; similarity: number }) => ({
+          userId: match.userId || match.user_id,
+          similarity: match.similarity
+        }));
+      }
+
+      // Combine match data with user details, handling both userId and user_id fields
+      const detailedMatches: UserMatch[] = matches.map((match: { userId?: string; user_id?: string; similarity: number }) => {
+        const userId = match.userId || match.user_id;
+        const foundUser = users?.find(u => u.id === userId);
+        
+        return {
+          userId: userId,
+          similarity: match.similarity,
+          user: foundUser ? {
+            id: foundUser.id,
+            name: foundUser.fullName,
+            email: foundUser.email
+          } : undefined
+        };
+      });
+
+
+      return detailedMatches;
+
+    } catch (error) {
+      throw error;
+    }
   },
 };
