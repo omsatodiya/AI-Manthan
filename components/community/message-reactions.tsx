@@ -16,7 +16,7 @@ interface MessageReactionsProps {
   isOwnMessage?: boolean
 }
 
-export const MessageReactions = ({ reactions, onReactionClick, isOwnMessage }: MessageReactionsProps) => {
+export const MessageReactions = ({ reactions, onReactionClick }: MessageReactionsProps) => {
   if (reactions.length === 0) return null
 
   return (

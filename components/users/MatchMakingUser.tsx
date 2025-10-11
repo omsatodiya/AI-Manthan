@@ -14,6 +14,8 @@ import {
   UserCheck,
   TrendingUp,
 } from "lucide-react";
+import { getCurrentUserAction } from "@/app/actions/auth";
+import { AuthUser } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +60,71 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
   const [isLoading, setIsLoading] = useState(!match);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [connectingUsers, setConnectingUsers] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Fetch current user
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const user = await getCurrentUserAction();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+        setCurrentUser(null);
+      }
+    };
+    fetchCurrentUser();
+  }, []);
+
+  const handleConnectClick = async (destinationUserId: string) => {
+    if (!currentUser?.id) {
+      toast.error("Please log in to send connection requests");
+      return;
+    }
+
+    if (currentUser.id === destinationUserId) {
+      toast.error("Cannot send connection request to yourself");
+      return;
+    }
+
+    // Add user to connecting set
+    setConnectingUsers((prev) => new Set(prev).add(destinationUserId));
+
+    try {
+      const response = await fetch("/api/connections", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requesterId: currentUser.id,
+          receiverId: destinationUserId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        toast.success("Connection request sent successfully!");
+      } else {
+        const errorMessage = data.error || "Failed to send connection request";
+        toast.error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error sending connection request:", error);
+      toast.error("Failed to send connection request. Please try again.");
+    } finally {
+      // Remove user from connecting set
+      setConnectingUsers((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(destinationUserId);
+        return newSet;
+      });
+    }
+  };
 
   const fetchMatches = useCallback(
     async (showRefreshLoader = false) => {
@@ -122,7 +189,13 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
 
   // If a match is provided as prop, render individual match card
   if (match) {
-    return <MatchCard match={match} />;
+    return (
+      <MatchCard
+        match={match}
+        connectingUsers={connectingUsers}
+        handleConnectClick={handleConnectClick}
+      />
+    );
   }
 
   const handleRefresh = () => {
@@ -310,12 +383,17 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
                         <Button
                           size="sm"
                           className="flex-1"
-                          onClick={() => {
-                            toast.success("Connection request sent!");
-                          }}
+                          onClick={() => handleConnectClick(match.userId)}
+                          disabled={connectingUsers.has(match.userId)}
                         >
-                          <Heart className="h-4 w-4 mr-2" />
-                          Connect
+                          {connectingUsers.has(match.userId) ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          ) : (
+                            <Heart className="h-4 w-4 mr-2" />
+                          )}
+                          {connectingUsers.has(match.userId)
+                            ? "Connecting..."
+                            : "Connect"}
                         </Button>
                         <Button
                           size="sm"
@@ -359,7 +437,15 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
 }
 
 // Individual match card component
-function MatchCard({ match }: { match: UserMatch }) {
+function MatchCard({
+  match,
+  connectingUsers,
+  handleConnectClick,
+}: {
+  match: UserMatch;
+  connectingUsers: Set<string>;
+  handleConnectClick: (userId: string) => void;
+}) {
   const getSimilarityColor = (similarity: number) => {
     if (similarity >= 0.8) return "text-green-600 dark:text-green-400";
     if (similarity >= 0.6) return "text-yellow-600 dark:text-yellow-400";
@@ -428,12 +514,15 @@ function MatchCard({ match }: { match: UserMatch }) {
             <Button
               size="sm"
               className="flex-1"
-              onClick={() => {
-                toast.success("Connection request sent!");
-              }}
+              onClick={() => handleConnectClick(match.userId)}
+              disabled={connectingUsers.has(match.userId)}
             >
-              <Heart className="h-4 w-4 mr-2" />
-              Connect
+              {connectingUsers.has(match.userId) ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Heart className="h-4 w-4 mr-2" />
+              )}
+              {connectingUsers.has(match.userId) ? "Connecting..." : "Connect"}
             </Button>
             <Button
               size="sm"

@@ -4,6 +4,7 @@ const investmentProposal: Template = {
   id: "investment-proposal",
   title: "Investment Proposal",
   description: "A compelling proposal to attract investors and secure funding.",
+  created_at: new Date().toISOString(),
   htmlContent: `
   <!DOCTYPE html>
   <html lang="en">

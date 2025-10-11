@@ -4,6 +4,7 @@ const marketingBrief: Template = {
   id: "marketing-brief",
   title: "Marketing Campaign Brief",
   description: "A strategic brief to outline a new marketing campaign.",
+  created_at: new Date().toISOString(),
   htmlContent: `
   <!DOCTYPE html>
   <html lang="en">

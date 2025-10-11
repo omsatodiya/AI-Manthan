@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "i.pinimg.com",
+      },
+      {
+        protocol: "https",
         hostname: "ydmroqaiwgdmbtkiwtuq.supabase.co",
         port: "",
         pathname: "/storage/v1/object/public/**",

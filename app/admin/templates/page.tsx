@@ -73,7 +73,7 @@ export default function AdminTemplatesPage() {
       {
         accessorKey: "title",
         header: "Title",
-        cell: ({ row }: { row: any }) => (
+        cell: ({ row }: { row: { getValue: (key: string) => string } }) => (
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
               <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
@@ -87,7 +87,7 @@ export default function AdminTemplatesPage() {
       {
         accessorKey: "description",
         header: "Description",
-        cell: ({ row }: { row: any }) => {
+        cell: ({ row }: { row: { getValue: (key: string) => string } }) => {
           const description = row.getValue("description") as string;
           const truncatedDescription = description.length > 50 
             ? `${description.substring(0, 50)}...` 
@@ -103,7 +103,7 @@ export default function AdminTemplatesPage() {
       {
         accessorKey: "created_at",
         header: "Created",
-        cell: ({ row }: { row: any }) => {
+        cell: ({ row }: { row: { original: { created_at?: string } } }) => {
           const date = new Date(row.original.created_at || "");
           return (
             <div className="text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
@@ -115,7 +115,7 @@ export default function AdminTemplatesPage() {
       {
         accessorKey: "fields",
         header: "Fields",
-        cell: ({ row }: { row: any }) => (
+        cell: ({ row }: { row: { original: { fields: unknown[] } } }) => (
           <div className="text-muted-foreground text-xs sm:text-sm text-center">
             {row.original.fields.length}
           </div>
@@ -124,19 +124,19 @@ export default function AdminTemplatesPage() {
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }: { row: any }) => (
+        cell: ({ row }: { row: { original: { id: string } } }) => (
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setEditTemplate(row.original)}
+              onClick={() => setEditTemplate(row.original as Template)}
             >
               Edit
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setDeleteTemplate(row.original)}
+              onClick={() => setDeleteTemplate(row.original as Template)}
               className="text-destructive hover:text-destructive"
             >
               Delete

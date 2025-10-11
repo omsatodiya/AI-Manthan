@@ -2,6 +2,38 @@ import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import type { ChatMessageWithUser, MessageAttachment, UploadFileParams, Reaction, ReactionGroup, ReactionType } from '@/lib/types/chat'
 import { isMessageEdited } from '@/lib/utils/chat-utils'
 
+// Type definitions for Supabase responses
+interface SupabaseMessageData {
+  id: string
+  content: string
+  created_at: string
+  updated_at: string
+  user_id: string
+  tenant_id?: string | null
+  attachment_id?: string
+  attachment_name?: string
+  attachment_size?: number
+  attachment_type?: string
+  attachment_url?: string
+  users?: {
+    id: string
+    fullName: string
+  }
+}
+
+interface SupabaseReactionData {
+  id: string
+  message_id: string
+  user_id: string
+  reaction_type: string
+  created_at: string
+  users?: {
+    id: string
+    fullName: string
+  }
+}
+
+
 export class ChatService {
   private supabase: ReturnType<typeof createBrowserClient>
 
@@ -71,7 +103,8 @@ export class ChatService {
     attachment: MessageAttachment,
     tenantId?: string | null
   ): Promise<ChatMessageWithUser> {
-    const { data, error } = await this.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase as any)
       .from('chat_messages')
       .insert({
         user_id: userId,
@@ -82,7 +115,7 @@ export class ChatService {
         attachment_size: attachment.fileSize,
         attachment_type: attachment.fileType,
         attachment_url: attachment.fileUrl,
-      } as any)
+      })
       .select(`
         id,
         content,
@@ -107,23 +140,24 @@ export class ChatService {
       throw error
     }
 
+    const messageData = data as SupabaseMessageData
     return {
-      id: (data as any).id,
-      content: (data as any).content,
+      id: messageData.id,
+      content: messageData.content,
       user: {
-        id: (data as any).user_id,
-        name: ((data as any).users as any)?.[0]?.fullName || ((data as any).users as any)?.fullName || username,
+        id: messageData.user_id,
+        name: messageData.users?.fullName || username,
       },
-      createdAt: (data as any).created_at,
-      updatedAt: (data as any).updated_at,
+      createdAt: messageData.created_at,
+      updatedAt: messageData.updated_at,
       isEdited: false,
-      attachment: (data as any).attachment_id
+      attachment: messageData.attachment_id
         ? {
-            id: (data as any).attachment_id,
-            fileName: (data as any).attachment_name,
-            fileSize: (data as any).attachment_size,
-            fileType: (data as any).attachment_type,
-            fileUrl: (data as any).attachment_url,
+            id: messageData.attachment_id,
+            fileName: messageData.attachment_name || '',
+            fileSize: messageData.attachment_size || 0,
+            fileType: messageData.attachment_type || '',
+            fileUrl: messageData.attachment_url || '',
           }
         : null,
     }
@@ -182,13 +216,13 @@ export class ChatService {
 
       const reactionsByMessage = new Map<string, Reaction[]>()
 
-      data?.forEach((row: any) => {
+      data?.forEach((row: SupabaseReactionData) => {
         const reaction: Reaction = {
           id: row.id,
           messageId: row.message_id,
           userId: row.user_id,
           userName: row.users?.fullName || 'Unknown User',
-          reactionType: row.reaction_type,
+          reactionType: row.reaction_type as ReactionType,
           createdAt: row.created_at,
         }
 
@@ -238,12 +272,14 @@ export class ChatService {
     // If user already has a reaction, delete it first
     if (existingReactions && existingReactions.length > 0) {
       const existingReaction = existingReactions[0]
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       replacedReactionType = (existingReaction as any).reaction_type as ReactionType
 
       // If it's the same reaction type, don't do anything (this shouldn't happen in UI)
       if (replacedReactionType === reactionType) {
         return {
           reaction: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             id: (existingReaction as any).id,
             messageId,
             userId,
@@ -258,6 +294,7 @@ export class ChatService {
       const { error: deleteError } = await this.supabase
         .from('chat_reactions')
         .delete()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .eq('id', (existingReaction as any).id)
 
       if (deleteError) {
@@ -267,14 +304,15 @@ export class ChatService {
     }
 
     // Add the new reaction
-    const { data, error } = await this.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase as any)
       .from('chat_reactions')
       .insert({
         message_id: messageId,
         user_id: userId,
         reaction_type: reactionType,
         tenant_id: tenantId || null,
-      } as any )
+      })
       .select(`
         id,
         message_id,
@@ -289,14 +327,15 @@ export class ChatService {
       throw error
     }
 
+    const reactionData = data as SupabaseReactionData
     return {
       reaction: {
-        id: (data as any).id,
-        messageId: (data as any).message_id,
-        userId: (data as any).user_id,
+        id: reactionData.id,
+        messageId: reactionData.message_id,
+        userId: reactionData.user_id,
         userName,
-        reactionType: (data as any).reaction_type,
-        createdAt: (data as any).created_at,
+        reactionType: reactionData.reaction_type as ReactionType,
+        createdAt: reactionData.created_at,
       },
       replacedReactionType,
     }
@@ -361,11 +400,9 @@ export class ChatService {
 
       if (!data) return []
 
-      const messageIds = data.map((row: any) => row.id)
-      
       // Fetch reactions for all messages - note: we need currentUserId here
       // For now, we'll fetch reactions separately in the hook
-      const messages: ChatMessageWithUser[] = (data as any[]).map((row) => ({
+      const messages: ChatMessageWithUser[] = data.map((row: SupabaseMessageData) => ({
         id: row.id,
         content: row.content,
         user: {
@@ -378,10 +415,10 @@ export class ChatService {
         attachment: row.attachment_id
           ? {
               id: row.attachment_id,
-              fileName: row.attachment_name,
-              fileSize: row.attachment_size,
-              fileType: row.attachment_type,
-              fileUrl: row.attachment_url,
+              fileName: row.attachment_name || '',
+              fileSize: row.attachment_size || 0,
+              fileType: row.attachment_type || '',
+              fileUrl: row.attachment_url || '',
             }
           : null,
         reactions: [], // Will be populated by the hook
@@ -403,13 +440,14 @@ export class ChatService {
     username: string,
     tenantId?: string | null
   ): Promise<ChatMessageWithUser> {
-    const { data, error } = await this.supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (this.supabase as any)
       .from('chat_messages')
       .insert({
         user_id: userId,
         content,
         tenant_id: tenantId || null,
-      } as any )
+      })
       .select(`
         id,
         content,
@@ -428,15 +466,16 @@ export class ChatService {
       console.error('Failed to insert message:', error)
       throw error
     }
+    const messageData = data as SupabaseMessageData
     return {
-      id: (data as any).id,
-      content: (data as any).content, 
+      id: messageData.id,
+      content: messageData.content, 
       user: {
-        id: (data as any).user_id,
-        name: (data as any).users?.fullName || username,
+        id: messageData.user_id,
+        name: messageData.users?.fullName || username,
       },
-      createdAt: (data as any).created_at,
-      updatedAt: (data as any).updated_at,
+      createdAt: messageData.created_at,
+      updatedAt: messageData.updated_at,
       isEdited: false,
     }
   }
@@ -492,8 +531,10 @@ export class ChatService {
     }
 
     // If message had an attachment, delete the file from storage
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((messageData as any)?.attachment_id) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await this.deleteFile((messageData as any).attachment_id)
       } catch (error) {
         // Log error but don't fail the operation if file deletion fails
@@ -502,6 +543,7 @@ export class ChatService {
     }
 
     // Return the attachment_id if it existed (for cleanup purposes)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (messageData as any)?.attachment_id || null
   }
 
@@ -513,6 +555,7 @@ export class ChatService {
     userId: string,
     content: string
   ): Promise<ChatMessageWithUser> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (this.supabase as any)
       .from('chat_messages')
       .update({ content, updated_at: new Date().toISOString() })
@@ -537,16 +580,17 @@ export class ChatService {
       throw error
     }
 
+    const messageData = data as SupabaseMessageData
     return {
-      id: data.id,
-      content: data.content,
+      id: messageData.id,
+      content: messageData.content,
       user: {
-        id: data.user_id,
-        name: (data.users as any)?.fullName || 'Unknown User',
+        id: messageData.user_id,
+        name: messageData.users?.fullName || 'Unknown User',
       },
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      isEdited: isMessageEdited(data.created_at, data.updated_at),
+      createdAt: messageData.created_at,
+      updatedAt: messageData.updated_at,
+      isEdited: isMessageEdited(messageData.created_at, messageData.updated_at),
     }
   }
 }

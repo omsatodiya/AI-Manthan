@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,7 +12,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteTemplateAction } from "@/app/actions/templates";
 import { Template } from "@/constants/templates";
@@ -26,7 +23,6 @@ interface DeleteTemplateDialogProps {
 }
 
 export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange }: DeleteTemplateDialogProps) {
-  const [internalOpen, setInternalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   
   const open = template !== null ? true : false;
@@ -64,7 +60,7 @@ export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange
         <AlertDialogHeader>
           <AlertDialogTitle className="font-sans">Delete Template</AlertDialogTitle>
           <AlertDialogDescription className="font-sans">
-            Are you sure you want to delete the template "{template?.title}"? This action cannot be undone.
+            Are you sure you want to delete the template &quot;{template?.title}&quot;? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

@@ -176,7 +176,7 @@ export default function TemplateEditorPage({
   type FormData = Record<string, string>;
 
   const form = useForm<FormData>({
-    resolver: formSchema ? zodResolver(formSchema) as any : undefined,
+    resolver: formSchema ? zodResolver(formSchema) : undefined,
     defaultValues: {},
   });
 
@@ -273,9 +273,9 @@ export default function TemplateEditorPage({
       setIsAiGenerated(true);
 
       toast.success("Your document has been generated.");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Generation error:", error);
-      toast.error(error.message);
+      toast.error(error instanceof Error ? error.message : 'An error occurred');
     } finally {
       setIsGenerating(false);
     }
