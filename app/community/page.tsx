@@ -2,7 +2,7 @@ import React from 'react'
 import { redirect } from 'next/navigation'
 import { RealtimeChat } from '@/components/community/realtime-chat'
 import { getCurrentUserAction } from '@/app/actions/auth'
-import { Users, MessageCircle, Settings, Crown, ArrowLeft } from 'lucide-react'
+import { MessageCircle, Settings, Crown, ArrowLeft, Megaphone } from 'lucide-react'
 import Link from 'next/link'
 
 const CommunityPage = async () => {
@@ -55,30 +55,17 @@ const CommunityPage = async () => {
         <div className="w-80 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm border-r border-slate-200 dark:border-slate-700 shadow-sm">
           <div className="p-6">
             <div className="space-y-6">
-              {/* Active Members */}
-              <div>
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Active Members
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-white">{currentUser.name.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{currentUser.name}</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">You</p>
-                    </div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  </div>
-                </div>
-              </div>
-
               {/* Quick Actions */}
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3">Quick Actions</h3>
                 <div className="space-y-2">
+                  <Link 
+                    href="/announcements" 
+                    className="w-full flex items-center gap-3 p-3 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Megaphone className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Announcements</span>
+                  </Link>
                   <button className="w-full flex items-center gap-3 p-3 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <Settings className="h-4 w-4 text-slate-500" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Settings</span>
