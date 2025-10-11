@@ -2,11 +2,11 @@
 
 import { cn } from '@/lib/utils'
 import { ChatMessageItem } from '@/components/community/chat-message'
+import { EditMessageDialog } from '@/components/community/edit-message-dialog'
+import { FileUploadButton } from '@/components/community/file-upload-button'
 import { useChatScroll } from '@/hooks/use-chat-scroll'
-import {
-  type ChatMessage,
-  useRealtimeChat,
-} from '@/hooks/use-realtime-chat'
+import { useRealtimeChat } from '@/hooks/use-realtime-chat'
+import type { ChatMessageWithUser } from '@/lib/types/chat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send } from 'lucide-react'
@@ -16,8 +16,8 @@ interface RealtimeChatProps {
   userId: string      // Added userId for FK association
   username: string
   tenantId?: string | null  // Add tenantId prop
-  onMessage?: (messages: ChatMessage[]) => void
-  messages?: ChatMessage[]
+  onMessage?: (messages: ChatMessageWithUser[]) => void
+  messages?: ChatMessageWithUser[]
 }
 
 /**
@@ -41,13 +41,17 @@ export const RealtimeChat = ({
   const {
     messages: realtimeMessages,
     sendMessage,
+    sendMessageWithFile,
+    deleteMessage,
+    updateMessage,
     isConnected,
   } = useRealtimeChat({
     userId,
     username,
-    tenantId, // Pass tenantId to hook
+    tenantId,
   })
   const [newMessage, setNewMessage] = useState('')
+  const [editingMessage, setEditingMessage] = useState<{ id: string; content: string } | null>(null)
 
   // Merge realtime messages with initial messages
   const allMessages = useMemo(() => {
@@ -84,6 +88,37 @@ export const RealtimeChat = ({
     [newMessage, isConnected, sendMessage]
   )
 
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      deleteMessage(messageId)
+    },
+    [deleteMessage]
+  )
+
+  const handleEditMessage = useCallback(
+    (messageId: string, content: string) => {
+      setEditingMessage({ id: messageId, content })
+    },
+    []
+  )
+
+  const handleConfirmEdit = useCallback(
+    (newContent: string) => {
+      if (editingMessage) {
+        updateMessage(editingMessage.id, newContent)
+      }
+    },
+    [editingMessage, updateMessage]
+  )
+
+  const handleFileUpload = useCallback(
+    async (file: File) => {
+      if (!isConnected) return
+      await sendMessageWithFile(file, '')
+    },
+    [isConnected, sendMessageWithFile]
+  )
+
   return (
     <div className="flex flex-col h-full w-full bg-background text-foreground antialiased">
       {/* Messages */}
@@ -105,8 +140,10 @@ export const RealtimeChat = ({
               >
                 <ChatMessageItem
                   message={message}
-                  currentUserId={userId}  // Fixed: use currentUserId instead of isOwnMessage
+                  currentUserId={userId}
                   showHeader={showHeader}
+                  onDelete={handleDeleteMessage}
+                  onEdit={handleEditMessage}
                 />
               </div>
             )
@@ -115,10 +152,11 @@ export const RealtimeChat = ({
       </div>
 
       <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-t border-border p-4">
+        <FileUploadButton onFileSelect={handleFileUpload} disabled={!isConnected} />
         <Input
           className={cn(
             'rounded-full bg-background text-sm transition-all duration-300',
-            isConnected && newMessage.trim() ? 'w-[calc(100%-36px)]' : 'w-full'
+            isConnected && newMessage.trim() ? 'w-[calc(100%-80px)]' : 'w-full'
           )}
           type="text"
           value={newMessage}
@@ -136,6 +174,13 @@ export const RealtimeChat = ({
           </Button>
         )}
       </form>
+
+      <EditMessageDialog
+        open={!!editingMessage}
+        onOpenChange={(open) => !open && setEditingMessage(null)}
+        initialContent={editingMessage?.content || ''}
+        onConfirm={handleConfirmEdit}
+      />
     </div>
   )
 }
