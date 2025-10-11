@@ -1,8 +1,8 @@
 import { cn } from '@/lib/utils'
-import type { ChatMessage } from '@/hooks/use-realtime-chat'
+import type { ChatMessageWithUser } from '@/lib/types/chat'
 
 interface ChatMessageItemProps {
-  message: ChatMessage
+  message: ChatMessageWithUser
   currentUserId: string // Changed to use userId instead of username
   showHeader: boolean
 }

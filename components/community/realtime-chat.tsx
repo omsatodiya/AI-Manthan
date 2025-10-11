@@ -3,10 +3,8 @@
 import { cn } from '@/lib/utils'
 import { ChatMessageItem } from '@/components/community/chat-message'
 import { useChatScroll } from '@/hooks/use-chat-scroll'
-import {
-  type ChatMessage,
-  useRealtimeChat,
-} from '@/hooks/use-realtime-chat'
+import { useRealtimeChat } from '@/hooks/use-realtime-chat'
+import type { ChatMessageWithUser } from '@/lib/types/chat'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Send } from 'lucide-react'
@@ -16,8 +14,8 @@ interface RealtimeChatProps {
   userId: string      // Added userId for FK association
   username: string
   tenantId?: string | null  // Add tenantId prop
-  onMessage?: (messages: ChatMessage[]) => void
-  messages?: ChatMessage[]
+  onMessage?: (messages: ChatMessageWithUser[]) => void
+  messages?: ChatMessageWithUser[]
 }
 
 /**

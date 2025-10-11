@@ -2,21 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
+import type { ChatMessageWithUser } from '@/lib/types/chat'
 
 interface UseRealtimeChatProps {
   userId: string
   username: string
   tenantId?: string | null  // Add tenantId to scope messages
-}
-
-export interface ChatMessage {
-  id: string
-  content: string
-  user: {
-    id: string
-    name: string
-  }
-  createdAt: string
 }
 
 const EVENT_MESSAGE_TYPE = 'message'
@@ -32,7 +23,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
     [] // Empty dependency array - create once
   )
   
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [messages, setMessages] = useState<ChatMessageWithUser[]>([])
   const [channel, setChannel] = useState<ReturnType<typeof supabase.channel> | null>(null)
   const [isConnected, setIsConnected] = useState(false)
 
@@ -73,7 +64,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
 
         if (!isMounted || !data) return
 
-        const mapped: ChatMessage[] = (data as any[]).map((row) => ({
+        const mapped: ChatMessageWithUser[] = (data as any[]).map((row) => ({
           id: row.id,
           content: row.content,
           user: {
@@ -97,7 +88,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
 
     newChannel
       .on('broadcast', { event: EVENT_MESSAGE_TYPE }, (payload) => {
-        setMessages((current) => [...current, payload.payload as ChatMessage])
+        setMessages((current) => [...current, payload.payload as ChatMessageWithUser])
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
@@ -143,7 +134,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
         return
       }
 
-      const message: ChatMessage = {
+      const message: ChatMessageWithUser = {
         id: data.id,
         content: data.content,
         user: {
