@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, UserCheck, Settings, Loader2 } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, Loader2 } from "lucide-react";
 import { getAdminAnalyticsAction } from "@/app/actions/admin";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,14 +56,18 @@ export default function AdminDashboard() {
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Users
+                </CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
                 ) : (
-                  <div className="text-2xl font-bold">{analytics?.totalUsers}</div>
+                  <div className="text-2xl font-bold">
+                    {analytics?.totalUsers}
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -71,14 +75,18 @@ export default function AdminDashboard() {
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Admins</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Total Admins
+                </CardTitle>
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 {isLoading ? (
                   <Loader2 className="h-6 w-6 animate-spin" />
                 ) : (
-                  <div className="text-2xl font-bold">{analytics?.totalAdmins}</div>
+                  <div className="text-2xl font-bold">
+                    {analytics?.totalAdmins}
+                  </div>
                 )}
               </CardContent>
             </Card>

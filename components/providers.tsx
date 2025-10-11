@@ -2,11 +2,12 @@
 
 import { ThemeProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes";
+import { TenantProvider } from "@/contexts/TenantContext";
 
-export function Providers({ children, ...props }: ThemeProviderProps) {
+export function Providers({ children }: ThemeProviderProps) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      {children}
+      <TenantProvider>{children}</TenantProvider>
     </ThemeProvider>
   );
 }

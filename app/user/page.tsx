@@ -56,6 +56,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
+import { TenantSelector } from "@/components/TenantSelector";
 
 interface User {
   id: string;
@@ -168,7 +169,8 @@ export default function UserPage() {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-foreground"
-            onClick={() => router.back()}>
+            onClick={() => router.back()}
+          >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -178,7 +180,8 @@ export default function UserPage() {
           className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-8"
           variants={cardVariants}
           initial="hidden"
-          animate="visible">
+          animate="visible"
+        >
           {/* Left Side: User Profile */}
           <motion.div variants={cardVariants}>
             <Card className="h-full shadow-lg">
@@ -204,7 +207,8 @@ export default function UserPage() {
                 <Form {...form}>
                   <form
                     onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-4">
+                    className="space-y-4"
+                  >
                     <FormField
                       control={form.control}
                       name="fullName"
@@ -226,7 +230,8 @@ export default function UserPage() {
                                 disabled={
                                   isSubmitting ||
                                   form.getValues().fullName === user.name
-                                }>
+                                }
+                              >
                                 {isSubmitting ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
@@ -271,7 +276,8 @@ export default function UserPage() {
                         <AlertDialogAction
                           onClick={handleDeleteAccount}
                           disabled={isSubmitting}
-                          className="bg-destructive hover:bg-destructive/90">
+                          className="bg-destructive hover:bg-destructive/90"
+                        >
                           {isSubmitting && (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           )}
@@ -288,7 +294,8 @@ export default function UserPage() {
           {/* Right Side: Links & Settings */}
           <motion.div
             variants={cardVariants}
-            className="flex flex-col justify-between gap-6 lg:gap-8">
+            className="flex flex-col justify-between gap-6 lg:gap-8"
+          >
             <Card className="shadow-lg">
               <CardHeader>
                 <CardTitle className="text-2xl font-serif">
@@ -303,7 +310,8 @@ export default function UserPage() {
                   <Link href="/admin">
                     <Button
                       variant="outline"
-                      className="w-full justify-start text-base h-12">
+                      className="w-full justify-start text-base h-12"
+                    >
                       <Shield className="mr-3 h-5 w-5 text-primary" />
                       Go to Admin Panel
                     </Button>
@@ -312,7 +320,8 @@ export default function UserPage() {
                   <Link href="/user">
                     <Button
                       variant="outline"
-                      className="w-full justify-start text-base h-12">
+                      className="w-full justify-start text-base h-12"
+                    >
                       <LayoutDashboard className="mr-3 h-5 w-5 text-primary" />
                       Go to User Dashboard
                     </Button>
@@ -333,11 +342,32 @@ export default function UserPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                >
                   <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">Toggle theme</span>
                 </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Right Side: Links & Settings */}
+          <motion.div
+            variants={cardVariants}
+            className="flex flex-col justify-between gap-6 lg:gap-8"
+          >
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-2xl font-serif">
+                  Community/ Tenant
+                </CardTitle>
+                <CardDescription>
+                  Select the Community or Tenant.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <TenantSelector />
               </CardContent>
             </Card>
           </motion.div>

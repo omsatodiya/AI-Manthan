@@ -7,7 +7,6 @@ import {
   useReactTable,
   getPaginationRowModel,
   SortingState,
-  getSortedRowModel,
   Updater,
 } from "@tanstack/react-table";
 import {
@@ -84,7 +83,8 @@ export function DataTable<TData, TValue>({
             variant="outline"
             size="icon"
             onClick={onRefresh}
-            disabled={isLoading}>
+            disabled={isLoading}
+          >
             <span className="sr-only">Refresh</span>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -118,7 +118,8 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  data-state={row.getIsSelected() && "selected"}>
+                  data-state={row.getIsSelected() && "selected"}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
@@ -133,7 +134,8 @@ export function DataTable<TData, TValue>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-24 text-center">
+                  className="h-24 text-center"
+                >
                   No results.
                 </TableCell>
               </TableRow>
@@ -146,7 +148,8 @@ export function DataTable<TData, TValue>({
           variant="outline"
           size="sm"
           onClick={() => onPageChange(pageIndex - 1)}
-          disabled={pageIndex === 0}>
+          disabled={pageIndex === 0}
+        >
           Previous
         </Button>
         <span className="text-sm text-muted-foreground">
@@ -156,7 +159,8 @@ export function DataTable<TData, TValue>({
           variant="outline"
           size="sm"
           onClick={() => onPageChange(pageIndex + 1)}
-          disabled={pageIndex + 1 >= pageCount}>
+          disabled={pageIndex + 1 >= pageCount}
+        >
           Next
         </Button>
       </div>

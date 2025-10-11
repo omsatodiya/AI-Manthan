@@ -35,7 +35,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`antialiased ${sans.variable} ${serif.variable} ${mono.variable}`}>
+        className={`antialiased ${sans.variable} ${serif.variable} ${mono.variable}`}
+      >
         <Providers>
           {children}
           <Toaster />

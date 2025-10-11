@@ -27,13 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 const passwordValidation = new RegExp(
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/
@@ -115,14 +108,16 @@ export default function SignupPage() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md">
+        className="w-full max-w-md"
+      >
         <Card className="bg-card text-card-foreground shadow-lg">
           <CardHeader className="relative">
             <Button
               variant="ghost"
               size="icon"
               className="absolute top-4 left-4"
-              onClick={() => router.back()}>
+              onClick={() => router.back()}
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <CardTitle className="text-2xl font-bold text-center pt-6">
@@ -136,7 +131,8 @@ export default function SignupPage() {
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-4">
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="fullName"
@@ -220,7 +216,8 @@ export default function SignupPage() {
                             size="icon"
                             className="absolute inset-y-0 right-0"
                             onClick={() => setShowPassword(!showPassword)}
-                            disabled={isLoading}>
+                            disabled={isLoading}
+                          >
                             {showPassword ? (
                               <EyeOff className="h-4 w-4" />
                             ) : (
@@ -255,7 +252,8 @@ export default function SignupPage() {
                             onClick={() =>
                               setShowConfirmPassword(!showConfirmPassword)
                             }
-                            disabled={isLoading}>
+                            disabled={isLoading}
+                          >
                             {showConfirmPassword ? (
                               <EyeOff className="h-4 w-4" />
                             ) : (
@@ -271,7 +269,8 @@ export default function SignupPage() {
                 <Button
                   type="submit"
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                  disabled={isLoading}>
+                  disabled={isLoading}
+                >
                   {isLoading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (

@@ -12,19 +12,20 @@ export default function Home() {
   return (
     <AnimatePresence mode="sync">
       <Navbar />
-        <motion.main
-          key="content"
-          className="min-h-screen"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1.2, ease: "easeInOut" }}>
-          <Hero />
-          <Features />
-          <Testimonials />
-          <CTA />
-          <FAQ />
-          <Footer />
-        </motion.main>
+      <motion.main
+        key="content"
+        className="min-h-screen"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.2, ease: "easeInOut" }}
+      >
+        <Hero />
+        <Features />
+        <Testimonials />
+        <CTA />
+        <FAQ />
+        <Footer />
+      </motion.main>
     </AnimatePresence>
   );
 }
