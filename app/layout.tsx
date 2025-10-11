@@ -1,10 +1,31 @@
 import type { Metadata } from "next";
+import { Inter, Merriweather, JetBrains_Mono } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "ConnectIQ",
-  description: "ConnectIQ is a platform for connecting users and businesses, powered by AI",
+  description: "ConnectIQ is a platform for connecting business with AI.",
+  icons: {
+    icon: "/images/logo.svg",
+  },
 };
+
+const sans = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+});
+
+const serif = Merriweather({
+  subsets: ["latin"],
+  variable: "--font-serif",
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export default function RootLayout({
   children,
@@ -12,11 +33,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`antialiased`}
-      >
-        {children}
+        className={`antialiased ${sans.variable} ${serif.variable} ${mono.variable}`}>
+        <Providers>
+          {children}
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );
