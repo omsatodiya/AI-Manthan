@@ -39,6 +39,7 @@ export const RealtimeChat = ({
   const {
     messages: realtimeMessages,
     sendMessage,
+    deleteMessage,
     isConnected,
   } = useRealtimeChat({
     userId,
@@ -82,6 +83,13 @@ export const RealtimeChat = ({
     [newMessage, isConnected, sendMessage]
   )
 
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      deleteMessage(messageId)
+    },
+    [deleteMessage]
+  )
+
   return (
     <div className="flex flex-col h-full w-full bg-background text-foreground antialiased">
       {/* Messages */}
@@ -105,6 +113,7 @@ export const RealtimeChat = ({
                   message={message}
                   currentUserId={userId}  // Fixed: use currentUserId instead of isOwnMessage
                   showHeader={showHeader}
+                  onDelete={handleDeleteMessage}
                 />
               </div>
             )

@@ -21,3 +21,8 @@ export interface ChatUser {
   id: string;
   name: string;
 }
+
+export interface DeleteMessagePayload {
+  messageId: string;
+  userId: string;
+}

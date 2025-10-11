@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import type { ChatMessageWithUser } from '@/lib/types/chat'
+import type { ChatMessageWithUser, DeleteMessagePayload } from '@/lib/types/chat'
+import { chatService } from '@/lib/services/chat-service'
 
 interface UseRealtimeChatProps {
   userId: string
   username: string
-  tenantId?: string | null  // Add tenantId to scope messages
+  tenantId?: string | null
 }
 
 const EVENT_MESSAGE_TYPE = 'message'
-const GLOBAL_CHANNEL_NAME = 'global-chat'  // Single channel for global chatbox
+const EVENT_DELETE_MESSAGE_TYPE = 'delete-message'
+const GLOBAL_CHANNEL_NAME = 'global-chat'
 
 export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatProps) {
   // Memoize the Supabase client to prevent recreation on every render
@@ -20,7 +22,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!
     ),
-    [] // Empty dependency array - create once
+    []
   )
   
   const [messages, setMessages] = useState<ChatMessageWithUser[]>([])
@@ -33,48 +35,10 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
     // Fetch all persisted messages from the chatbox (filtered by tenant)
     const fetchMessages = async () => {
       try {
-        let query = supabase
-          .from('chat_messages')
-          .select(`
-            id,
-            content,
-            created_at,
-            user_id,
-            tenant_id,
-            users!chat_messages_user_id_fkey (
-              id,
-              fullName
-            )
-          `)
-          .order('created_at', { ascending: true })
-
-        // Filter by tenant_id if provided, otherwise show global messages
-        if (tenantId) {
-          query = query.eq('tenant_id', tenantId)
-        } else {
-          query = query.is('tenant_id', null)
+        const fetchedMessages = await chatService.fetchMessages(tenantId)
+        if (isMounted) {
+          setMessages(fetchedMessages)
         }
-
-        const { data, error } = await query
-
-        if (error) {
-          console.error('Failed to fetch chat messages:', error)
-          return
-        }
-
-        if (!isMounted || !data) return
-
-        const mapped: ChatMessageWithUser[] = (data as any[]).map((row) => ({
-          id: row.id,
-          content: row.content,
-          user: {
-            id: row.user_id,
-            name: row.users?.fullName || 'Unknown User',
-          },
-          createdAt: row.created_at,
-        }))
-
-        setMessages(mapped)
       } catch (err) {
         console.error('Error fetching messages', err)
       }
@@ -90,6 +54,10 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       .on('broadcast', { event: EVENT_MESSAGE_TYPE }, (payload) => {
         setMessages((current) => [...current, payload.payload as ChatMessageWithUser])
       })
+      .on('broadcast', { event: EVENT_DELETE_MESSAGE_TYPE }, (payload) => {
+        const { messageId } = payload.payload as DeleteMessagePayload
+        setMessages((current) => current.filter((msg) => msg.id !== messageId))
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true)
@@ -102,60 +70,60 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       isMounted = false
       supabase.removeChannel(newChannel)
     }
-  }, [supabase, tenantId]) // Add tenantId to dependencies
+  }, [supabase, tenantId])
 
   const sendMessage = useCallback(
     async (content: string) => {
       if (!channel || !isConnected) return
 
-      // Insert message into database with tenant_id
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .insert({
-          user_id: userId,
-          content,
-          tenant_id: tenantId || null, // Include tenant_id
+      try {
+        // Insert message into database using service
+        const message = await chatService.createMessage(userId, content, username, tenantId)
+
+        // Broadcast to other clients in the same tenant/global channel
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_MESSAGE_TYPE,
+          payload: message,
         })
-        .select(`
-          id,
-          content,
-          created_at,
-          user_id,
-          tenant_id,
-          users!chat_messages_user_id_fkey (
-            id,
-            fullName
-          )
-        `)
-        .single()
 
-      if (error) {
-        console.error('Failed to insert message:', error)
-        return
+        // Update local state
+        setMessages((current) => [...current, message])
+      } catch (error) {
+        console.error('Failed to send message:', error)
       }
-
-      const message: ChatMessageWithUser = {
-        id: data.id,
-        content: data.content,
-        user: {
-          id: data.user_id,
-          name: (data.users as any)?.[0]?.fullName || (data.users as any)?.fullName || username,
-        },
-        createdAt: data.created_at,
-      }
-
-      // Broadcast to other clients in the same tenant/global channel
-      await channel.send({
-        type: 'broadcast',
-        event: EVENT_MESSAGE_TYPE,
-        payload: message,
-      })
-
-      // Update local state
-      setMessages((current) => [...current, message])
     },
-    [channel, isConnected, userId, username, supabase, tenantId]
+    [channel, isConnected, userId, username, tenantId]
   )
 
-  return { messages, sendMessage, isConnected }
+  const deleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!channel || !isConnected) return
+
+      try {
+        // Delete message from database using service
+        await chatService.deleteMessage(messageId, userId)
+
+        const deletePayload: DeleteMessagePayload = {
+          messageId,
+          userId,
+        }
+
+        // Broadcast deletion to other clients
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_DELETE_MESSAGE_TYPE,
+          payload: deletePayload,
+        })
+
+        // Update local state
+        setMessages((current) => current.filter((msg) => msg.id !== messageId))
+      } catch (error) {
+        console.error('Failed to delete message:', error)
+      }
+    },
+    [channel, isConnected, userId]
+  )
+
+  return { messages, sendMessage, deleteMessage, isConnected }
 }
