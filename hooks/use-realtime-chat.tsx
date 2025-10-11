@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import type { ChatMessageWithUser, DeleteMessagePayload, UpdateMessagePayload } from '@/lib/types/chat'
+import type { ChatMessageWithUser, DeleteMessagePayload, UpdateMessagePayload, AddReactionPayload, RemoveReactionPayload, ReactionType } from '@/lib/types/chat'
 import { chatService } from '@/lib/services/chat-service'
 
 interface UseRealtimeChatProps {
@@ -14,6 +14,8 @@ interface UseRealtimeChatProps {
 const EVENT_MESSAGE_TYPE = 'message'
 const EVENT_DELETE_MESSAGE_TYPE = 'delete-message'
 const EVENT_UPDATE_MESSAGE_TYPE = 'update-message'
+const EVENT_ADD_REACTION_TYPE = 'add-reaction'
+const EVENT_REMOVE_REACTION_TYPE = 'remove-reaction'
 const GLOBAL_CHANNEL_NAME = 'global-chat'
 
 export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatProps) {
@@ -37,8 +39,19 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
     const fetchMessages = async () => {
       try {
         const fetchedMessages = await chatService.fetchMessages(tenantId)
+        
+        // Fetch reactions for all messages
+        const messageIds = fetchedMessages.map((m) => m.id)
+        const reactionsMap = await chatService.fetchReactions(messageIds, userId)
+        
+        // Attach reactions to messages
+        const messagesWithReactions = fetchedMessages.map((msg) => ({
+          ...msg,
+          reactions: reactionsMap.get(msg.id) || [],
+        }))
+        
         if (isMounted) {
-          setMessages(fetchedMessages)
+          setMessages(messagesWithReactions)
         }
       } catch (err) {
         console.error('Error fetching messages', err)
@@ -69,6 +82,72 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
           )
         )
       })
+      .on('broadcast', { event: EVENT_ADD_REACTION_TYPE }, (payload) => {
+        const { messageId, userId: reactorId, userName, reactionType } = payload.payload as AddReactionPayload
+        setMessages((current) =>
+          current.map((msg) => {
+            if (msg.id !== messageId) return msg
+            
+            const reactions = msg.reactions || []
+            const existingGroup = reactions.find((r) => r.type === reactionType)
+            
+            if (existingGroup) {
+              return {
+                ...msg,
+                reactions: reactions.map((r) =>
+                  r.type === reactionType
+                    ? {
+                        ...r,
+                        count: r.count + 1,
+                        users: [...r.users, { id: reactorId, name: userName }],
+                        hasUserReacted: r.hasUserReacted || reactorId === userId,
+                      }
+                    : r
+                ),
+              }
+            } else {
+              return {
+                ...msg,
+                reactions: [
+                  ...reactions,
+                  {
+                    type: reactionType,
+                    count: 1,
+                    users: [{ id: reactorId, name: userName }],
+                    hasUserReacted: reactorId === userId,
+                  },
+                ],
+              }
+            }
+          })
+        )
+      })
+      .on('broadcast', { event: EVENT_REMOVE_REACTION_TYPE }, (payload) => {
+        const { messageId, userId: reactorId, reactionType } = payload.payload as RemoveReactionPayload
+        setMessages((current) =>
+          current.map((msg) => {
+            if (msg.id !== messageId) return msg
+            
+            const reactions = msg.reactions || []
+            return {
+              ...msg,
+              reactions: reactions
+                .map((r) => {
+                  if (r.type !== reactionType) return r
+                  
+                  const newUsers = r.users.filter((u) => u.id !== reactorId)
+                  return {
+                    ...r,
+                    count: r.count - 1,
+                    users: newUsers,
+                    hasUserReacted: r.hasUserReacted && reactorId !== userId,
+                  }
+                })
+                .filter((r) => r.count > 0),
+            }
+          })
+        )
+      })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
           setIsConnected(true)
@@ -81,7 +160,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       isMounted = false
       supabase.removeChannel(newChannel)
     }
-  }, [supabase, tenantId])
+  }, [supabase, tenantId, userId])
 
   const sendMessage = useCallback(
     async (content: string) => {
@@ -209,5 +288,66 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
     [channel, isConnected, userId, username, tenantId]
   )
 
-  return { messages, sendMessage, sendMessageWithFile, deleteMessage, updateMessage, isConnected }
+  const addReaction = useCallback(
+    async (messageId: string, reactionType: ReactionType) => {
+      if (!channel || !isConnected) return
+
+      try {
+        await chatService.addReaction(messageId, userId, username, reactionType, tenantId)
+
+        const payload: AddReactionPayload = {
+          messageId,
+          userId,
+          userName: username,
+          reactionType,
+          tenantId,
+        }
+
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_ADD_REACTION_TYPE,
+          payload,
+        })
+      } catch (error) {
+        console.error('Failed to add reaction:', error)
+      }
+    },
+    [channel, isConnected, userId, username, tenantId]
+  )
+
+  const removeReaction = useCallback(
+    async (messageId: string, reactionType: ReactionType) => {
+      if (!channel || !isConnected) return
+
+      try {
+        await chatService.removeReaction(messageId, userId, reactionType)
+
+        const payload: RemoveReactionPayload = {
+          messageId,
+          userId,
+          reactionType,
+        }
+
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_REMOVE_REACTION_TYPE,
+          payload,
+        })
+      } catch (error) {
+        console.error('Failed to remove reaction:', error)
+      }
+    },
+    [channel, isConnected, userId]
+  )
+
+  return { 
+    messages, 
+    sendMessage, 
+    sendMessageWithFile, 
+    deleteMessage, 
+    updateMessage, 
+    addReaction, 
+    removeReaction, 
+    isConnected 
+  }
 }

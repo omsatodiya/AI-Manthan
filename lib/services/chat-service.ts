@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import type { ChatMessageWithUser, MessageAttachment, UploadFileParams } from '@/lib/types/chat'
+import type { ChatMessageWithUser, MessageAttachment, UploadFileParams, Reaction, ReactionGroup, ReactionType } from '@/lib/types/chat'
 import { isMessageEdited } from '@/lib/utils/chat-utils'
 
 export class ChatService {
@@ -79,7 +78,7 @@ export class ChatService {
         attachment_size: attachment.fileSize,
         attachment_type: attachment.fileType,
         attachment_url: attachment.fileUrl,
-      } as any)
+      })
       .select(`
         id,
         content,
@@ -105,24 +104,164 @@ export class ChatService {
     }
 
     return {
-      id: (data as any).id,
-      content: (data as any).content,
+      id: data.id,
+      content: data.content,
       user: {
-        id: (data as any).user_id,
-        name: ((data as any).users as any)?.[0]?.fullName || ((data as any).users as any)?.fullName || username,
+        id: data.user_id,
+        name: (data.users as any)?.[0]?.fullName || (data.users as any)?.fullName || username,
       },
-      createdAt: (data as any).created_at,
-      updatedAt: (data as any).updated_at,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
       isEdited: false,
-      attachment: (data as any).attachment_id
+      attachment: data.attachment_id
         ? {
-            id: (data as any).attachment_id,
-            fileName: (data as any).attachment_name,
-            fileSize: (data as any).attachment_size,
-            fileType: (data as any).attachment_type,
-            fileUrl: (data as any).attachment_url,
+            id: data.attachment_id,
+            fileName: data.attachment_name,
+            fileSize: data.attachment_size,
+            fileType: data.attachment_type,
+            fileUrl: data.attachment_url,
           }
         : null,
+    }
+  }
+
+  /**
+   * Group reactions by type for a message
+   */
+  private groupReactions(reactions: Reaction[], currentUserId: string): ReactionGroup[] {
+    const groups = new Map<ReactionType, ReactionGroup>()
+
+    reactions.forEach((reaction) => {
+      const existing = groups.get(reaction.reactionType)
+      if (existing) {
+        existing.count++
+        existing.users.push({ id: reaction.userId, name: reaction.userName })
+        if (reaction.userId === currentUserId) {
+          existing.hasUserReacted = true
+        }
+      } else {
+        groups.set(reaction.reactionType, {
+          type: reaction.reactionType,
+          count: 1,
+          users: [{ id: reaction.userId, name: reaction.userName }],
+          hasUserReacted: reaction.userId === currentUserId,
+        })
+      }
+    })
+
+    return Array.from(groups.values())
+  }
+
+  /**
+   * Fetch reactions for messages
+   */
+  async fetchReactions(messageIds: string[], currentUserId: string): Promise<Map<string, ReactionGroup[]>> {
+    if (messageIds.length === 0) return new Map()
+
+    try {
+      const { data, error } = await this.supabase
+        .from('chat_reactions')
+        .select(`
+          id,
+          message_id,
+          user_id,
+          reaction_type,
+          created_at,
+          users!chat_reactions_user_id_fkey (
+            id,
+            fullName
+          )
+        `)
+        .in('message_id', messageIds)
+
+      if (error) throw error
+
+      const reactionsByMessage = new Map<string, Reaction[]>()
+
+      data?.forEach((row: any) => {
+        const reaction: Reaction = {
+          id: row.id,
+          messageId: row.message_id,
+          userId: row.user_id,
+          userName: row.users?.fullName || 'Unknown User',
+          reactionType: row.reaction_type,
+          createdAt: row.created_at,
+        }
+
+        const existing = reactionsByMessage.get(row.message_id) || []
+        existing.push(reaction)
+        reactionsByMessage.set(row.message_id, existing)
+      })
+
+      // Group reactions for each message
+      const groupedReactions = new Map<string, ReactionGroup[]>()
+      reactionsByMessage.forEach((reactions, messageId) => {
+        groupedReactions.set(messageId, this.groupReactions(reactions, currentUserId))
+      })
+
+      return groupedReactions
+    } catch (error) {
+      console.error('Error fetching reactions:', error)
+      return new Map()
+    }
+  }
+
+  /**
+   * Add a reaction to a message
+   */
+  async addReaction(
+    messageId: string,
+    userId: string,
+    userName: string,
+    reactionType: ReactionType,
+    tenantId?: string | null
+  ): Promise<Reaction> {
+    const { data, error } = await this.supabase
+      .from('chat_reactions')
+      .insert({
+        message_id: messageId,
+        user_id: userId,
+        reaction_type: reactionType,
+        tenant_id: tenantId || null,
+      })
+      .select(`
+        id,
+        message_id,
+        user_id,
+        reaction_type,
+        created_at
+      `)
+      .single()
+
+    if (error) {
+      console.error('Failed to add reaction:', error)
+      throw error
+    }
+
+    return {
+      id: data.id,
+      messageId: data.message_id,
+      userId: data.user_id,
+      userName,
+      reactionType: data.reaction_type,
+      createdAt: data.created_at,
+    }
+  }
+
+  /**
+   * Remove a reaction from a message
+   */
+  async removeReaction(messageId: string, userId: string, reactionType: ReactionType): Promise<void> {
+    const { error } = await this.supabase
+      .from('chat_reactions')
+      .delete()
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+      .eq('reaction_type', reactionType)
+
+    if (error) {
+      console.error('Failed to remove reaction:', error)
+      throw error
     }
   }
 
@@ -168,19 +307,11 @@ export class ChatService {
 
       if (!data) return []
 
-      return data.map((row: {
-        id: string;
-        content: string;
-        user_id: string;
-        created_at: string;
-        updated_at: string;
-        attachment_id?: string;
-        attachment_name?: string;
-        attachment_size?: number;
-        attachment_type?: string;
-        attachment_url?: string;
-        users?: { fullName: string };
-      }) => ({
+      const messageIds = data.map((row: any) => row.id)
+      
+      // Fetch reactions for all messages - note: we need currentUserId here
+      // For now, we'll fetch reactions separately in the hook
+      const messages: ChatMessageWithUser[] = (data as any[]).map((row) => ({
         id: row.id,
         content: row.content,
         user: {
@@ -193,13 +324,16 @@ export class ChatService {
         attachment: row.attachment_id
           ? {
               id: row.attachment_id,
-              fileName: row.attachment_name || '',
-              fileSize: row.attachment_size || 0,
-              fileType: row.attachment_type || '',
-              fileUrl: row.attachment_url || '',
+              fileName: row.attachment_name,
+              fileSize: row.attachment_size,
+              fileType: row.attachment_type,
+              fileUrl: row.attachment_url,
             }
           : null,
+        reactions: [], // Will be populated by the hook
       }))
+
+      return messages
     } catch (err) {
       console.error('Error fetching messages', err)
       throw err
@@ -215,13 +349,13 @@ export class ChatService {
     username: string,
     tenantId?: string | null
   ): Promise<ChatMessageWithUser> {
-    const { data, error } = await (this.supabase
+    const { data, error } = await this.supabase
       .from('chat_messages')
       .insert({
         user_id: userId,
         content,
         tenant_id: tenantId || null,
-      } as any) as any)
+      })
       .select(`
         id,
         content,
@@ -242,14 +376,14 @@ export class ChatService {
     }
 
     return {
-      id: (data as any).id,
-      content: (data as any).content,
+      id: data.id,
+      content: data.content,
       user: {
-        id: (data as any).user_id,
-        name: ((data as any).users as any)?.[0]?.fullName || ((data as any).users as any)?.fullName || username,
+        id: data.user_id,
+        name: (data.users as any)?.[0]?.fullName || (data.users as any)?.fullName || username,
       },
-      createdAt: (data as any).created_at,
-      updatedAt: (data as any).updated_at,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
       isEdited: false,
     }
   }
@@ -305,9 +439,9 @@ export class ChatService {
     }
 
     // If message had an attachment, delete the file from storage
-    if ((messageData as any)?.attachment_id) {
+    if (messageData?.attachment_id) {
       try {
-        await this.deleteFile((messageData as any).attachment_id)
+        await this.deleteFile(messageData.attachment_id)
       } catch (error) {
         // Log error but don't fail the operation if file deletion fails
         console.error('Failed to delete attachment file, but message was deleted:', error)
@@ -315,7 +449,7 @@ export class ChatService {
     }
 
     // Return the attachment_id if it existed (for cleanup purposes)
-    return (messageData as any)?.attachment_id || null
+    return messageData?.attachment_id || null
   }
 
   /**
@@ -326,7 +460,7 @@ export class ChatService {
     userId: string,
     content: string
   ): Promise<ChatMessageWithUser> {
-    const { data, error } = await (this.supabase as any)
+    const { data, error } = await this.supabase
       .from('chat_messages')
       .update({ content, updated_at: new Date().toISOString() })
       .eq('id', messageId)

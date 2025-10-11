@@ -1,70 +1,66 @@
-"use client";
+'use client'
 
-import { useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Paperclip, Loader2 } from "lucide-react";
-import { validateFileSize, validateFileType } from "@/lib/utils/file-utils";
-import { useToast } from "@/hooks/use-toast";
+import { useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Paperclip, Loader2 } from 'lucide-react'
+import { validateFileSize, validateFileType } from '@/lib/utils/file-utils'
+import { useToast } from '@/hooks/use-toast'
 
 interface FileUploadButtonProps {
-  onFileSelect: (file: File) => Promise<void>;
-  disabled?: boolean;
+  onFileSelect: (file: File) => Promise<void>
+  disabled?: boolean
 }
 
-export const FileUploadButton = ({
-  onFileSelect,
-  disabled,
-}: FileUploadButtonProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+export const FileUploadButton = ({ onFileSelect, disabled }: FileUploadButtonProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const { toast } = useToast();
 
   const handleClick = () => {
-    fileInputRef.current?.click();
-  };
+    fileInputRef.current?.click()
+  }
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const file = e.target.files?.[0]
+    if (!file) return
 
     // Validate file type
     if (!validateFileType(file.type)) {
       toast({
-        title: "Invalid file type",
-        description:
-          "Please upload an image or document file (PDF, Word, Excel, Text).",
-        variant: "destructive",
-      });
-      return;
+        title: 'Invalid file type',
+        description: 'Please upload an image or document file (PDF, Word, Excel, Text).',
+        variant: 'destructive',
+      })
+      return
     }
 
     // Validate file size (10MB max)
     if (!validateFileSize(file.size, 10)) {
       toast({
-        title: "File too large",
-        description: "Please upload a file smaller than 10MB.",
-        variant: "destructive",
-      });
-      return;
+        title: 'File too large',
+        description: 'Please upload a file smaller than 10MB.',
+        variant: 'destructive',
+      })
+      return
     }
 
     try {
-      setIsUploading(true);
-      await onFileSelect(file);
-    } catch {
+      setIsUploading(true)
+      await onFileSelect(file)
+    } catch (error) {
       toast({
-        title: "Upload failed",
-        description: "Failed to upload file. Please try again.",
-        variant: "destructive",
-      });
+        title: 'Upload failed',
+        description: 'Failed to upload file. Please try again.',
+        variant: 'destructive',
+      })
     } finally {
-      setIsUploading(false);
+      setIsUploading(false)
       // Reset input
       if (fileInputRef.current) {
-        fileInputRef.current.value = "";
+        fileInputRef.current.value = ''
       }
     }
-  };
+  }
 
   return (
     <>
@@ -91,5 +87,5 @@ export const FileUploadButton = ({
         )}
       </Button>
     </>
-  );
-};
+  )
+}
