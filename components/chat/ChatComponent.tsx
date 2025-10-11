@@ -35,10 +35,10 @@ interface Message {
     email: string;
   };
   content: string;
-  attachments?: any;
+  attachments?: unknown;
   createdAt: string;
   readBy: string[];
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   isRead: boolean;
   isPending?: boolean; // For optimistic UI
 }
@@ -78,8 +78,8 @@ export function ChatComponent({
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const supabaseRef = useRef<any>(null);
-  const subscriptionRef = useRef<any>(null);
+  const supabaseRef = useRef<unknown>(null);
+  const subscriptionRef = useRef<unknown>(null);
 
   // Fetch current user
   useEffect(() => {
@@ -178,7 +178,7 @@ export function ChatComponent({
         setIsSending(false);
       }
     },
-    [currentUser]
+    [currentUser, addMessage, removeMessage, updateMessage]
   );
 
   // Handle send message
@@ -202,7 +202,8 @@ export function ChatComponent({
   useEffect(() => {
     if (!supabaseRef.current || !conversationId) return;
 
-    const supabase = supabaseRef.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const supabase = supabaseRef.current as any;
 
     // Subscribe to new messages
     const subscription = supabase
@@ -215,7 +216,7 @@ export function ChatComponent({
           table: "messages",
           filter: `conversation_id=eq.${conversationId}`,
         },
-        async (payload: any) => {
+        async (payload: unknown) => {
           console.log("New message received:", payload);
 
           // Fetch the complete message with sender details
@@ -234,7 +235,8 @@ export function ChatComponent({
                  metadata
                `
               )
-              .eq("id", payload.new.id)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .eq("id", (payload as any).new.id)
               .single();
 
             if (error || !message) {
@@ -287,7 +289,7 @@ export function ChatComponent({
         subscriptionRef.current = null;
       }
     };
-  }, [conversationId, currentUser]);
+  }, [conversationId, currentUser, addMessage]);
 
   // Auto-scroll to bottom when new messages arrive (only for new messages, not when loading older ones)
   useEffect(() => {
@@ -299,7 +301,7 @@ export function ChatComponent({
   // Handle scroll to top for loading more messages
   const handleScroll = useCallback(
     (e: React.UIEvent<HTMLDivElement>) => {
-      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const { scrollTop } = e.currentTarget;
 
       // Load more when scrolled to top (within 100px)
       if (scrollTop < 100 && hasMore && !isLoadingMore && nextCursor) {

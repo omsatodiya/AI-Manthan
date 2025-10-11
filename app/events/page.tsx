@@ -84,7 +84,7 @@ export default function EventPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pt-16">
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}

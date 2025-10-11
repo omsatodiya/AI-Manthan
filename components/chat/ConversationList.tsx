@@ -1,16 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import {
   MessageCircle,
   Users,
-  Clock,
   Loader2,
   RefreshCw,
-  Plus,
   Search,
 } from "lucide-react";
 
@@ -72,7 +69,7 @@ export function ConversationList() {
   }, []);
 
   // Fetch conversations
-  const fetchConversations = async (showRefreshLoader = false) => {
+  const fetchConversations = useCallback(async (showRefreshLoader = false) => {
     if (!currentUser?.id) return;
 
     try {
@@ -116,7 +113,7 @@ export function ConversationList() {
       });
 
       // Fetch user details separately
-      let usersData: any[] = [];
+      let usersData: { id: string; fullName: string; email: string }[] = [];
       if (userIds.size > 0) {
         const { data: users, error: usersError } = await supabase
           .from("users")
@@ -132,7 +129,7 @@ export function ConversationList() {
 
       // Fetch last messages for each conversation
       const conversationIds = conversationsData?.map((c) => c.id) || [];
-      let lastMessages: any[] = [];
+      let lastMessages: { id: string; conversation_id: string; content: string; created_at: string; sender_id: string }[] = [];
 
       if (conversationIds.length > 0) {
         const { data: messagesData, error: messagesError } = await supabase
@@ -193,14 +190,14 @@ export function ConversationList() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [currentUser]);
 
   // Load conversations when user is available
   useEffect(() => {
     if (currentUser) {
       fetchConversations();
     }
-  }, [currentUser]);
+  }, [currentUser, fetchConversations]);
 
   // Setup real-time subscription for conversation updates
   useEffect(() => {
@@ -251,7 +248,7 @@ export function ConversationList() {
     return () => {
       cleanup.then((cleanupFn) => cleanupFn?.());
     };
-  }, [currentUser]);
+  }, [currentUser, fetchConversations]);
 
   // Filter conversations based on search term
   const filteredConversations = conversations.filter((conv) => {
@@ -381,7 +378,7 @@ export function ConversationList() {
                 </p>
                 {!searchTerm && (
                   <p className="text-sm mt-2">
-                    Start a conversation with someone you've connected with
+                    Start a conversation with someone you&apos;ve connected with
                   </p>
                 )}
               </div>

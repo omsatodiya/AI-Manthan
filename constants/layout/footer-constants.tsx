@@ -79,11 +79,19 @@ export const footerConfig: FooterConfig = {
   sections: [
     {
       title: "Platform",
-      links: [{ href: "/", label: "Home" }],
+      links: [
+        { href: "/", label: "Home" },
+        { href: "/templates", label: "Templates" },
+        { href: "/community", label: "Community" },
+      ],
     },
     {
       title: "Business",
-      links: [{ href: "/about", label: "About" }],
+      links: [
+        { href: "/announcements", label: "Announcements" },
+        { href: "/events", label: "Events" },
+        { href: "/about", label: "About" },
+      ],
     },
   ],
   contactInfo: {

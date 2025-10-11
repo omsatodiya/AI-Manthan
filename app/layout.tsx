@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Merriweather, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers";
+import { Navbar } from "@/components/layout/navbar";
+import { Footer } from "@/components/layout/footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -38,7 +40,11 @@ export default function RootLayout({
         className={`antialiased ${sans.variable} ${serif.variable} ${mono.variable}`}
       >
         <Providers>
-          {children}
+          <Navbar />
+          <main className="min-h-screen">
+            {children}
+          </main>
+          <Footer />
           <Toaster />
         </Providers>
       </body>

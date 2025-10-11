@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     messages?.forEach(msg => senderIds.add(msg.sender_id));
 
     // Fetch sender details separately
-    let sendersData: any[] = [];
+    let sendersData: { id: string; fullName: string; email: string }[] = [];
     if (senderIds.size > 0) {
       const { data: senders, error: sendersError } = await supabase
         .from("users")
@@ -352,7 +352,7 @@ export async function PATCH(request: NextRequest) {
       updateQuery = supabase
         .from("messages")
         .update({
-          read_by: supabase.raw(`array_append(read_by, '${currentUser.id}')`)
+          read_by: `array_append(read_by, '${currentUser.id}')`
         })
         .in("id", messageIds)
         .eq("conversation_id", conversationId)
@@ -363,7 +363,7 @@ export async function PATCH(request: NextRequest) {
       updateQuery = supabase
         .from("messages")
         .update({
-          read_by: supabase.raw(`array_append(read_by, '${currentUser.id}')`)
+          read_by: `array_append(read_by, '${currentUser.id}')`
         })
         .eq("conversation_id", conversationId)
         .neq("sender_id", currentUser.id) // Don't mark own messages as read

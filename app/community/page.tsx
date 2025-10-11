@@ -23,6 +23,7 @@ const CommunityPage = async () => {
   }
 
   return (
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 pt-16">
     <div className="h-screen w-full bg-background">
       {/* Header */}
       <div className="h-16 bg-card/80 backdrop-blur-sm border-b border-border shadow-sm">

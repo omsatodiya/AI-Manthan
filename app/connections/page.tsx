@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import {
@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowLeft,
-  Home,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { getSupabaseClient } from "@/lib/database/clients";
 import { AuthUser } from "@/lib/types";
@@ -54,11 +52,6 @@ interface Connection {
   };
 }
 
-interface ConnectionsResponse {
-  success: boolean;
-  data: Connection[];
-  error?: string;
-}
 
 export default function ConnectionsPage() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
@@ -88,14 +81,7 @@ export default function ConnectionsPage() {
     fetchCurrentUser();
   }, []);
 
-  // Fetch connections when user is loaded
-  useEffect(() => {
-    if (currentUser?.id) {
-      fetchConnections();
-    }
-  }, [currentUser]);
-
-  const fetchConnections = async (showRefreshLoader = false) => {
+  const fetchConnections = useCallback(async (showRefreshLoader = false) => {
     if (!currentUser?.id) return;
 
     try {
@@ -188,7 +174,14 @@ export default function ConnectionsPage() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  };
+  }, [currentUser]);
+
+  // Fetch connections when user is loaded
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchConnections();
+    }
+  }, [currentUser, fetchConnections]);
 
   const handleConnectionAction = async (
     connectionId: string,
