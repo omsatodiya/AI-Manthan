@@ -4,12 +4,45 @@ import { jwtVerify } from "jose";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
+function hasSubdomain(host: string | null): boolean {
+  if (!host) return false;
+  const withoutPort = host.split(":")[0];
+  const parts = withoutPort.split(".");
+  if (parts.length <= 2) return false;
+  const first = parts[0].toLowerCase();
+  return first !== "www";
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("auth_token")?.value;
+  const host = request.headers.get("host");
+  const onTenantSubdomain = hasSubdomain(host);
 
   const isAdminPath = pathname.startsWith("/admin");
   const isUserPath = pathname.startsWith("/user");
+  const isAuthPath =
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname.startsWith("/api/auth/");
+  const isHomePage = pathname === "/";
+
+  const hasValidTenant =
+    onTenantSubdomain ||
+    (process.env.NODE_ENV !== "production" && process.env.TENANT);
+
+  if (!hasValidTenant && !isHomePage) {
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
+  if (isAuthPath && !onTenantSubdomain) {
+    const devTenant = process.env.TENANT?.toLowerCase();
+    if (!devTenant) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
 
   if (isAdminPath || isUserPath) {
     if (!token) {
@@ -40,5 +73,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/user/:path*"],
+  matcher: [
+    "/admin/:path*",
+    "/user/:path*",
+    "/login",
+    "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/api/auth/:path*",
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
 };

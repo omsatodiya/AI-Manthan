@@ -58,7 +58,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
-import { TenantSelector } from "@/components/user/tenant-selector";
+ 
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters."),
@@ -364,26 +364,7 @@ export default function UserPage() {
               </CardContent>
             </Card>
           </motion.div>
-
-          {/* Right Side: Links & Settings */}
-          <motion.div
-            variants={cardVariants}
-            className="flex flex-col justify-between gap-6 lg:gap-8"
-          >
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-2xl font-serif">
-                  Community/ Tenant
-                </CardTitle>
-                <CardDescription>
-                  Select the Community or Tenant.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <TenantSelector />
-              </CardContent>
-            </Card>
-          </motion.div>
+          
         </motion.div>
       </div>
     </main>

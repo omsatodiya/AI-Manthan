@@ -6,6 +6,7 @@ import { SortingState } from "@tanstack/react-table";
 import { ArrowLeft, Loader2, PlusCircle } from "lucide-react";
 import { User } from "@/lib/types";
 import { getUsersAction } from "@/app/actions/admin";
+import { useTenant } from "@/contexts/tenant-context";
 import { DataTable } from "@/components/custom/data-table";
 import { getColumns } from "./columns";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { DeleteUserDialog } from "@/components/admin/users/delete-user-dialog";
 
 export default function AdminUsersPage() {
   const router = useRouter();
+  const { tenantId } = useTenant();
   const [data, setData] = useState<{ users: User[]; pageCount: number }>({
     users: [],
     pageCount: 0,
@@ -46,11 +48,12 @@ export default function AdminUsersPage() {
       sort: sorting[0]
         ? { id: sorting[0].id, desc: sorting[0].desc }
         : undefined,
+      tenantId: tenantId || undefined,
     }).then((result) => {
       setData({ users: result.users, pageCount: result.pageCount });
       setIsLoading(false);
     });
-  }, [pageIndex, filter, sorting, refreshCounter]);
+  }, [pageIndex, filter, sorting, refreshCounter, tenantId]);
 
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);

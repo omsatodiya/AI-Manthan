@@ -22,7 +22,15 @@ export async function getCurrentUserAction(): Promise<AuthUser | null> {
     }
     const secret = new TextEncoder().encode(JWT_SECRET);
     const { payload }: { payload: JWTPayload } = await jwtVerify(token, secret);
-    const userId = payload.userId as string;
+    interface AuthJWTPayload extends JWTPayload {
+      userId?: string;
+      email?: string;
+      role?: string;
+      tenantId?: string | null;
+    }
+    const authPayload = payload as AuthJWTPayload;
+    const userId = authPayload.userId as string;
+    const tokenTenantId = authPayload.tenantId;
 
     if (!userId) return null;
 
@@ -38,6 +46,7 @@ export async function getCurrentUserAction(): Promise<AuthUser | null> {
       name: user.fullName,
       email: user.email,
       role: user.role,
+      tenantId: tokenTenantId ?? null,
     };
   } catch (error) {
     console.error("Authentication error in server action:", error);
@@ -47,24 +56,7 @@ export async function getCurrentUserAction(): Promise<AuthUser | null> {
 }
 
 export async function logoutAction() {
-  try {
-    const response = await fetch("/api/auth/logout", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Logout failed");
-    }
-
-    const cookieStore = await cookies();
-    cookieStore.delete("auth_token");
-  } catch (error) {
-    console.error("Logout error:", error);
-
-    const cookieStore = await cookies();
-    cookieStore.delete("auth_token");
-  }
+  const cookieStore = await cookies();
+  cookieStore.delete("auth_token");
+  return { success: true };
 }

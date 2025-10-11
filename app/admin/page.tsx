@@ -16,10 +16,18 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getAdminAnalyticsAction().then((data) => {
-      setAnalytics(data);
-      setIsLoading(false);
-    });
+    setIsLoading(true);
+    (async () => {
+      try {
+        const data = await getAdminAnalyticsAction();
+        setAnalytics(data);
+      } catch (err) {
+        console.error("Failed to load analytics:", err);
+        setAnalytics({ totalUsers: 0, totalAdmins: 0 });
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
   const containerVariants = {
@@ -46,8 +54,7 @@ export default function AdminDashboard() {
           className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
           variants={containerVariants}
           initial="hidden"
-          animate="visible"
-        >
+          animate="visible">
           {/* Analytics Section */}
           <motion.div variants={itemVariants}>
             <Card className="dark:bg-card/60 dark:border-border">
@@ -96,8 +103,7 @@ export default function AdminDashboard() {
             className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
             variants={containerVariants}
             initial="hidden"
-            animate="visible"
-          >
+            animate="visible">
             <motion.div variants={itemVariants}>
               <Link href="/admin/users">
                 <Card className="hover:bg-accent hover:border-primary transition-colors dark:bg-card/60 dark:border-border">

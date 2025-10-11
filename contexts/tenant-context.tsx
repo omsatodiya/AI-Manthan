@@ -8,7 +8,9 @@ interface TenantContextType {
   setTenantId: (tenantId: string) => void;
   isLoading: boolean;
   availableTenants: Pick<Tenant, "id" | "name" | "slug">[];
-  setAvailableTenants: (tenants: Pick<Tenant, "id" | "name" | "slug">[]) => void;
+  setAvailableTenants: (
+    tenants: Pick<Tenant, "id" | "name" | "slug">[]
+  ) => void;
 }
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
@@ -25,14 +27,29 @@ export function TenantProvider({
   const [tenantId, setTenantIdState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [availableTenants, setAvailableTenants] =
-    useState<Pick<Tenant, "id" | "name" | "slug">[]>(
-      initialTenants
-    );
+    useState<Pick<Tenant, "id" | "name" | "slug">[]>(initialTenants);
 
   useEffect(() => {
     const savedTenantId = localStorage.getItem("selectedTenantId");
 
-    if (
+    let subdomainSlug: string | null = null;
+    if (typeof window !== "undefined") {
+      const host = window.location.host.split(":")[0];
+      const parts = host.split(".");
+      if (parts.length > 2) {
+        const first = parts[0].toLowerCase();
+        if (first !== "www") subdomainSlug = first;
+      }
+    }
+
+    const tenantFromSubdomain = subdomainSlug
+      ? availableTenants.find((t) => t.slug?.toLowerCase() === subdomainSlug)
+      : undefined;
+
+    if (tenantFromSubdomain) {
+      setTenantIdState(tenantFromSubdomain.id);
+      localStorage.setItem("selectedTenantId", tenantFromSubdomain.id);
+    } else if (
       savedTenantId &&
       availableTenants.some((tenant) => tenant.id === savedTenantId)
     ) {

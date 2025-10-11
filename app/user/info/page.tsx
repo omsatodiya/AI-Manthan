@@ -17,6 +17,7 @@ import {
 
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { getUserInfoAction, saveUserInfoAction } from "@/app/actions/user-info";
+import { useTenant } from "@/contexts/tenant-context";
 import { AuthUser, UserInfo } from "@/lib/types";
 import { questions, getTotalQuestions } from "@/constants/user/questions";
 
@@ -34,6 +35,7 @@ import { QuestionRenderer } from "@/components/user/question-renderer";
 
 export default function UserInfoPage() {
   const router = useRouter();
+  const { tenantId } = useTenant();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +92,7 @@ export default function UserInfoPage() {
       try {
         const [currentUser, userInfoResult] = await Promise.all([
           getCurrentUserAction(),
-          getUserInfoAction(),
+          getUserInfoAction(tenantId || undefined),
         ]);
 
         if (currentUser) {
@@ -132,7 +134,7 @@ export default function UserInfoPage() {
       }
     };
     fetchData();
-  }, [router]);
+  }, [router, tenantId]);
 
   useEffect(() => {
     if (Object.keys(savedAnswers).length > 0) {
@@ -238,7 +240,7 @@ export default function UserInfoPage() {
         dataToSave.eventFormat = values.eventFormat;
       }
 
-      const result = await saveUserInfoAction(dataToSave);
+      const result = await saveUserInfoAction(dataToSave, tenantId || undefined);
 
       if (result.success) {
         setSavedAnswers((prev) => ({ ...prev, ...dataToSave }));

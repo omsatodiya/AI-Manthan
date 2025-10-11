@@ -79,8 +79,8 @@ export const ctaConfig: CTAConfig = {
       variant: "primary",
     },
     {
-      text: "Request a Demo",
-      href: "/demo",
+      text: "Get Started",
+      href: "/hub",
       variant: "secondary",
     },
   ],

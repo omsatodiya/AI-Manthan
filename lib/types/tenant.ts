@@ -12,7 +12,7 @@ export interface TenantMember {
   id: string;
   userId: string;
   tenantId: string;
-  role: "owner" | "admin" | "member" | "viewer";
+  role: "owner" | "member";
   permissions?: string[] | null;
   joinedAt: string;
   user?: import("./user").User | null;
@@ -23,7 +23,7 @@ export interface TenantInvitation {
   id: string;
   tenantId: string;
   email: string;
-  role: "admin" | "member" | "viewer";
+  role: "owner" | "member";
   invitedBy: string;
   token: string;
   expiresAt: string;

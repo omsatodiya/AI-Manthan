@@ -30,6 +30,7 @@ export function useTenantSelection(
   const availableTenants = tenantMembers.map((member) => ({
     id: member.tenantId,
     name: member.tenant?.name || `Tenant ${member.tenantId}`,
+    slug: member.tenant?.slug,
     role: member.role,
   }));
 

@@ -4,6 +4,7 @@ import { SignJWT } from "jose";
 import { v4 as uuidv4 } from "uuid";
 import { getDb } from "@/lib/database";
 import { User, SignupRequest, SignupResponse } from "@/lib/types";
+import { headers } from "next/headers";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -21,10 +22,37 @@ export async function POST(request: Request) {
       );
     }
 
-    const existingUser = await db.findUserByEmail(email);
+    const hdrs = await headers();
+    const host = hdrs.get("host") || "";
+    const parts = host.split(":")[0].split(".");
+    const subdomain = parts.length > 2 ? parts[0].toLowerCase() : null;
+
+    let tenantId: string | null = null;
+    const tenant = subdomain
+      ? await (await getDb()).findTenantBySlug(subdomain)
+      : null;
+    tenantId = tenant?.id || null;
+    if (!tenantId) {
+      const devTenant = process.env.TENANT?.toLowerCase();
+      if (devTenant) {
+        const devTenantRow = await (await getDb()).findTenantBySlug(devTenant);
+        tenantId = devTenantRow?.id || null;
+      }
+    }
+
+    if (!tenantId) {
+      return NextResponse.json(
+        { message: "Tenant not found for this signup host" },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await (
+      await getDb()
+    ).findUserByEmailInTenant(email, tenantId);
     if (existingUser) {
       return NextResponse.json(
-        { message: "User already exists" },
+        { message: "User already exists in this tenant" },
         { status: 409 }
       );
     }
@@ -38,6 +66,7 @@ export async function POST(request: Request) {
       email: email.toLowerCase(),
       passwordHash,
       role: role as "admin" | "user",
+      tenantId,
       createdAt: now,
       updatedAt: now,
     };
@@ -50,12 +79,28 @@ export async function POST(request: Request) {
       );
     }
 
+    if (tenantId) {
+      try {
+        await (
+          await getDb()
+        ).addTenantMember({
+          userId: createdUser.id,
+          tenantId,
+          role: "member",
+          permissions: [],
+        });
+      } catch (e) {
+        console.error("Failed to create tenant membership:", e);
+      }
+    }
+
     if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
     const secret = new TextEncoder().encode(JWT_SECRET);
     const token = await new SignJWT({
       userId: createdUser.id,
       email: createdUser.email,
       role: createdUser.role,
+      tenantId: tenantId || null,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("1d")

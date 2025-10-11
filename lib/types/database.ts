@@ -4,13 +4,15 @@ import { Tenant, TenantMember, TenantInvitation } from "./tenant";
 
 export interface DatabaseAdapter {
   findUserByEmail(email: string): Promise<User | null>;
+  findUserByEmailInTenant(email: string, tenantId: string): Promise<User | null>;
+  setUserTenantId(userId: string, tenantId: string | null): Promise<boolean>;
   findUserById(id: string): Promise<User | null>;
   createUser(
     user: Omit<User, "otp" | "otpExpires" | "createdAt" | "updatedAt">
   ): Promise<User | null>;
   updateUser(id: string, data: Partial<User>): Promise<User | null>;
   deleteUserById(id: string): Promise<boolean>;
-  getAdminAnalytics(): Promise<AdminAnalytics>;
+  getAdminAnalytics(tenantId?: string): Promise<AdminAnalytics>;
   getPaginatedUsers(params: GetUsersParams): Promise<PaginatedUsersResult>;
 
   getUserInfo(userId: string, tenantId?: string): Promise<UserInfo | null>;
@@ -69,4 +71,5 @@ export interface GetUsersParams {
   pageSize: number;
   query?: string;
   sort?: { id: string; desc: boolean };
+  tenantId?: string;
 }
