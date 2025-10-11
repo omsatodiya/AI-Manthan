@@ -6,7 +6,6 @@ export interface Announcement {
   tenantId: string;
   createdBy: string;
   createdAt: string;
-  updatedAt?: string | null;
 }
 
 export interface CreateAnnouncementData {

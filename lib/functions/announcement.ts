@@ -38,7 +38,6 @@ export const announcementFunctions = {
         tenantId: announcement.tenant_id,
         createdBy: announcement.created_by,
         createdAt: announcement.created_at,
-        updatedAt: announcement.updated_at,
       };
     } catch (error) {
       console.error("Error creating announcement:", error);
@@ -67,7 +66,6 @@ export const announcementFunctions = {
         tenantId: announcement.tenant_id,
         createdBy: announcement.created_by,
         createdAt: announcement.created_at,
-        updatedAt: announcement.updated_at,
       }));
     } catch (error) {
       console.error("Error fetching announcements:", error);
@@ -97,7 +95,6 @@ export const announcementFunctions = {
         tenantId: announcement.tenant_id,
         createdBy: announcement.created_by,
         createdAt: announcement.created_at,
-        updatedAt: announcement.updated_at,
       };
     } catch (error) {
       console.error("Error fetching announcement:", error);
@@ -117,7 +114,6 @@ export const announcementFunctions = {
           title: data.title,
           description: data.description,
           link: data.link,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", id)
         .eq("tenant_id", tenantId)
@@ -137,7 +133,6 @@ export const announcementFunctions = {
         tenantId: announcement.tenant_id,
         createdBy: announcement.created_by,
         createdAt: announcement.created_at,
-        updatedAt: announcement.updated_at,
       };
     } catch (error) {
       console.error("Error updating announcement:", error);
