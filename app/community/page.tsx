@@ -2,7 +2,8 @@ import React from 'react'
 import { redirect } from 'next/navigation'
 import { RealtimeChat } from '@/components/community/realtime-chat'
 import { getCurrentUserAction } from '@/app/actions/auth'
-import { Users, MessageCircle, Settings, Crown } from 'lucide-react'
+import { Users, MessageCircle, Settings, Crown, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 const CommunityPage = async () => {
   // Fetch current user from auth action
@@ -18,13 +19,21 @@ const CommunityPage = async () => {
       {/* Header */}
       <div className="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 shadow-sm">
         <div className="h-full px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary rounded-lg shadow-md">
-              <MessageCircle className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Community</h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Connect with your team</p>
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/" 
+              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary rounded-lg shadow-md">
+                <MessageCircle className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">Community</h1>
+                <p className="text-sm text-slate-600 dark:text-slate-400">Connect with your team</p>
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
