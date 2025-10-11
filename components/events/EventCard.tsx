@@ -94,6 +94,20 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
     setShowConfirmDialog(true);
   };
 
+  const handleWithdraw = async () => {
+    if (!currentUser?.id) {
+      alert("Please log in to withdraw from events.");
+      return;
+    }
+
+    if (!isRegistered) {
+      alert("You are not registered for this event.");
+      return;
+    }
+
+    setShowConfirmDialog(true);
+  };
+
   const confirmRegistration = async () => {
     if (!currentUser?.id) return;
 
@@ -101,6 +115,11 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
     setShowConfirmDialog(false);
 
     try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
       // First, let's check if the registered_users column exists by trying to fetch it
       const { data: currentEvent, error: fetchError } = await supabase
         .from("events")
@@ -179,13 +198,84 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
     }
   };
 
+  const confirmWithdrawal = async () => {
+    if (!currentUser?.id) return;
+
+    setIsLoading(true);
+    setShowConfirmDialog(false);
+
+    try {
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      // Fetch current event data
+      const { data: currentEvent, error: fetchError } = await supabase
+        .from("events")
+        .select("*")
+        .eq("id", event.id)
+        .single();
+
+      if (fetchError) {
+        console.error("Error fetching event:", fetchError);
+        throw new Error(`Failed to fetch event: ${fetchError.message}`);
+      }
+
+      const currentRegisteredUsers = currentEvent.registered_users || [];
+      
+      // Check if user is registered
+      if (!currentRegisteredUsers.includes(currentUser.id)) {
+        alert("You are not registered for this event.");
+        setIsLoading(false);
+        return;
+      }
+      // Remove user from registered users array
+      const updatedRegisteredUsers = currentRegisteredUsers.filter((id: string) => id !== currentUser.id);
+
+      // Update the event
+      const { error: updateError } = await supabase
+        .from("events")
+        .update({
+          registered_users: updatedRegisteredUsers,
+        })
+        .eq("id", event.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error("Error updating event:", updateError);
+        throw new Error(`Failed to update event: ${updateError.message}`);
+      }
+
+      // Update local state
+      const updatedEventData = {
+        ...event,
+        registered_users: updatedRegisteredUsers,
+        current_capacity: updatedRegisteredUsers.length,
+      };
+
+      onEventUpdate(updatedEventData);
+      setIsRegistered(false);
+      setRemainingCapacity(Math.max(0, (currentEvent.capacity || 0) - updatedRegisteredUsers.length));
+
+      alert("Successfully withdrawn from the event!");
+    } catch (error) {
+      console.error("Error withdrawing from event:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      alert(`Failed to withdraw from the event: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const cancelRegistration = () => {
     setShowConfirmDialog(false);
   };
 
   const getButtonText = () => {
-    if (isLoading) return "Registering...";
-    if (isRegistered) return "Registered";
+    if (isLoading) return isRegistered ? "Withdrawing..." : "Registering...";
+    if (isRegistered) return "Withdraw";
     if (remainingCapacity <= 0) return "Full";
     return "Register";
   };
@@ -194,27 +284,27 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
     const baseClass = "px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95";
     
     if (isLoading) {
-      return `${baseClass} bg-gray-400 text-white cursor-not-allowed`;
+      return `${baseClass} bg-muted text-muted-foreground cursor-not-allowed`;
     }
     if (isRegistered) {
-      return `${baseClass} bg-green-600 text-white hover:bg-green-700`;
+      return `${baseClass} bg-destructive text-destructive-foreground hover:bg-destructive/90`;
     }
     if (remainingCapacity <= 0) {
-      return `${baseClass} bg-red-500 text-white cursor-not-allowed`;
+      return `${baseClass} bg-muted text-muted-foreground cursor-not-allowed`;
     }
-    return `${baseClass} bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl`;
+    return `${baseClass} bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl`;
   };
 
   return (
     <>
-      <div className="bg-white rounded-3xl shadow-xl flex flex-col md:flex-row overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+      <div className="bg-card border border-border rounded-3xl shadow-xl flex flex-col md:flex-row overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 max-w-3xl mx-auto">
         {event.image && (
-          <div className="md:w-1/3 h-64 md:h-auto">
+          <div className="md:w-1/4 h-44 md:h-auto">
             <Image
               src={event.image}
               alt={event.title}
-              width={400}
-              height={256}
+              width={280}
+              height={176}
               className="w-full h-full object-cover"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
@@ -223,24 +313,24 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
           </div>
         )}
         
-        <div className="p-8 flex-1 flex flex-col justify-between">
+        <div className="p-5 flex-1 flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              <h2 className="text-2xl font-bold text-foreground mb-2">
                 {event.title}
               </h2>
               {event.tag && (
-                <span className="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-800 text-sm font-medium rounded-full">
+                <span className="inline-flex items-center px-3 py-1 bg-primary/10 text-primary text-sm font-medium rounded-full">
                   {event.tag}
                 </span>
               )}
             </div>
             
-            <p className="text-gray-600 mb-6 line-clamp-3">
+            <p className="text-muted-foreground mb-6 line-clamp-3">
               {event.description}
             </p>
             
-            <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-4">
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
               <span className="inline-flex items-center px-3 py-2 bg-blue-50 text-blue-700 rounded-lg">
                 📅 {formatDate(event.start_at)}
               </span>
@@ -255,14 +345,14 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
             {/* Capacity Information */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">Capacity</span>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm font-medium text-foreground">Capacity</span>
+                <span className="text-sm text-muted-foreground">
                   {remainingCapacity} / {event.capacity || 0} spots remaining
                 </span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-muted rounded-full h-2">
                 <div
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 h-2 rounded-full transition-all duration-300"
+                  className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-300"
                   style={{
                     width: `${event.capacity ? ((event.capacity - remainingCapacity) / event.capacity) * 100 : 0}%`,
                   }}
@@ -274,8 +364,8 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
           {/* Action Buttons */}
           <div className="flex gap-3">
             <button
-              onClick={handleRegister}
-              disabled={isLoading || isRegistered || remainingCapacity <= 0}
+              onClick={isRegistered ? handleWithdraw : handleRegister}
+              disabled={isLoading || remainingCapacity <= 0}
               className={getButtonClass()}
             >
               {getButtonText()}
@@ -286,12 +376,12 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
 
       {/* Confirmation Dialog */}
       {showConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all">
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-card border border-border rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all">
             <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-100 mb-4">
+              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-primary/10 mb-4">
                 <svg
-                  className="h-6 w-6 text-indigo-600"
+                  className="h-6 w-6 text-primary"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -304,24 +394,31 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Confirm Registration
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {isRegistered ? "Confirm Withdrawal" : "Confirm Registration"}
               </h3>
-              <p className="text-gray-600 mb-6">
-                Do you want to register for <strong>&quot;{event.title}&quot;</strong>?
+              <p className="text-muted-foreground mb-6">
+                {isRegistered 
+                  ? `Are you sure you want to withdraw from "${event.title}"?`
+                  : `Do you want to register for "${event.title}"?`
+                }
               </p>
               <div className="flex gap-3 justify-center">
                 <button
                   onClick={cancelRegistration}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-6 py-2 border border-border text-foreground rounded-lg hover:bg-muted transition-colors"
                 >
-                  No
+                  Cancel
                 </button>
                 <button
-                  onClick={confirmRegistration}
-                  className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all"
+                  onClick={isRegistered ? confirmWithdrawal : confirmRegistration}
+                  className={`px-6 py-2 rounded-lg transition-all ${
+                    isRegistered 
+                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  }`}
                 >
-                  Yes, Register
+                  {isRegistered ? "Yes, Withdraw" : "Yes, Register"}
                 </button>
               </div>
             </div>
