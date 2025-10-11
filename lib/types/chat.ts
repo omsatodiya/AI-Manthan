@@ -7,6 +7,25 @@ export interface ChatMessage {
   updatedAt?: string;
 }
 
+export type ReactionType = 'like' | 'love' | 'haha' | 'wow' | 'sad' | 'angry'
+
+export interface Reaction {
+  id: string;
+  messageId: string;
+  userId: string;
+  userName: string;
+  tenantId?: string | null;
+  reactionType: ReactionType;
+  createdAt: string;
+}
+
+export interface ReactionGroup {
+  type: ReactionType;
+  count: number;
+  users: Array<{ id: string; name: string }>;
+  hasUserReacted: boolean;
+}
+
 export interface ChatMessageWithUser {
   id: string;
   content: string;
@@ -18,6 +37,7 @@ export interface ChatMessageWithUser {
   updatedAt?: string;
   isEdited?: boolean;
   attachment?: MessageAttachment | null;
+  reactions?: ReactionGroup[];
 }
 
 export interface MessageAttachment {
@@ -51,4 +71,19 @@ export interface UploadFileParams {
   file: File;
   userId: string;
   tenantId?: string | null;
+}
+
+export interface AddReactionPayload {
+  messageId: string;
+  userId: string;
+  userName: string;
+  reactionType: ReactionType;
+  tenantId?: string | null;
+  replacedReactionType?: ReactionType; // The reaction type that was replaced, if any
+}
+
+export interface RemoveReactionPayload {
+  messageId: string;
+  userId: string;
+  reactionType: ReactionType;
 }
