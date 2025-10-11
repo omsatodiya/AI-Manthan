@@ -5,58 +5,11 @@ import { getCurrentUserAction } from "@/app/actions/auth";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-function populateTemplate(
-  templateContent: string,
-  data: Record<string, string>
-): string {
-  return templateContent.replace(
-    /\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?(\w+)\s*\}\}/g,
-    (match, type, key) => {
-      const value = data[key] || "";
-      switch (type) {
-        case "points":
-          return value
-            .split("\n")
-            .map((item) =>
-              item.trim() ? `<li>${item.trim().replace(/^- /, "")}</li>` : ""
-            )
-            .join("");
-        case "table":
-          const rows = value.split("\n").filter((r) => r.trim());
-          if (rows.length === 0) return "<table></table>";
-          const headers = rows[0]
-            .split(",")
-            .map((h) => `<th>${h.trim()}</th>`)
-            .join("");
-          const bodyRows = rows
-            .slice(1)
-            .map(
-              (row) =>
-                `<tr>${row
-                  .split(",")
-                  .map((c) => `<td>${c.trim()}</td>`)
-                  .join("")}</tr>`
-            )
-            .join("");
-          return `<table><thead><tr>${headers}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-        case "paragraphs":
-          return value
-            .split("\n\n")
-            .map((p) => (p.trim() ? `<p>${p.trim()}</p>` : ""))
-            .join("");
-        case "bold":
-          return `<strong>${value}</strong>`;
-        case "italic":
-          return `<em>${value}</em>`;
-        case "heading":
-          return `<h3>${value}</h3>`;
-        case "text":
-        default:
-          return value;
-      }
-    }
-  );
-}
+// Function to convert \n characters to actual line breaks
+const normalizeLineBreaks = (text: string) => {
+  return text.replace(/\\n/g, '\n');
+};
+
 
 export async function POST(req: Request) {
   try {
@@ -88,14 +41,20 @@ export async function POST(req: Request) {
       );
     }
 
+    // Normalize template content first
+    const normalizedTemplateContent = normalizeLineBreaks(template.htmlContent);
+    
     // Detect field formats from HTML template
     const fieldFormats: Record<string, string> = {};
     const regex =
-      /\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?(\w+)\s*\}\}/g;
+      /\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?([^}]+?)\s*\}\}/g;
     let match;
-    while ((match = regex.exec(template.htmlContent)) !== null) {
+    while ((match = regex.exec(normalizedTemplateContent)) !== null) {
       fieldFormats[match[2]] = match[1] || "text";
     }
+    
+    console.log("Detected field formats:", fieldFormats);
+    console.log("User input:", userInput);
 
     // Generate intelligent instructions based on field types and content
     const instructions = template.fields
@@ -245,11 +204,15 @@ ${instructions}
 TEMPLATE FIELDS TO POPULATE:
 ${template.fields.map(f => `- "${f.key}" (${f.name})`).join('\n')}
 
+CRITICAL: The JSON object keys MUST match exactly with the field keys above. For example, if a field key is "Company Name", the JSON key must be "Company Name" (with the space).
+
 Remember: Return ONLY the JSON object with the field keys and generated content.`;
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const responseText = result.response.text();
+    
+    console.log("AI Response:", responseText);
 
     let aiData: Record<string, string>;
     try {
@@ -288,8 +251,12 @@ Remember: Return ONLY the JSON object with the field keys and generated content.
       );
     }
 
-    const populatedHtml = populateTemplate(template.htmlContent, aiData);
-    return NextResponse.json({ htmlContent: populatedHtml });
+    console.log("AI Generated Data:", aiData);
+    
+    return NextResponse.json({ 
+      generatedData: aiData,
+      templateContent: normalizeLineBreaks(template.htmlContent)
+    });
   } catch (error) {
     console.error("API Error:", error);
     return NextResponse.json(

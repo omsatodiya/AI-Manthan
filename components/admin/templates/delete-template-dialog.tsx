@@ -20,15 +20,25 @@ import { deleteTemplateAction } from "@/app/actions/templates";
 import { Template } from "@/constants/templates";
 
 interface DeleteTemplateDialogProps {
-  template: Template;
+  template: Template | null;
   onTemplateDeleted: () => void;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function DeleteTemplateDialog({ template, onTemplateDeleted }: DeleteTemplateDialogProps) {
-  const [open, setOpen] = useState(false);
+export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange }: DeleteTemplateDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const open = template !== null ? true : false;
+  const setOpen = (newOpen: boolean) => {
+    if (!newOpen && onOpenChange) {
+      onOpenChange(false);
+    }
+  };
 
   const handleDelete = async () => {
+    if (!template) return;
+    
     setIsDeleting(true);
     try {
       const result = await deleteTemplateAction(template.id);
@@ -50,17 +60,11 @@ export function DeleteTemplateDialog({ template, onTemplateDeleted }: DeleteTemp
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
-        </Button>
-      </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Template</AlertDialogTitle>
-          <AlertDialogDescription>
-            Are you sure you want to delete the template "{template.title}"? This action cannot be undone.
+          <AlertDialogTitle className="font-sans">Delete Template</AlertDialogTitle>
+          <AlertDialogDescription className="font-sans">
+            Are you sure you want to delete the template "{template?.title}"? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

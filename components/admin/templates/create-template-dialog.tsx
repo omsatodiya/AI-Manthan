@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Plus, Trash2, GripVertical } from "lucide-react";
+import { Plus, Trash2, GripVertical, FileText, Code } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createTemplateAction } from "@/app/actions/templates";
 
 const formSchema = z.object({
@@ -45,12 +46,26 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface CreateTemplateDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   onTemplateCreated: () => void;
 }
 
-export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialogProps) {
-  const [open, setOpen] = useState(false);
+export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTemplateCreated }: CreateTemplateDialogProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jsonInput, setJsonInput] = useState("");
+  const [jsonError, setJsonError] = useState("");
+  const [fieldsJsonInput, setFieldsJsonInput] = useState("");
+  const [fieldsJsonError, setFieldsJsonError] = useState("");
+  
+  const open = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
+
+  // Function to convert \n characters to actual line breaks
+  const normalizeLineBreaks = (text: string) => {
+    return text.replace(/\\n/g, '\n');
+  };
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -128,15 +143,82 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
     name: "fields",
   });
 
-  const onSubmit = async (data: FormData) => {
-    setIsSubmitting(true);
+  const parseJsonInput = () => {
     try {
-      const result = await createTemplateAction({
-        title: data.title,
-        description: data.description,
-        htmlContent: data.htmlContent,
-        fields: data.fields,
-      });
+      setJsonError("");
+      const parsed = JSON.parse(jsonInput);
+      
+      // Validate the JSON structure
+      if (!parsed.title || !parsed.description || !parsed.htmlContent || !parsed.fields) {
+        throw new Error("Missing required fields: title, description, htmlContent, fields");
+      }
+      
+      if (!Array.isArray(parsed.fields)) {
+        throw new Error("Fields must be an array");
+      }
+      
+      // Validate each field
+      for (const field of parsed.fields) {
+        if (!field.key || !field.name || !field.type || !field.placeholder) {
+          throw new Error("Each field must have key, name, type, and placeholder");
+        }
+        if (!["input", "textarea"].includes(field.type)) {
+          throw new Error("Field type must be 'input' or 'textarea'");
+        }
+      }
+      
+       // Populate the form with parsed data
+       form.reset({
+         title: parsed.title,
+         description: parsed.description,
+         htmlContent: normalizeLineBreaks(parsed.htmlContent),
+         fields: parsed.fields,
+       });
+      
+      toast.success("JSON parsed successfully");
+    } catch (error) {
+      setJsonError(error instanceof Error ? error.message : "Invalid JSON format");
+    }
+  };
+
+  const parseFieldsJsonInput = () => {
+    try {
+      setFieldsJsonError("");
+      const parsed = JSON.parse(fieldsJsonInput);
+      
+      // Validate that it's an array
+      if (!Array.isArray(parsed)) {
+        throw new Error("Fields must be an array");
+      }
+      
+      // Validate each field
+      for (const field of parsed) {
+        if (!field.key || !field.name || !field.type || !field.placeholder) {
+          throw new Error("Each field must have key, name, type, and placeholder");
+        }
+        if (!["input", "textarea"].includes(field.type)) {
+          throw new Error("Field type must be 'input' or 'textarea'");
+        }
+      }
+      
+      // Update the form fields
+      form.setValue("fields", parsed);
+      
+      toast.success("Fields JSON parsed successfully");
+    } catch (error) {
+      setFieldsJsonError(error instanceof Error ? error.message : "Invalid JSON format");
+    }
+  };
+
+   const onSubmit = async (data: FormData) => {
+     setIsSubmitting(true);
+     try {
+       const result = await createTemplateAction({
+         title: data.title,
+         description: data.description,
+         htmlContent: normalizeLineBreaks(data.htmlContent),
+         fields: data.fields,
+       });
 
       if (result.success) {
         toast.success("Template created successfully");
@@ -156,21 +238,29 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Template
-        </Button>
-      </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Template</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="font-sans">Create New Template</DialogTitle>
+          <DialogDescription className="font-sans">
             Create a new document template with customizable fields.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        
+        <Tabs defaultValue="form" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="form" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Form
+            </TabsTrigger>
+            <TabsTrigger value="json" className="flex items-center gap-2">
+              <Code className="h-4 w-4" />
+              JSON
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="form" className="space-y-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -211,7 +301,8 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
                     <Textarea
                       placeholder="Enter HTML content"
                       className="min-h-[300px] font-mono text-sm"
-                      {...field}
+                      value={normalizeLineBreaks(field.value || "")}
+                      onChange={(e) => field.onChange(e.target.value)}
                     />
                   </FormControl>
                   <FormMessage />
@@ -223,15 +314,86 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <FormLabel>Template Fields</FormLabel>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => append({ key: "", name: "", type: "input", placeholder: "" })}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Field
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const currentFields = form.getValues("fields");
+                      const jsonString = JSON.stringify(currentFields, null, 2);
+                      setFieldsJsonInput(jsonString);
+                      setFieldsJsonError("");
+                    }}
+                  >
+                    <Code className="mr-2 h-4 w-4" />
+                    Export to JSON
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ key: "", name: "", type: "input", placeholder: "" })}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Field
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Fields JSON Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Fields JSON (Optional)</label>
+                <p className="text-sm text-muted-foreground">
+                  Paste JSON array of fields to bulk import, or export current fields to JSON.
+                </p>
+                <Textarea
+                  placeholder={`[
+  {
+    "key": "Company Name",
+    "name": "Company Name",
+    "type": "input",
+    "placeholder": "Enter your company name"
+  },
+  {
+    "key": "Description",
+    "name": "Description",
+    "type": "textarea",
+    "placeholder": "Enter description"
+  }
+]`}
+                  value={normalizeLineBreaks(fieldsJsonInput)}
+                  onChange={(e) => {
+                    setFieldsJsonInput(e.target.value);
+                    setFieldsJsonError("");
+                  }}
+                  className="min-h-[150px] font-mono text-sm"
+                />
+                {fieldsJsonError && (
+                  <p className="text-sm text-destructive">{fieldsJsonError}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={parseFieldsJsonInput}
+                    disabled={!fieldsJsonInput.trim()}
+                  >
+                    Parse Fields JSON
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setFieldsJsonInput("");
+                      setFieldsJsonError("");
+                    }}
+                  >
+                    Clear
+                  </Button>
+                </div>
               </div>
               
               {fields.map((field, index) => (
@@ -311,21 +473,131 @@ export function CreateTemplateDialog({ onTemplateCreated }: CreateTemplateDialog
                 </div>
               ))}
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Creating..." : "Create Template"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setOpen(false)}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? "Creating..." : "Create Template"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </TabsContent>
+          
+          <TabsContent value="json" className="space-y-4">
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">JSON Template Data</label>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Paste your template JSON data below. It should include title, description, htmlContent, and fields array.
+                </p>
+                <Textarea
+                  placeholder={`{
+  "title": "Business Proposal",
+  "description": "A comprehensive business proposal template",
+  "htmlContent": "<!DOCTYPE html>...",
+  "fields": [
+    {
+      "key": "Company Name",
+      "name": "Company Name",
+      "type": "input",
+      "placeholder": "Enter your company name"
+    }
+  ]
+}`}
+                  value={normalizeLineBreaks(jsonInput)}
+                  onChange={(e) => {
+                    setJsonInput(e.target.value);
+                    setJsonError("");
+                  }}
+                  className="min-h-[300px] font-mono text-sm"
+                />
+                {jsonError && (
+                  <p className="text-sm text-destructive mt-2">{jsonError}</p>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={parseJsonInput}
+                  disabled={!jsonInput.trim()}
+                >
+                  Parse JSON
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const formData = form.getValues();
+                    const jsonString = JSON.stringify({
+                      title: formData.title,
+                      description: formData.description,
+                      htmlContent: formData.htmlContent,
+                      fields: formData.fields,
+                    }, null, 2);
+                    setJsonInput(jsonString);
+                    setJsonError("");
+                  }}
+                >
+                  Export to JSON
+                </Button>
+              </div>
+              
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!jsonInput.trim()) {
+                      setJsonError("Please enter JSON data");
+                      return;
+                    }
+                    
+                     try {
+                       const parsed = JSON.parse(jsonInput);
+                       const result = await createTemplateAction({
+                         title: parsed.title,
+                         description: parsed.description,
+                         htmlContent: normalizeLineBreaks(parsed.htmlContent),
+                         fields: parsed.fields,
+                       });
+
+                      if (result.success) {
+                        toast.success("Template created successfully");
+                        setJsonInput("");
+                        setJsonError("");
+                        setOpen(false);
+                        onTemplateCreated();
+                      } else {
+                        toast.error(result.message || "Failed to create template");
+                      }
+                    } catch (error) {
+                      setJsonError(error instanceof Error ? error.message : "Invalid JSON format");
+                    }
+                  }}
+                  disabled={isSubmitting || !jsonInput.trim()}
+                >
+                  {isSubmitting ? "Creating..." : "Create from JSON"}
+                </Button>
+              </DialogFooter>
+            </div>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

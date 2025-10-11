@@ -32,14 +32,31 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/toast";
 import { Toaster } from "@/components/ui/toast";
 
+// Function to convert \n characters to actual line breaks
+const normalizeLineBreaks = (text: string) => {
+  return text.replace(/\\n/g, '\n');
+};
+
 function populateTemplate(
   templateContent: string,
   data: Record<string, string>
 ): string {
-  return templateContent.replace(
-    /\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?(\w+)\s*\}\}/g,
+  console.log("=== POPULATE TEMPLATE DEBUG ===");
+  console.log("Template content preview:", templateContent.substring(0, 300) + "...");
+  console.log("Data to populate with:", data);
+  
+  // Test the regex pattern
+  const testMatches = templateContent.match(/\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?([^}]+?)\s*\}\}/g);
+  console.log("All template variables found:", testMatches);
+  
+  const result = templateContent.replace(
+    /\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?([^}]+?)\s*\}\}/g,
     (match, type, key) => {
-      const value = data[key] || `[${key}]`;
+      // For typed variables like {{heading:Executive Summary}}, use the key part after the colon
+      // For simple variables like {{Company Name}}, use the key directly
+      const dataKey = type ? key : key; // Both cases use the same key
+      const value = data[dataKey] || `[${dataKey}]`;
+      console.log(`Found template variable: "${match}" -> key: "${key}", type: "${type}", dataKey: "${dataKey}", value: "${value}"`);
       switch (type) {
         case "points":
           return value
@@ -80,6 +97,10 @@ function populateTemplate(
       }
     }
   );
+  
+  console.log("Final populated result preview:", result.substring(0, 500) + "...");
+  console.log("=== END POPULATE TEMPLATE DEBUG ===");
+  return result;
 }
 
 export default function TemplateEditorPage({
@@ -105,6 +126,7 @@ export default function TemplateEditorPage({
       try {
         const result = await getTemplateAction(tenantId, resolvedParams.id);
         if (result.success && result.data) {
+          console.log('Loaded template:', result.data);
           setTemplate(result.data);
         } else {
           console.error('Failed to load template:', result.message);
@@ -127,13 +149,21 @@ export default function TemplateEditorPage({
       acc[field.key] = `[${field.name}]`;
       return acc;
     }, {} as Record<string, string>);
-    return populateTemplate(template.htmlContent, defaultData);
+    const normalizedContent = normalizeLineBreaks(template.htmlContent);
+    const populated = populateTemplate(normalizedContent, defaultData);
+    console.log("Initial HTML generated:", populated.substring(0, 200) + "...");
+    return populated;
   }, [template]);
 
   const [generatedHtml, setGeneratedHtml] = useState(initialHtml);
 
+  // Update generatedHtml when template changes
+  useEffect(() => {
+    setGeneratedHtml(initialHtml);
+  }, [initialHtml]);
+
   const formSchema = useMemo(() => {
-    if (!template) return z.object({});
+    if (!template) return null;
     const schemaShape = template.fields.reduce((acc, field) => {
       acc[field.key] = z
         .string()
@@ -146,12 +176,20 @@ export default function TemplateEditorPage({
   type FormData = Record<string, string>;
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema) as any,
-    defaultValues: template?.fields.reduce(
-      (acc, field) => ({ ...acc, [field.key]: "" }),
-      {} as Record<string, string>
-    ) || {},
+    resolver: formSchema ? zodResolver(formSchema) as any : undefined,
+    defaultValues: {},
   });
+
+  // Update form default values when template loads
+  useEffect(() => {
+    if (template && formSchema) {
+      const defaultValues = template.fields.reduce(
+        (acc, field) => ({ ...acc, [field.key]: "" }),
+        {} as Record<string, string>
+      );
+      form.reset(defaultValues);
+    }
+  }, [template, formSchema, form]);
 
   // Show loading state
   if (tenantLoading || isLoading) {
@@ -159,7 +197,7 @@ export default function TemplateEditorPage({
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading template...</p>
+          <p className="text-muted-foreground font-sans">Loading template...</p>
         </div>
       </div>
     );
@@ -170,7 +208,7 @@ export default function TemplateEditorPage({
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-muted-foreground">No tenant selected. Please select a tenant to view templates.</p>
+          <p className="text-muted-foreground font-sans">No tenant selected. Please select a tenant to view templates.</p>
         </div>
       </div>
     );
@@ -183,6 +221,8 @@ export default function TemplateEditorPage({
   const handleGenerate = async (values: FormData) => {
     setIsGenerating(true);
     try {
+      console.log("Sending request with:", { templateId: template.id, userInput: values });
+      
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -191,15 +231,50 @@ export default function TemplateEditorPage({
 
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("API Error:", errorData);
         throw new Error(errorData.error || "Failed to generate document.");
       }
 
-      const { htmlContent } = await response.json();
-      setGeneratedHtml(htmlContent);
+      const responseData = await response.json();
+      console.log("API Response:", responseData);
+      
+      const { generatedData, templateContent } = responseData;
+      console.log("Generated data:", generatedData);
+      console.log("Template content preview:", templateContent.substring(0, 200) + "...");
+      console.log("Template fields:", template.fields.map(f => ({ key: f.key, name: f.name })));
+      
+      // Test with a simple dataset first
+      const testData = {
+        'Company Name': 'Test Company',
+        'Year': '2024',
+        'Executive Summary': 'This is a test summary.',
+        'Key Leadership': 'CEO: Test CEO\nCTO: Test CTO',
+        'Financials Table': 'Month,Profit\nJanuary,100000\nFebruary,120000',
+        'Strategic Goals': 'Goal 1: Test goal\nGoal 2: Another test goal'
+      };
+      
+      console.log("Testing with simple data:", testData);
+      const testHtml = populateTemplate(templateContent, testData);
+      console.log("Test HTML result:", testHtml.substring(0, 300) + "...");
+      
+      // Use the local populateTemplate function to generate the HTML
+      const populatedHtml = populateTemplate(templateContent, generatedData);
+      console.log("Setting generated HTML:", populatedHtml.substring(0, 200) + "...");
+      
+      // Check if any variables were actually replaced
+      const hasPlaceholders = populatedHtml.includes('[Company Name]') || populatedHtml.includes('[Year]') || populatedHtml.includes('[Executive Summary]');
+      if (hasPlaceholders) {
+        console.error("WARNING: Template variables were not replaced! Still showing placeholders.");
+        console.log("Available data keys:", Object.keys(generatedData));
+        console.log("Template content sample:", templateContent.substring(0, 500));
+      }
+      
+      setGeneratedHtml(populatedHtml);
       setIsAiGenerated(true);
 
       toast.success("Your document has been generated.");
     } catch (error: any) {
+      console.error("Generation error:", error);
       toast.error(error.message);
     } finally {
       setIsGenerating(false);
@@ -259,8 +334,8 @@ export default function TemplateEditorPage({
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold">{template.title}</h2>
-                <p className="text-muted-foreground">
+                <h2 className="text-2xl font-bold font-sans">{template.title}</h2>
+                <p className="text-muted-foreground font-sans">
                   Fill in the fields to guide the AI.
                 </p>
               </div>
@@ -272,11 +347,12 @@ export default function TemplateEditorPage({
                 <RotateCcw className="h-4 w-4" />
               </Button>
             </div>
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(handleGenerate)}
-                className="space-y-6">
-                {template.fields.map((field) => (
+            {template && formSchema && (
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(handleGenerate)}
+                  className="space-y-6">
+                  {template.fields.map((field) => (
                   <FormField
                     key={field.key}
                     control={form.control}
@@ -288,13 +364,21 @@ export default function TemplateEditorPage({
                           {field.type === "textarea" ? (
                             <Textarea
                               placeholder={field.placeholder}
-                              {...formField}
+                              value={formField.value || ""}
+                              onChange={formField.onChange}
+                              onBlur={formField.onBlur}
+                              name={formField.name}
+                              ref={formField.ref}
                               className="min-h-[100px]"
                             />
                           ) : (
                             <Input
                               placeholder={field.placeholder}
-                              {...formField}
+                              value={formField.value || ""}
+                              onChange={formField.onChange}
+                              onBlur={formField.onBlur}
+                              name={formField.name}
+                              ref={formField.ref}
                             />
                           )}
                         </FormControl>
@@ -302,7 +386,7 @@ export default function TemplateEditorPage({
                       </FormItem>
                     )}
                   />
-                ))}
+                  ))}
                 <div className="flex flex-col gap-4 pt-4">
                   <Button
                     type="submit"
@@ -329,8 +413,9 @@ export default function TemplateEditorPage({
                     Download as PDF
                   </Button>
                 </div>
-              </form>
-            </Form>
+                </form>
+              </Form>
+            )}
           </div>
         </ScrollArea>
       </ResizablePanel>
@@ -342,7 +427,10 @@ export default function TemplateEditorPage({
             srcDoc={generatedHtml}
             title="Template Preview"
             className="h-full w-full rounded-md border border-border bg-white shadow-sm"
-            sandbox="allow-same-origin"
+            sandbox="allow-same-origin allow-scripts"
+            onLoad={() => {
+              console.log("Preview iframe loaded with content:", generatedHtml.substring(0, 200) + "...");
+            }}
           />
         </div>
       </ResizablePanel>

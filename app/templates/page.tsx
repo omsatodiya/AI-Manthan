@@ -95,9 +95,14 @@ export default function TemplateSelectionPage() {
 
   useEffect(() => {
     const loadTemplates = async () => {
+      // Don't load templates if tenant is still loading or tenantId is not available
+      if (tenantLoading || !tenantId) {
+        return;
+      }
+
       setIsLoading(true);
       try {
-        const result = await getTemplatesAction(tenantId || "");
+        const result = await getTemplatesAction(tenantId);
         if (result.success && result.data) {
           setTemplates(result.data);
         } else {
@@ -164,12 +169,14 @@ export default function TemplateSelectionPage() {
     }
   };
 
-  if (tenantLoading || isLoading) {
+  if (tenantLoading || (isLoading && tenantId)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-3 sm:mb-4"></div>
-          <p className="text-muted-foreground text-sm sm:text-base">Loading templates...</p>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            {tenantLoading ? "Loading tenant..." : "Loading templates..."}
+          </p>
         </div>
       </div>
     );
@@ -203,10 +210,10 @@ export default function TemplateSelectionPage() {
           </div>
 
           <div className="text-center mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-3 sm:mb-4">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-3 sm:mb-4 font-sans">
               Document Templates
             </h1>
-            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4">
+            <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4 font-sans">
               Choose from our collection of professional document templates
               powered by AI
             </p>
@@ -216,10 +223,10 @@ export default function TemplateSelectionPage() {
         {/* Data Table */}
         <Card className="border-0 shadow-lg">
           <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
-            <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold">
+            <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold font-sans">
               Available Templates
             </CardTitle>
-            <CardDescription className="text-sm sm:text-base">
+            <CardDescription className="text-sm sm:text-base font-sans">
               Select a template to start creating your professional document
               with AI assistance
             </CardDescription>
