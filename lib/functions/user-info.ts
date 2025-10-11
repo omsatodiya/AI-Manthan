@@ -281,8 +281,8 @@ export const userInfoFunctions = {
             }
             return null;
           })
-          .filter(Boolean)
-          .sort((a: { similarity: number }, b: { similarity: number }) => b.similarity - a.similarity)
+          .filter((match): match is { user_id: string; similarity: number } => match !== null)
+          .sort((a, b) => b.similarity - a.similarity)
           .slice(0, options.limit) || [];
 
         console.log("🔵 findUserMatches: Fallback matches processed", {

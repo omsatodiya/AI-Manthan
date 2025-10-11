@@ -6,9 +6,9 @@ import Image from "next/image";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+// const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+// const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface Event {
   id: string;
@@ -35,13 +35,18 @@ interface EventCardProps {
 function formatDate(dateString: string) {
   if (!dateString) return "No date";
   const d = new Date(dateString);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function formatTime(dateString: string) {
   if (!dateString) return "No time";
   const d = new Date(dateString);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${String(d.getHours()).padStart(2, "0")}:${String(
+    d.getMinutes()
+  ).padStart(2, "0")}`;
 }
 
 export default function EventCard({ event, onEventUpdate }: EventCardProps) {
@@ -134,7 +139,7 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
 
       // Handle the case where registered_users might not exist in the database yet
       const currentRegisteredUsers = currentEvent.registered_users || [];
-      
+
       // Check if user is already registered
       if (currentRegisteredUsers.includes(currentUser.id)) {
         alert("You are already registered for this event.");
@@ -151,7 +156,10 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
       }
 
       // Add user to registered users array
-      const updatedRegisteredUsers = [...currentRegisteredUsers, currentUser.id];
+      const updatedRegisteredUsers = [
+        ...currentRegisteredUsers,
+        currentUser.id,
+      ];
 
       // Try to update the event with registered_users field
       // If the column doesn't exist, we'll handle it gracefully
@@ -166,14 +174,19 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
 
       if (updateError) {
         console.error("Error updating event:", updateError);
-        
+
         // If the error is about the column not existing, we need to create it
-        if (updateError.message.includes("column") && updateError.message.includes("registered_users")) {
-          alert("Database schema needs to be updated. Please contact the administrator to add the 'registered_users' column to the events table.");
+        if (
+          updateError.message.includes("column") &&
+          updateError.message.includes("registered_users")
+        ) {
+          alert(
+            "Database schema needs to be updated. Please contact the administrator to add the 'registered_users' column to the events table."
+          );
           setIsLoading(false);
           return;
         }
-        
+
         throw new Error(`Failed to update event: ${updateError.message}`);
       }
 
@@ -186,12 +199,15 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
 
       onEventUpdate(updatedEventData);
       setIsRegistered(true);
-      setRemainingCapacity(Math.max(0, currentCapacity - updatedRegisteredUsers.length));
+      setRemainingCapacity(
+        Math.max(0, currentCapacity - updatedRegisteredUsers.length)
+      );
 
       alert("Successfully registered for the event!");
     } catch (error) {
       console.error("Error registering for event:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       alert(`Failed to register for the event: ${errorMessage}`);
     } finally {
       setIsLoading(false);
@@ -223,7 +239,7 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
       }
 
       const currentRegisteredUsers = currentEvent.registered_users || [];
-      
+
       // Check if user is registered
       if (!currentRegisteredUsers.includes(currentUser.id)) {
         alert("You are not registered for this event.");
@@ -231,7 +247,9 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
         return;
       }
       // Remove user from registered users array
-      const updatedRegisteredUsers = currentRegisteredUsers.filter((id: string) => id !== currentUser.id);
+      const updatedRegisteredUsers = currentRegisteredUsers.filter(
+        (id: string) => id !== currentUser.id
+      );
 
       // Update the event
       const { error: updateError } = await supabase
@@ -257,12 +275,18 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
 
       onEventUpdate(updatedEventData);
       setIsRegistered(false);
-      setRemainingCapacity(Math.max(0, (currentEvent.capacity || 0) - updatedRegisteredUsers.length));
+      setRemainingCapacity(
+        Math.max(
+          0,
+          (currentEvent.capacity || 0) - updatedRegisteredUsers.length
+        )
+      );
 
       alert("Successfully withdrawn from the event!");
     } catch (error) {
       console.error("Error withdrawing from event:", error);
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
       alert(`Failed to withdraw from the event: ${errorMessage}`);
     } finally {
       setIsLoading(false);
@@ -281,8 +305,9 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
   };
 
   const getButtonClass = () => {
-    const baseClass = "px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95";
-    
+    const baseClass =
+      "px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95";
+
     if (isLoading) {
       return `${baseClass} bg-muted text-muted-foreground cursor-not-allowed`;
     }
@@ -312,7 +337,7 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
             />
           </div>
         )}
-        
+
         <div className="p-5 flex-1 flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between mb-4">
@@ -325,11 +350,11 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                 </span>
               )}
             </div>
-            
+
             <p className="text-muted-foreground mb-6 line-clamp-3">
               {event.description}
             </p>
-            
+
             <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-4">
               <span className="inline-flex items-center px-3 py-2 bg-blue-50 text-blue-700 rounded-lg">
                 📅 {formatDate(event.start_at)}
@@ -345,7 +370,9 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
             {/* Capacity Information */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-foreground">Capacity</span>
+                <span className="text-sm font-medium text-foreground">
+                  Capacity
+                </span>
                 <span className="text-sm text-muted-foreground">
                   {remainingCapacity} / {event.capacity || 0} spots remaining
                 </span>
@@ -354,7 +381,13 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                 <div
                   className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-300"
                   style={{
-                    width: `${event.capacity ? ((event.capacity - remainingCapacity) / event.capacity) * 100 : 0}%`,
+                    width: `${
+                      event.capacity
+                        ? ((event.capacity - remainingCapacity) /
+                            event.capacity) *
+                          100
+                        : 0
+                    }%`,
                   }}
                 ></div>
               </div>
@@ -398,10 +431,9 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                 {isRegistered ? "Confirm Withdrawal" : "Confirm Registration"}
               </h3>
               <p className="text-muted-foreground mb-6">
-                {isRegistered 
+                {isRegistered
                   ? `Are you sure you want to withdraw from "${event.title}"?`
-                  : `Do you want to register for "${event.title}"?`
-                }
+                  : `Do you want to register for "${event.title}"?`}
               </p>
               <div className="flex gap-3 justify-center">
                 <button
@@ -411,9 +443,11 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                   Cancel
                 </button>
                 <button
-                  onClick={isRegistered ? confirmWithdrawal : confirmRegistration}
+                  onClick={
+                    isRegistered ? confirmWithdrawal : confirmRegistration
+                  }
                   className={`px-6 py-2 rounded-lg transition-all ${
-                    isRegistered 
+                    isRegistered
                       ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       : "bg-primary text-primary-foreground hover:bg-primary/90"
                   }`}

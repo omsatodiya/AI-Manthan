@@ -2,13 +2,28 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Calendar, MapPin, Users, Tag, Image as ImageIcon } from "lucide-react";
+import {
+  ArrowLeft,
+  Loader2,
+  Calendar,
+  MapPin,
+  Users,
+  Tag,
+  Image as ImageIcon,
+} from "lucide-react";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 import { toast } from "sonner";
@@ -34,19 +49,19 @@ export default function EventRegistrationPage() {
     try {
       const user = await getCurrentUserAction();
       setCurrentUser(user);
-      
+
       if (user?.id) {
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL!,
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
-        
+
         const { data: userData, error } = await supabase
           .from("users")
           .select("tenant_id")
           .eq("id", user.id)
           .single();
-          
+
         if (error) {
           console.error("Error fetching user tenant:", error);
         } else {
@@ -65,23 +80,25 @@ export default function EventRegistrationPage() {
     fetchCurrentUserAndTenant();
   }, [fetchCurrentUserAndTenant]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     if (isSubmitting) {
       return;
     }
-    
+
     if (!form.title.trim()) {
       toast.error("Please enter an event title");
       return;
     }
-    
+
     setIsSubmitting(true);
 
     if (!userTenantId) {
@@ -162,7 +179,7 @@ export default function EventRegistrationPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            
+
             <div className="space-y-2">
               <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                 Create Event
@@ -178,7 +195,8 @@ export default function EventRegistrationPage() {
             <CardHeader>
               <CardTitle className="text-2xl">Event Details</CardTitle>
               <CardDescription>
-                Fill in the details for your event. All fields except title are optional.
+                Fill in the details for your event. All fields except title are
+                optional.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -219,7 +237,10 @@ export default function EventRegistrationPage() {
 
                 {/* Location */}
                 <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-medium flex items-center gap-2">
+                  <Label
+                    htmlFor="location"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
                     <MapPin className="h-4 w-4" />
                     Location
                   </Label>
@@ -237,7 +258,10 @@ export default function EventRegistrationPage() {
                 {/* Date and Time */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="start_at" className="text-sm font-medium flex items-center gap-2">
+                    <Label
+                      htmlFor="start_at"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
                       <Calendar className="h-4 w-4" />
                       Start Date & Time
                     </Label>
@@ -252,7 +276,10 @@ export default function EventRegistrationPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="end_at" className="text-sm font-medium flex items-center gap-2">
+                    <Label
+                      htmlFor="end_at"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
                       <Calendar className="h-4 w-4" />
                       End Date & Time
                     </Label>
@@ -271,7 +298,10 @@ export default function EventRegistrationPage() {
                 {/* Capacity and Tag */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="capacity" className="text-sm font-medium flex items-center gap-2">
+                    <Label
+                      htmlFor="capacity"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
                       <Users className="h-4 w-4" />
                       Max Attendees
                     </Label>
@@ -288,7 +318,10 @@ export default function EventRegistrationPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="tag" className="text-sm font-medium flex items-center gap-2">
+                    <Label
+                      htmlFor="tag"
+                      className="text-sm font-medium flex items-center gap-2"
+                    >
                       <Tag className="h-4 w-4" />
                       Event Tag
                     </Label>
@@ -306,7 +339,10 @@ export default function EventRegistrationPage() {
 
                 {/* Image URL */}
                 <div className="space-y-2">
-                  <Label htmlFor="image" className="text-sm font-medium flex items-center gap-2">
+                  <Label
+                    htmlFor="image"
+                    className="text-sm font-medium flex items-center gap-2"
+                  >
                     <ImageIcon className="h-4 w-4" />
                     Image URL
                   </Label>
@@ -321,12 +357,14 @@ export default function EventRegistrationPage() {
                   />
                   {form.image && (
                     <div className="mt-2">
-                      <img
+                      <Image
                         src={form.image}
                         alt="Event preview"
+                        width={400}
+                        height={192}
                         className="w-full h-48 object-cover rounded-lg border"
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.style.display = "none";
                         }}
                       />
                     </div>
@@ -341,7 +379,9 @@ export default function EventRegistrationPage() {
                     className="flex-1 shadow-lg hover:shadow-xl transition-all duration-300"
                     suppressHydrationWarning
                   >
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isSubmitting && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     {isSubmitting ? "Creating Event..." : "Create Event"}
                   </Button>
                   <Button
