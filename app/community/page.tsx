@@ -2,7 +2,7 @@ import React from 'react'
 import { redirect } from 'next/navigation'
 import { RealtimeChat } from '@/components/community/realtime-chat'
 import { getCurrentUserAction } from '@/app/actions/auth'
-import { MessageCircle, Settings, Crown, ArrowLeft, Megaphone } from 'lucide-react'
+import { MessageCircle, Settings, Crown, ArrowLeft, Megaphone, Calendar } from 'lucide-react'
 import Link from 'next/link'
 
 const CommunityPage = async () => {
@@ -65,6 +65,13 @@ const CommunityPage = async () => {
                   >
                     <Megaphone className="h-4 w-4 text-slate-500" />
                     <span className="text-sm text-slate-600 dark:text-slate-400">Announcements</span>
+                  </Link>
+                  <Link 
+                    href="/events" 
+                    className="w-full flex items-center gap-3 p-3 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <Calendar className="h-4 w-4 text-slate-500" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Events</span>
                   </Link>
                   <button className="w-full flex items-center gap-3 p-3 text-left rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                     <Settings className="h-4 w-4 text-slate-500" />

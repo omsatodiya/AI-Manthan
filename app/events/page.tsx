@@ -3,8 +3,9 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Calendar } from "lucide-react";
+import { Loader2, Calendar, ArrowLeft } from "lucide-react";
 import EventCard from "@/components/events/EventCard";
+import Link from "next/link";
 
 interface Event {
   id: string;
@@ -88,6 +89,14 @@ export default function EventPage() {
         <div className="max-w-4xl mx-auto">
           {/* Header Section */}
           <div className="mb-8">
+            <div className="flex items-center gap-4 mb-4">
+              <Link 
+                href="/community" 
+                className="p-2 hover:bg-muted rounded-lg transition-colors"
+              >
+                <ArrowLeft className="h-5 w-5 text-muted-foreground" />
+              </Link>
+            </div>
             <div className="space-y-2">
               <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
                 Upcoming Events
