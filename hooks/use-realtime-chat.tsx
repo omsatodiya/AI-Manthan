@@ -148,7 +148,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
         content: data.content,
         user: {
           id: data.user_id,
-          name: data.users?.fullName || username,
+          name: (data.users as any)?.[0]?.fullName || (data.users as any)?.fullName || username,
         },
         createdAt: data.created_at,
       }
