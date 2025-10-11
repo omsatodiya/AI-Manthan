@@ -121,9 +121,11 @@ export interface GetUsersParams {
 export interface UserMatch {
   userId: string;
   similarity: number;
+  tenantId?: string | null;
   user?: {
     id: string;
     name: string;
     email: string;
+    tenantId?: string | null;
   };
 }

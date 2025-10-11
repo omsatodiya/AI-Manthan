@@ -10,7 +10,33 @@ export const userFunctions = {
       .eq("email", email.toLowerCase())
       .single();
     if (error && error.code !== "PGRST116") console.error(error);
-    return data as User | null;
+    if (!data) return null;
+    
+    const row = data as {
+      id: string;
+      fullName: string;
+      email: string;
+      passwordHash: string;
+      role: "admin" | "user";
+      tenant_id: string | null;
+      otp?: string | null;
+      otpExpires?: number | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    
+    return {
+      id: row.id,
+      fullName: row.fullName,
+      email: row.email,
+      passwordHash: row.passwordHash,
+      role: row.role,
+      tenantId: row.tenant_id ?? null,
+      otp: row.otp ?? null,
+      otpExpires: row.otpExpires ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    } as User;
   },
 
   async findUserByEmailInTenant(
@@ -36,7 +62,33 @@ export const userFunctions = {
       .eq("id", id)
       .single();
     if (error && error.code !== "PGRST116") console.error(error);
-    return data as User | null;
+    if (!data) return null;
+    
+    const row = data as {
+      id: string;
+      fullName: string;
+      email: string;
+      passwordHash: string;
+      role: "admin" | "user";
+      tenant_id: string | null;
+      otp?: string | null;
+      otpExpires?: number | null;
+      createdAt: string;
+      updatedAt: string;
+    };
+    
+    return {
+      id: row.id,
+      fullName: row.fullName,
+      email: row.email,
+      passwordHash: row.passwordHash,
+      role: row.role,
+      tenantId: row.tenant_id ?? null,
+      otp: row.otp ?? null,
+      otpExpires: row.otpExpires ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    } as User;
   },
 
   async createUser(

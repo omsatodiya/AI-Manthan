@@ -294,7 +294,7 @@ export const userInfoFunctions = {
         const fallbackUserIds = processedMatches.map((match: { user_id: string }) => match.user_id);
         const { data: fallbackUsers, error: fallbackUsersError } = await supabase
           .from('users')
-          .select('id, fullName, email')
+          .select('id, fullName, email, tenant_id')
           .in('id', fallbackUserIds);
 
         if (fallbackUsersError) {
@@ -311,10 +311,12 @@ export const userInfoFunctions = {
           return {
             userId: match.user_id,
             similarity: match.similarity,
+            tenantId: foundUser?.tenant_id || null,
             user: foundUser ? {
               id: foundUser.id,
               name: foundUser.fullName,
-              email: foundUser.email
+              email: foundUser.email,
+              tenantId: foundUser.tenant_id
             } : undefined
           };
         });
@@ -337,7 +339,7 @@ export const userInfoFunctions = {
       
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id, fullName, email')
+        .select('id, fullName, email, tenant_id')
         .in('id', userIds);
 
       console.log("🔵 findUserMatches: User details fetched", {
@@ -362,10 +364,12 @@ export const userInfoFunctions = {
         return {
           userId: userId,
           similarity: match.similarity,
+          tenantId: foundUser?.tenant_id || null,
           user: foundUser ? {
             id: foundUser.id,
             name: foundUser.fullName,
-            email: foundUser.email
+            email: foundUser.email,
+            tenantId: foundUser.tenant_id
           } : undefined
         };
       });

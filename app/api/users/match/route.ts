@@ -31,6 +31,27 @@ export async function GET(request: NextRequest) {
       tenantId
     });
 
+    // Get the current user's data from users table
+    console.log("🔵 /api/users/match: Fetching current user data from users table");
+    const currentUserData = await db.findUserById(currentUser.id);
+
+    if (!currentUserData) {
+      console.error("🔴 /api/users/match: Current user not found in users table");
+      return NextResponse.json(
+        { 
+          error: "User not found.",
+          code: "USER_NOT_FOUND"
+        },
+        { status: 404 }
+      );
+    }
+
+    console.log("🔵 /api/users/match: Current user data found", {
+      userId: currentUserData.id,
+      userEmail: currentUserData.email,
+      userTenantId: currentUserData.tenantId
+    });
+
     // Get the current user's info, including their embedding
     console.log("🔵 /api/users/match: Fetching current user info");
     const currentUserInfo = await db.getUserInfo(currentUser.id, tenantId);
@@ -59,7 +80,8 @@ export async function GET(request: NextRequest) {
 
     console.log("🔵 /api/users/match: Current user info found", {
       hasEmbedding: !!currentUserInfo.embedding,
-      embeddingLength: currentUserInfo.embedding.length
+      embeddingLength: currentUserInfo.embedding.length,
+      userTenantId: currentUserData.tenantId
     });
 
     // Call the database function to find matches
@@ -83,13 +105,39 @@ export async function GET(request: NextRequest) {
       }))
     });
 
+    // Filter matches by tenant_id - only show users from the same tenant
+    const filteredMatches = matches.filter(match => {
+      const userTenantId = match.user?.tenantId;
+      const currentUserTenantId = currentUserData.tenantId;
+      
+      console.log("🔵 /api/users/match: Checking tenant match", {
+        userId: match.userId,
+        userTenantId,
+        currentUserTenantId,
+        isMatch: userTenantId === currentUserTenantId
+      });
+      
+      return userTenantId === currentUserTenantId;
+    });
+
+    console.log("🔵 /api/users/match: Filtered matches by tenant", {
+      originalCount: matches.length,
+      filteredCount: filteredMatches.length,
+      filteredMatches: filteredMatches.map(m => ({
+        userId: m.userId,
+        similarity: m.similarity,
+        userTenantId: m.user?.tenantId
+      }))
+    });
+
     return NextResponse.json({
       success: true,
-      data: matches,
+      data: filteredMatches,
       meta: {
         threshold: matchThreshold,
-        count: matches.length,
-        requestedCount: matchCount
+        count: filteredMatches.length,
+        requestedCount: matchCount,
+        originalCount: matches.length
       }
     });
 
