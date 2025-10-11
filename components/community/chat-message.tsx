@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import type { ChatMessageWithUser } from '@/lib/types/chat'
 import { MessageContextMenu } from './message-context-menu'
+import { FileAttachment } from './file-attachment'
 
 interface ChatMessageItemProps {
   message: ChatMessageWithUser
@@ -50,7 +51,16 @@ export const ChatMessageItem = ({ message, currentUserId, showHeader, onDelete, 
               isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
             )}
           >
-            <div>{message.content}</div>
+            {message.attachment ? (
+              <div className="space-y-2">
+                <FileAttachment attachment={message.attachment} isOwnMessage={isOwnMessage} />
+                {message.content && message.content !== `Sent ${message.attachment.fileName}` && (
+                  <div>{message.content}</div>
+                )}
+              </div>
+            ) : (
+              <div>{message.content}</div>
+            )}
             {message.isEdited && (
               <span className="text-xs opacity-70 italic ml-2">(edited)</span>
             )}

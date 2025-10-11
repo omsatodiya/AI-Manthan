@@ -173,5 +173,39 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
     [channel, isConnected, userId]
   )
 
-  return { messages, sendMessage, deleteMessage, updateMessage, isConnected }
+  const sendMessageWithFile = useCallback(
+    async (file: File, content: string = '') => {
+      if (!channel || !isConnected) return
+
+      try {
+        // Upload file first
+        const attachment = await chatService.uploadFile({ file, userId, tenantId })
+
+        // Create message with attachment
+        const message = await chatService.createMessageWithAttachment(
+          userId,
+          content,
+          username,
+          attachment,
+          tenantId
+        )
+
+        // Broadcast to other clients
+        await channel.send({
+          type: 'broadcast',
+          event: EVENT_MESSAGE_TYPE,
+          payload: message,
+        })
+
+        // Update local state
+        setMessages((current) => [...current, message])
+      } catch (error) {
+        console.error('Failed to send message with file:', error)
+        throw error
+      }
+    },
+    [channel, isConnected, userId, username, tenantId]
+  )
+
+  return { messages, sendMessage, sendMessageWithFile, deleteMessage, updateMessage, isConnected }
 }

@@ -17,6 +17,16 @@ export interface ChatMessageWithUser {
   createdAt: string;
   updatedAt?: string;
   isEdited?: boolean;
+  attachment?: MessageAttachment | null;
+}
+
+export interface MessageAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  fileUrl: string;
+  thumbnailUrl?: string | null;
 }
 
 export interface ChatUser {
@@ -34,4 +44,10 @@ export interface UpdateMessagePayload {
   content: string;
   userId: string;
   updatedAt: string;
+}
+
+export interface UploadFileParams {
+  file: File;
+  userId: string;
+  tenantId?: string | null;
 }

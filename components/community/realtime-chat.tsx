@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils'
 import { ChatMessageItem } from '@/components/community/chat-message'
 import { EditMessageDialog } from '@/components/community/edit-message-dialog'
+import { FileUploadButton } from '@/components/community/file-upload-button'
 import { useChatScroll } from '@/hooks/use-chat-scroll'
 import { useRealtimeChat } from '@/hooks/use-realtime-chat'
 import type { ChatMessageWithUser } from '@/lib/types/chat'
@@ -40,6 +41,7 @@ export const RealtimeChat = ({
   const {
     messages: realtimeMessages,
     sendMessage,
+    sendMessageWithFile,
     deleteMessage,
     updateMessage,
     isConnected,
@@ -109,6 +111,14 @@ export const RealtimeChat = ({
     [editingMessage, updateMessage]
   )
 
+  const handleFileUpload = useCallback(
+    async (file: File) => {
+      if (!isConnected) return
+      await sendMessageWithFile(file, '')
+    },
+    [isConnected, sendMessageWithFile]
+  )
+
   return (
     <div className="flex flex-col h-full w-full bg-background text-foreground antialiased">
       {/* Messages */}
@@ -142,10 +152,11 @@ export const RealtimeChat = ({
       </div>
 
       <form onSubmit={handleSendMessage} className="flex w-full gap-2 border-t border-border p-4">
+        <FileUploadButton onFileSelect={handleFileUpload} disabled={!isConnected} />
         <Input
           className={cn(
             'rounded-full bg-background text-sm transition-all duration-300',
-            isConnected && newMessage.trim() ? 'w-[calc(100%-36px)]' : 'w-full'
+            isConnected && newMessage.trim() ? 'w-[calc(100%-80px)]' : 'w-full'
           )}
           type="text"
           value={newMessage}

@@ -1,5 +1,5 @@
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
-import type { ChatMessageWithUser } from '@/lib/types/chat'
+import type { ChatMessageWithUser, MessageAttachment, UploadFileParams } from '@/lib/types/chat'
 import { isMessageEdited } from '@/lib/utils/chat-utils'
 
 export class ChatService {
@@ -10,6 +10,119 @@ export class ChatService {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY!
     )
+  }
+
+  /**
+   * Upload a file to Supabase Storage
+   */
+  async uploadFile({ file, userId, tenantId }: UploadFileParams): Promise<MessageAttachment> {
+    try {
+      // Create unique file path
+      const timestamp = Date.now()
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const bucket = 'chat-attachments'
+      const folderPath = tenantId ? `tenant-${tenantId}` : 'global'
+      const filePath = `${folderPath}/${userId}/${timestamp}_${sanitizedFileName}`
+
+      // Upload file to Supabase Storage
+      const { data: uploadData, error: uploadError } = await this.supabase.storage
+        .from(bucket)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('Failed to upload file:', uploadError)
+        throw uploadError
+      }
+
+      // Get public URL
+      const { data: urlData } = this.supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath)
+
+      const attachment: MessageAttachment = {
+        id: uploadData.path,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        fileUrl: urlData.publicUrl,
+      }
+
+      return attachment
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create a message with file attachment
+   */
+  async createMessageWithAttachment(
+    userId: string,
+    content: string,
+    username: string,
+    attachment: MessageAttachment,
+    tenantId?: string | null
+  ): Promise<ChatMessageWithUser> {
+    const { data, error } = await this.supabase
+      .from('chat_messages')
+      .insert({
+        user_id: userId,
+        content: content || `Sent ${attachment.fileName}`,
+        tenant_id: tenantId || null,
+        attachment_id: attachment.id,
+        attachment_name: attachment.fileName,
+        attachment_size: attachment.fileSize,
+        attachment_type: attachment.fileType,
+        attachment_url: attachment.fileUrl,
+      })
+      .select(`
+        id,
+        content,
+        created_at,
+        updated_at,
+        user_id,
+        tenant_id,
+        attachment_id,
+        attachment_name,
+        attachment_size,
+        attachment_type,
+        attachment_url,
+        users!chat_messages_user_id_fkey (
+          id,
+          fullName
+        )
+      `)
+      .single()
+
+    if (error) {
+      console.error('Failed to insert message with attachment:', error)
+      throw error
+    }
+
+    return {
+      id: data.id,
+      content: data.content,
+      user: {
+        id: data.user_id,
+        name: (data.users as any)?.[0]?.fullName || (data.users as any)?.fullName || username,
+      },
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      isEdited: false,
+      attachment: data.attachment_id
+        ? {
+            id: data.attachment_id,
+            fileName: data.attachment_name,
+            fileSize: data.attachment_size,
+            fileType: data.attachment_type,
+            fileUrl: data.attachment_url,
+          }
+        : null,
+    }
   }
 
   /**
@@ -26,6 +139,11 @@ export class ChatService {
           updated_at,
           user_id,
           tenant_id,
+          attachment_id,
+          attachment_name,
+          attachment_size,
+          attachment_type,
+          attachment_url,
           users!chat_messages_user_id_fkey (
             id,
             fullName
@@ -59,6 +177,15 @@ export class ChatService {
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         isEdited: isMessageEdited(row.created_at, row.updated_at),
+        attachment: row.attachment_id
+          ? {
+              id: row.attachment_id,
+              fileName: row.attachment_name,
+              fileSize: row.attachment_size,
+              fileType: row.attachment_type,
+              fileUrl: row.attachment_url,
+            }
+          : null,
       }))
     } catch (err) {
       console.error('Error fetching messages', err)
