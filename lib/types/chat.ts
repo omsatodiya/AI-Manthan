@@ -79,6 +79,7 @@ export interface AddReactionPayload {
   userName: string;
   reactionType: ReactionType;
   tenantId?: string | null;
+  replacedReactionType?: ReactionType; // The reaction type that was replaced, if any
 }
 
 export interface RemoveReactionPayload {

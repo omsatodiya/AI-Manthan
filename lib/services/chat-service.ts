@@ -207,7 +207,8 @@ export class ChatService {
   }
 
   /**
-   * Add a reaction to a message
+   * Add or update a reaction to a message
+   * If user already has a different reaction, it will be replaced
    */
   async addReaction(
     messageId: string,
@@ -215,7 +216,53 @@ export class ChatService {
     userName: string,
     reactionType: ReactionType,
     tenantId?: string | null
-  ): Promise<Reaction> {
+  ): Promise<{ reaction: Reaction; replacedReactionType?: ReactionType }> {
+    // First, check if user already has a reaction on this message
+    const { data: existingReactions, error: fetchError } = await this.supabase
+      .from('chat_reactions')
+      .select('id, reaction_type')
+      .eq('message_id', messageId)
+      .eq('user_id', userId)
+
+    if (fetchError) {
+      console.error('Failed to fetch existing reactions:', fetchError)
+      throw fetchError
+    }
+
+    let replacedReactionType: ReactionType | undefined
+
+    // If user already has a reaction, delete it first
+    if (existingReactions && existingReactions.length > 0) {
+      const existingReaction = existingReactions[0]
+      replacedReactionType = existingReaction.reaction_type as ReactionType
+
+      // If it's the same reaction type, don't do anything (this shouldn't happen in UI)
+      if (replacedReactionType === reactionType) {
+        return {
+          reaction: {
+            id: existingReaction.id,
+            messageId,
+            userId,
+            userName,
+            reactionType,
+            createdAt: new Date().toISOString(),
+          },
+        }
+      }
+
+      // Delete the old reaction
+      const { error: deleteError } = await this.supabase
+        .from('chat_reactions')
+        .delete()
+        .eq('id', existingReaction.id)
+
+      if (deleteError) {
+        console.error('Failed to delete old reaction:', deleteError)
+        throw deleteError
+      }
+    }
+
+    // Add the new reaction
     const { data, error } = await this.supabase
       .from('chat_reactions')
       .insert({
@@ -239,12 +286,15 @@ export class ChatService {
     }
 
     return {
-      id: data.id,
-      messageId: data.message_id,
-      userId: data.user_id,
-      userName,
-      reactionType: data.reaction_type,
-      createdAt: data.created_at,
+      reaction: {
+        id: data.id,
+        messageId: data.message_id,
+        userId: data.user_id,
+        userName,
+        reactionType: data.reaction_type,
+        createdAt: data.created_at,
+      },
+      replacedReactionType,
     }
   }
 

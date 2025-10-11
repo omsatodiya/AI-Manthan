@@ -83,15 +83,43 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
         )
       })
       .on('broadcast', { event: EVENT_ADD_REACTION_TYPE }, (payload) => {
-        const { messageId, userId: reactorId, userName, reactionType } = payload.payload as AddReactionPayload
+        const { messageId, userId: reactorId, userName, reactionType, replacedReactionType } = payload.payload as AddReactionPayload
+        
         setMessages((current) =>
           current.map((msg) => {
             if (msg.id !== messageId) return msg
             
-            const reactions = msg.reactions || []
+            let reactions = msg.reactions || []
+            
+            // If there was a replaced reaction, remove it first
+            if (replacedReactionType) {
+              reactions = reactions
+                .map((r) => {
+                  if (r.type !== replacedReactionType) return r
+                  
+                  // Remove this user from the replaced reaction
+                  const newUsers = r.users.filter((u) => u.id !== reactorId)
+                  return {
+                    ...r,
+                    count: r.count - 1,
+                    users: newUsers,
+                    hasUserReacted: r.hasUserReacted && reactorId !== userId,
+                  }
+                })
+                .filter((r) => r.count > 0) // Remove groups with no reactions
+            }
+            
+            // Now add the new reaction
             const existingGroup = reactions.find((r) => r.type === reactionType)
             
             if (existingGroup) {
+              // Check if user already in this group (shouldn't happen, but safety check)
+              const userAlreadyReacted = existingGroup.users.some((u) => u.id === reactorId)
+              
+              if (userAlreadyReacted) {
+                return { ...msg, reactions }
+              }
+              
               return {
                 ...msg,
                 reactions: reactions.map((r) =>
@@ -124,6 +152,7 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       })
       .on('broadcast', { event: EVENT_REMOVE_REACTION_TYPE }, (payload) => {
         const { messageId, userId: reactorId, reactionType } = payload.payload as RemoveReactionPayload
+        
         setMessages((current) =>
           current.map((msg) => {
             if (msg.id !== messageId) return msg
@@ -293,7 +322,13 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
       if (!channel || !isConnected) return
 
       try {
-        await chatService.addReaction(messageId, userId, username, reactionType, tenantId)
+        const { reaction, replacedReactionType } = await chatService.addReaction(
+          messageId, 
+          userId, 
+          username, 
+          reactionType, 
+          tenantId
+        )
 
         const payload: AddReactionPayload = {
           messageId,
@@ -301,15 +336,76 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
           userName: username,
           reactionType,
           tenantId,
+          replacedReactionType,
         }
 
+        // Broadcast the reaction change
         await channel.send({
           type: 'broadcast',
           event: EVENT_ADD_REACTION_TYPE,
           payload,
         })
+
+        // Update local state immediately
+        setMessages((current) =>
+          current.map((msg) => {
+            if (msg.id !== messageId) return msg
+            
+            let reactions = msg.reactions || []
+            
+            // Remove replaced reaction if exists
+            if (replacedReactionType) {
+              reactions = reactions
+                .map((r) => {
+                  if (r.type !== replacedReactionType) return r
+                  
+                  const newUsers = r.users.filter((u) => u.id !== userId)
+                  return {
+                    ...r,
+                    count: r.count - 1,
+                    users: newUsers,
+                    hasUserReacted: false,
+                  }
+                })
+                .filter((r) => r.count > 0)
+            }
+            
+            // Add new reaction
+            const existingGroup = reactions.find((r) => r.type === reactionType)
+            
+            if (existingGroup) {
+              return {
+                ...msg,
+                reactions: reactions.map((r) =>
+                  r.type === reactionType
+                    ? {
+                        ...r,
+                        count: r.count + 1,
+                        users: [...r.users, { id: userId, name: username }],
+                        hasUserReacted: true,
+                      }
+                    : r
+                ),
+              }
+            } else {
+              return {
+                ...msg,
+                reactions: [
+                  ...reactions,
+                  {
+                    type: reactionType,
+                    count: 1,
+                    users: [{ id: userId, name: username }],
+                    hasUserReacted: true,
+                  },
+                ],
+              }
+            }
+          })
+        )
       } catch (error) {
         console.error('Failed to add reaction:', error)
+        throw error
       }
     },
     [channel, isConnected, userId, username, tenantId]
@@ -333,8 +429,34 @@ export function useRealtimeChat({ userId, username, tenantId }: UseRealtimeChatP
           event: EVENT_REMOVE_REACTION_TYPE,
           payload,
         })
+
+        // Update local state immediately
+        setMessages((current) =>
+          current.map((msg) => {
+            if (msg.id !== messageId) return msg
+            
+            const reactions = msg.reactions || []
+            return {
+              ...msg,
+              reactions: reactions
+                .map((r) => {
+                  if (r.type !== reactionType) return r
+                  
+                  const newUsers = r.users.filter((u) => u.id !== userId)
+                  return {
+                    ...r,
+                    count: r.count - 1,
+                    users: newUsers,
+                    hasUserReacted: false,
+                  }
+                })
+                .filter((r) => r.count > 0),
+            }
+          })
+        )
       } catch (error) {
         console.error('Failed to remove reaction:', error)
+        throw error
       }
     },
     [channel, isConnected, userId]

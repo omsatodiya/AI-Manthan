@@ -32,9 +32,11 @@ export const ChatMessageItem = ({
       (r) => r.type === reactionType && r.hasUserReacted
     )
     
+    // If user already has this reaction, remove it
     if (existingReaction) {
       onReactionRemove(message.id, reactionType)
     } else {
+      // Otherwise, add the new reaction (will replace any existing different reaction)
       onReactionAdd(message.id, reactionType)
     }
   }
