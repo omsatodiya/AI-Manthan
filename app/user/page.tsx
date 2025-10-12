@@ -23,6 +23,7 @@ import {
   Settings,
   LucideIcon,
   Users,
+  BarChart3,
 } from "lucide-react";
 
 import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
@@ -413,6 +414,26 @@ export default function UserPage() {
                   <Users className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
                   <Users className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
                   <span className="sr-only">Match with other users</span>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg dark:bg-card/60 dark:border-border cursor-pointer hover:shadow-xl transition-shadow" onClick={() => router.push("/profile")}>
+              <CardHeader>
+                <CardTitle className="font-serif">
+                  Community Stats
+                </CardTitle>
+                <CardDescription>View your community engagement statistics.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <span className="font-medium">View Community Stats</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                >
+                  <BarChart3 className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                  <BarChart3 className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  <span className="sr-only">View Community Stats</span>
                 </Button>
               </CardContent>
             </Card>
