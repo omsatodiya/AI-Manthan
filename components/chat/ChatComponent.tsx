@@ -21,7 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSupabaseClient } from "@/lib/database/clients";
-import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 import { useMessagePagination } from "@/hooks/use-message-pagination";
 
@@ -50,13 +49,14 @@ interface ChatComponentProps {
     fullName: string;
     email: string;
   };
+  currentUser: AuthUser;
 }
 
 export function ChatComponent({
   conversationId,
   otherUser,
+  currentUser,
 }: ChatComponentProps) {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [isSending, setIsSending] = useState(false);
 
@@ -80,19 +80,6 @@ export function ChatComponent({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabaseRef = useRef<unknown>(null);
   const subscriptionRef = useRef<unknown>(null);
-
-  // Fetch current user
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const user = await getCurrentUserAction();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-      }
-    };
-    fetchCurrentUser();
-  }, []);
 
   // Initialize Supabase client
   useEffect(() => {

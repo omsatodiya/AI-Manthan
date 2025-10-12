@@ -17,6 +17,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowLeft,
+  MessageCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ import { getCurrentUserAction } from "@/app/actions/auth";
 import { getSupabaseClient } from "@/lib/database/clients";
 import { AuthUser } from "@/lib/types";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Connection {
   id: string;
@@ -52,8 +54,8 @@ interface Connection {
   };
 }
 
-
 export default function ConnectionsPage() {
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [incomingRequests, setIncomingRequests] = useState<Connection[]>([]);
   const [sentRequests, setSentRequests] = useState<Connection[]>([]);
@@ -81,100 +83,105 @@ export default function ConnectionsPage() {
     fetchCurrentUser();
   }, []);
 
-  const fetchConnections = useCallback(async (showRefreshLoader = false) => {
-    if (!currentUser?.id) return;
+  const fetchConnections = useCallback(
+    async (showRefreshLoader = false) => {
+      if (!currentUser?.id) return;
 
-    try {
-      if (showRefreshLoader) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
+      try {
+        if (showRefreshLoader) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
+        setError(null);
+
+        const supabase = await getSupabaseClient();
+
+        // Fetch incoming requests (where receiver_id = currentUser.id)
+        const { data: incomingConnections, error: incomingError } =
+          await supabase
+            .from("connections")
+            .select("*")
+            .eq("receiver_id", currentUser.id)
+            .order("created_at", { ascending: false });
+
+        if (incomingError) {
+          console.error("Error fetching incoming requests:", incomingError);
+          throw incomingError;
+        }
+
+        // Fetch sent requests (where requester_id = currentUser.id)
+        const { data: sentConnections, error: sentError } = await supabase
+          .from("connections")
+          .select("*")
+          .eq("requester_id", currentUser.id)
+          .order("created_at", { ascending: false });
+
+        if (sentError) {
+          console.error("Error fetching sent requests:", sentError);
+          throw sentError;
+        }
+
+        // Get user details for incoming requests
+        const incomingUserIds =
+          incomingConnections?.map((conn) => conn.requester_id) || [];
+        const { data: incomingUsers, error: incomingUsersError } =
+          await supabase
+            .from("users")
+            .select("id, fullName, email")
+            .in("id", incomingUserIds);
+
+        if (incomingUsersError) {
+          console.error(
+            "Error fetching incoming user details:",
+            incomingUsersError
+          );
+          throw incomingUsersError;
+        }
+
+        // Get user details for sent requests
+        const sentUserIds =
+          sentConnections?.map((conn) => conn.receiver_id) || [];
+        const { data: sentUsers, error: sentUsersError } = await supabase
+          .from("users")
+          .select("id, fullName, email")
+          .in("id", sentUserIds);
+
+        if (sentUsersError) {
+          console.error("Error fetching sent user details:", sentUsersError);
+          throw sentUsersError;
+        }
+
+        // Combine connections with user details
+        const incomingWithUsers =
+          incomingConnections?.map((connection) => ({
+            ...connection,
+            requester: incomingUsers?.find(
+              (user) => user.id === connection.requester_id
+            ),
+          })) || [];
+
+        const sentWithUsers =
+          sentConnections?.map((connection) => ({
+            ...connection,
+            receiver: sentUsers?.find(
+              (user) => user.id === connection.receiver_id
+            ),
+          })) || [];
+
+        setIncomingRequests(incomingWithUsers);
+        setSentRequests(sentWithUsers);
+      } catch (error) {
+        console.error("Error fetching connections:", error);
+        setError("Failed to load connections");
+        toast.error("Failed to load connections");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
       }
-      setError(null);
-
-      const supabase = await getSupabaseClient();
-
-      // Fetch incoming requests (where receiver_id = currentUser.id)
-      const { data: incomingConnections, error: incomingError } = await supabase
-        .from("connections")
-        .select("*")
-        .eq("receiver_id", currentUser.id)
-        .order("created_at", { ascending: false });
-
-      if (incomingError) {
-        console.error("Error fetching incoming requests:", incomingError);
-        throw incomingError;
-      }
-
-      // Fetch sent requests (where requester_id = currentUser.id)
-      const { data: sentConnections, error: sentError } = await supabase
-        .from("connections")
-        .select("*")
-        .eq("requester_id", currentUser.id)
-        .order("created_at", { ascending: false });
-
-      if (sentError) {
-        console.error("Error fetching sent requests:", sentError);
-        throw sentError;
-      }
-
-      // Get user details for incoming requests
-      const incomingUserIds =
-        incomingConnections?.map((conn) => conn.requester_id) || [];
-      const { data: incomingUsers, error: incomingUsersError } = await supabase
-        .from("users")
-        .select("id, fullName, email")
-        .in("id", incomingUserIds);
-
-      if (incomingUsersError) {
-        console.error(
-          "Error fetching incoming user details:",
-          incomingUsersError
-        );
-        throw incomingUsersError;
-      }
-
-      // Get user details for sent requests
-      const sentUserIds =
-        sentConnections?.map((conn) => conn.receiver_id) || [];
-      const { data: sentUsers, error: sentUsersError } = await supabase
-        .from("users")
-        .select("id, fullName, email")
-        .in("id", sentUserIds);
-
-      if (sentUsersError) {
-        console.error("Error fetching sent user details:", sentUsersError);
-        throw sentUsersError;
-      }
-
-      // Combine connections with user details
-      const incomingWithUsers =
-        incomingConnections?.map((connection) => ({
-          ...connection,
-          requester: incomingUsers?.find(
-            (user) => user.id === connection.requester_id
-          ),
-        })) || [];
-
-      const sentWithUsers =
-        sentConnections?.map((connection) => ({
-          ...connection,
-          receiver: sentUsers?.find(
-            (user) => user.id === connection.receiver_id
-          ),
-        })) || [];
-
-      setIncomingRequests(incomingWithUsers);
-      setSentRequests(sentWithUsers);
-    } catch (error) {
-      console.error("Error fetching connections:", error);
-      setError("Failed to load connections");
-      toast.error("Failed to load connections");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [currentUser]);
+    },
+    [currentUser]
+  );
 
   // Fetch connections when user is loaded
   useEffect(() => {
@@ -235,6 +242,38 @@ export default function ConnectionsPage() {
 
   const handleRefresh = () => {
     fetchConnections(true);
+  };
+
+  const handleChatClick = async (connection: Connection) => {
+    const otherUserId =
+      connection.requester_id === currentUser?.id
+        ? connection.receiver_id
+        : connection.requester_id;
+
+    try {
+      // Create or get existing conversation
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          otherUserId: otherUserId,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Navigate to conversation chat
+        router.push(`/chat/${data.conversation.id}`);
+      } else {
+        toast.error(data.error || "Failed to start chat");
+      }
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast.error("Failed to start chat. Please try again.");
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -553,6 +592,17 @@ export default function ConnectionsPage() {
                               : connection.requester?.email}{" "}
                             • {formatDate(connection.updated_at)}
                           </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleChatClick(connection)}
+                            className="flex items-center gap-1"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Chat
+                          </Button>
                         </div>
                       </motion.div>
                     ))}

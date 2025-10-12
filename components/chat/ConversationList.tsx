@@ -3,13 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
-import {
-  MessageCircle,
-  Users,
-  Loader2,
-  RefreshCw,
-  Search,
-} from "lucide-react";
+import { MessageCircle, Users, Loader2, RefreshCw, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSupabaseClient } from "@/lib/database/clients";
-import { getCurrentUserAction } from "@/app/actions/auth";
 import { AuthUser } from "@/lib/types";
 
 interface Conversation {
@@ -44,49 +37,38 @@ interface Conversation {
   };
 }
 
-export function ConversationList() {
+interface ConversationListProps {
+  currentUser: AuthUser;
+}
+
+export function ConversationList({ currentUser }: ConversationListProps) {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch current user
-  useEffect(() => {
-    const fetchCurrentUser = async () => {
-      try {
-        const user = await getCurrentUserAction();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error("Error fetching current user:", error);
-        setError("Failed to load user data");
-        setIsLoading(false);
-      }
-    };
-    fetchCurrentUser();
-  }, []);
-
   // Fetch conversations
-  const fetchConversations = useCallback(async (showRefreshLoader = false) => {
-    if (!currentUser?.id) return;
+  const fetchConversations = useCallback(
+    async (showRefreshLoader = false) => {
+      if (!currentUser?.id) return;
 
-    try {
-      if (showRefreshLoader) {
-        setIsRefreshing(true);
-      } else {
-        setIsLoading(true);
-      }
+      try {
+        if (showRefreshLoader) {
+          setIsRefreshing(true);
+        } else {
+          setIsLoading(true);
+        }
 
-      const supabase = await getSupabaseClient();
+        const supabase = await getSupabaseClient();
 
-      // Fetch conversations where user is a participant
-      const { data: conversationsData, error: conversationsError } =
-        await supabase
-          .from("conversations")
-          .select(
-            `
+        // Fetch conversations where user is a participant
+        const { data: conversationsData, error: conversationsError } =
+          await supabase
+            .from("conversations")
+            .select(
+              `
            id,
            user_a,
            user_b,
@@ -94,103 +76,111 @@ export function ConversationList() {
            updated_at,
            last_message_id
          `
-          )
-          .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
-          .order("updated_at", { ascending: false });
+            )
+            .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
+            .order("updated_at", { ascending: false });
 
-      if (conversationsError) {
-        console.error("Supabase conversations error:", conversationsError);
-        throw new Error(
-          `Database error: ${conversationsError.message || "Unknown error"}`
-        );
-      }
-
-      // Get unique user IDs from conversations
-      const userIds = new Set<string>();
-      conversationsData?.forEach((conv) => {
-        userIds.add(conv.user_a);
-        userIds.add(conv.user_b);
-      });
-
-      // Fetch user details separately
-      let usersData: { id: string; fullName: string; email: string }[] = [];
-      if (userIds.size > 0) {
-        const { data: users, error: usersError } = await supabase
-          .from("users")
-          .select("id, fullName, email")
-          .in("id", Array.from(userIds));
-
-        if (usersError) {
-          console.error("Error fetching user details:", usersError);
-        } else {
-          usersData = users || [];
+        if (conversationsError) {
+          console.error("Supabase conversations error:", conversationsError);
+          throw new Error(
+            `Database error: ${conversationsError.message || "Unknown error"}`
+          );
         }
-      }
 
-      // Fetch last messages for each conversation
-      const conversationIds = conversationsData?.map((c) => c.id) || [];
-      let lastMessages: { id: string; conversation_id: string; content: string; created_at: string; sender_id: string }[] = [];
+        // Get unique user IDs from conversations
+        const userIds = new Set<string>();
+        conversationsData?.forEach((conv) => {
+          userIds.add(conv.user_a);
+          userIds.add(conv.user_b);
+        });
 
-      if (conversationIds.length > 0) {
-        const { data: messagesData, error: messagesError } = await supabase
-          .from("messages")
-          .select("id, conversation_id, content, created_at, sender_id")
-          .in("conversation_id", conversationIds)
-          .order("created_at", { ascending: false });
+        // Fetch user details separately
+        let usersData: { id: string; fullName: string; email: string }[] = [];
+        if (userIds.size > 0) {
+          const { data: users, error: usersError } = await supabase
+            .from("users")
+            .select("id, fullName, email")
+            .in("id", Array.from(userIds));
 
-        if (messagesError) {
-          console.error("Error fetching last messages:", messagesError);
-        } else {
-          lastMessages = messagesData || [];
+          if (usersError) {
+            console.error("Error fetching user details:", usersError);
+          } else {
+            usersData = users || [];
+          }
         }
+
+        // Fetch last messages for each conversation
+        const conversationIds = conversationsData?.map((c) => c.id) || [];
+        let lastMessages: {
+          id: string;
+          conversation_id: string;
+          content: string;
+          created_at: string;
+          sender_id: string;
+        }[] = [];
+
+        if (conversationIds.length > 0) {
+          const { data: messagesData, error: messagesError } = await supabase
+            .from("messages")
+            .select("id, conversation_id, content, created_at, sender_id")
+            .in("conversation_id", conversationIds)
+            .order("created_at", { ascending: false });
+
+          if (messagesError) {
+            console.error("Error fetching last messages:", messagesError);
+          } else {
+            lastMessages = messagesData || [];
+          }
+        }
+
+        // Transform conversations
+        const transformedConversations: Conversation[] = (
+          conversationsData || []
+        ).map((conv) => {
+          const userA = usersData.find((u) => u.id === conv.user_a);
+          const userB = usersData.find((u) => u.id === conv.user_b);
+          const lastMessage = lastMessages.find(
+            (msg) => msg.conversation_id === conv.id
+          );
+
+          return {
+            id: conv.id,
+            userA: {
+              id: conv.user_a,
+              fullName: userA?.fullName || "Unknown User",
+              email: userA?.email || "",
+            },
+            userB: {
+              id: conv.user_b,
+              fullName: userB?.fullName || "Unknown User",
+              email: userB?.email || "",
+            },
+            createdAt: conv.created_at,
+            updatedAt: conv.updated_at,
+            lastMessageId: conv.last_message_id,
+            lastMessage: lastMessage
+              ? {
+                  id: lastMessage.id,
+                  content: lastMessage.content,
+                  createdAt: lastMessage.created_at,
+                  senderId: lastMessage.sender_id,
+                }
+              : undefined,
+          };
+        });
+
+        setConversations(transformedConversations);
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching conversations:", error);
+        setError("Failed to load conversations");
+      } finally {
+        setIsLoading(false);
+        setIsRefreshing(false);
       }
-
-      // Transform conversations
-      const transformedConversations: Conversation[] = (
-        conversationsData || []
-      ).map((conv) => {
-        const userA = usersData.find((u) => u.id === conv.user_a);
-        const userB = usersData.find((u) => u.id === conv.user_b);
-        const lastMessage = lastMessages.find(
-          (msg) => msg.conversation_id === conv.id
-        );
-
-        return {
-          id: conv.id,
-          userA: {
-            id: conv.user_a,
-            fullName: userA?.fullName || "Unknown User",
-            email: userA?.email || "",
-          },
-          userB: {
-            id: conv.user_b,
-            fullName: userB?.fullName || "Unknown User",
-            email: userB?.email || "",
-          },
-          createdAt: conv.created_at,
-          updatedAt: conv.updated_at,
-          lastMessageId: conv.last_message_id,
-          lastMessage: lastMessage
-            ? {
-                id: lastMessage.id,
-                content: lastMessage.content,
-                createdAt: lastMessage.created_at,
-                senderId: lastMessage.sender_id,
-              }
-            : undefined,
-        };
-      });
-
-      setConversations(transformedConversations);
-      setError(null);
-    } catch (error) {
-      console.error("Error fetching conversations:", error);
-      setError("Failed to load conversations");
-    } finally {
-      setIsLoading(false);
-      setIsRefreshing(false);
-    }
-  }, [currentUser]);
+    },
+    [currentUser]
+  );
 
   // Load conversations when user is available
   useEffect(() => {

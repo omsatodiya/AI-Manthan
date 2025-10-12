@@ -100,7 +100,12 @@ export function useMessagePagination({
         initialLimit
       );
 
-      setMessages(messages);
+      // Sort messages by creation time (oldest first for display)
+      const sortedMessages = messages.sort(
+        (a: Message, b: Message) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      setMessages(sortedMessages);
       setPagination(paginationData);
     } catch (error) {
       console.error("Error loading initial messages:", error);
@@ -135,8 +140,14 @@ export function useMessagePagination({
           pagination.nextCursor
         );
 
-      // Prepend older messages to the beginning
-      setMessages((prev) => [...newMessages, ...prev]);
+      // Prepend older messages to the beginning and sort chronologically
+      setMessages((prev) => {
+        const combined = [...newMessages, ...prev];
+        return combined.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      });
       setPagination(paginationData);
     } catch (error) {
       console.error("Error loading more messages:", error);
@@ -160,17 +171,28 @@ export function useMessagePagination({
       const exists = prev.some((msg) => msg.id === message.id);
       if (exists) return prev;
 
-      // Add to end of array (newest messages)
-      return [...prev, message];
+      // Add message and sort chronologically
+      const updated = [...prev, message];
+      return updated.sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
     });
   }, []);
 
   // Update message (for optimistic UI)
   const updateMessage = useCallback(
     (messageId: string, updates: Partial<Message>) => {
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === messageId ? { ...msg, ...updates } : msg))
-      );
+      setMessages((prev) => {
+        const updated = prev.map((msg) =>
+          msg.id === messageId ? { ...msg, ...updates } : msg
+        );
+        // Sort after update to maintain chronological order
+        return updated.sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      });
     },
     []
   );
@@ -195,15 +217,20 @@ export function useMessagePagination({
 
       if (response.ok) {
         // Update local state to reflect read status
-        setMessages((prev) =>
-          prev.map((msg) => ({
+        setMessages((prev) => {
+          const updated = prev.map((msg) => ({
             ...msg,
             readBy: msg.readBy.includes(msg.senderId)
               ? msg.readBy
               : [...msg.readBy, msg.senderId],
             isRead: true,
-          }))
-        );
+          }));
+          // Sort after update to maintain chronological order
+          return updated.sort(
+            (a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        });
       }
     } catch (error) {
       console.error("Error marking messages as read:", error);
