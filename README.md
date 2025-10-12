@@ -162,6 +162,8 @@ businessmen/
 
 ## 🚀 Local Setup
 
+# Deployed Site: manthan-nine-liard.vercel.app
+
 ### Prerequisites
 - **Node.js** 18+ 
 - **pnpm** (recommended) or npm
