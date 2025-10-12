@@ -15,8 +15,6 @@ const ProfilePage = async () => {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Your existing profile header/info */}
         <div className="space-y-6">
-          <h1 className="text-3xl font-bold">Profile</h1>
-          {/* ...existing profile content... */}
         </div>
 
         {/* New Coins & Badges Section */}
