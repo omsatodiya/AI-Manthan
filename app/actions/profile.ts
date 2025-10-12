@@ -12,7 +12,7 @@ export async function getUserProfileAction(userId: string, userName: string, ten
   }
 }
 
-export async function getLeaderboardAction(tenantId?: string | null, limit: number = 10) {
+export async function getLeaderboardAction(tenantId?: string | null, limit: number = 50) {
   try {
     const leaderboard = await gamificationService.getLeaderboard(tenantId, limit)
     return leaderboard
