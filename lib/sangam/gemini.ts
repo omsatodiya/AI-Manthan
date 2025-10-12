@@ -6,7 +6,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import type { 
   EmbeddingMatch, 
-  GeminiResponse, 
   SangamConfig, 
   SangamContext 
 } from '@/lib/types/sangam';

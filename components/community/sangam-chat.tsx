@@ -85,7 +85,7 @@ export function SangamChat({ tenantId }: SangamChatProps) {
     setResponse(null);
 
     try {
-      let requestBody: any = {
+      const requestBody: Record<string, string | number> = {
         tenantId,
         maxResults: 8
       };
@@ -183,7 +183,7 @@ export function SangamChat({ tenantId }: SangamChatProps) {
                 } else {
                   toast.error(data.error || 'Failed to process messages');
                 }
-              } catch (error) {
+              } catch {
                 toast.error('Failed to process messages');
               }
             }}

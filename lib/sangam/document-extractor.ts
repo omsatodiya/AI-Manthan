@@ -36,7 +36,7 @@ export class DocumentExtractor {
       }
 
       const arrayBuffer = await response.arrayBuffer();
-      const text = await this.extractTextFromBuffer(arrayBuffer, fileType, fileName);
+      const text = await this.extractTextFromBuffer(arrayBuffer, fileType);
 
       if (!text || text.trim().length === 0) {
         return null;
@@ -86,8 +86,7 @@ export class DocumentExtractor {
    */
   private async extractTextFromBuffer(
     buffer: ArrayBuffer, 
-    fileType: string, 
-    fileName: string
+    fileType: string
   ): Promise<string> {
     try {
       if (fileType === 'text/plain' || fileType === 'text/csv') {
@@ -98,7 +97,7 @@ export class DocumentExtractor {
 
       if (fileType === 'application/pdf') {
         // Handle PDF files with OCR
-        return await this.extractTextFromPDF(buffer);
+        return await this.extractTextFromPDF();
       }
 
       if (fileType.includes('word') || fileType.includes('document')) {
@@ -128,7 +127,7 @@ export class DocumentExtractor {
   /**
    * Extract text from PDF using OCR
    */
-  private async extractTextFromPDF(buffer: ArrayBuffer): Promise<string> {
+  private async extractTextFromPDF(): Promise<string> {
     try {
       console.log('Extracting text from PDF using OCR...');
       
@@ -165,6 +164,7 @@ export class DocumentExtractor {
   private async extractTextFromWord(buffer: ArrayBuffer): Promise<string> {
     try {
       // Use require for mammoth as it has issues with dynamic import
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const mammoth = require('mammoth');
       const result = await mammoth.extractRawText({ buffer });
       
@@ -185,13 +185,14 @@ export class DocumentExtractor {
   private async extractTextFromExcel(buffer: ArrayBuffer): Promise<string> {
     try {
       // Use require for xlsx as it has issues with dynamic import
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const XLSX = require('xlsx');
       const workbook = XLSX.read(buffer, { type: 'array' });
       
       let extractedText = '';
       
       // Extract text from all sheets
-      workbook.SheetNames.forEach(sheetName => {
+      workbook.SheetNames.forEach((sheetName: string) => {
         const worksheet = workbook.Sheets[sheetName];
         const sheetData = XLSX.utils.sheet_to_csv(worksheet);
         

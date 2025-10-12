@@ -19,7 +19,7 @@ export const HERO_CONTENT = {
     "ConnectIQ is the AI-powered platform that connects and brings together business communities.",
   ctas: {
     primary: { href: "/signup", label: "Create Your Community" },
-    secondary: { href: "/hub", label: "Get Started" },
+    secondary: { href: "/community", label: "Get Started" },
   },
   highlights: [
     {

@@ -38,7 +38,7 @@ export class EmbeddingService {
 
     // Process messages to include document content with chunking
     for (const msg of messages) {
-      let content = this.normalizeText(msg.content);
+      const content = this.normalizeText(msg.content);
       
       // If message has an attachment, extract document content and chunk it
       if (msg.attachment) {
@@ -46,35 +46,35 @@ export class EmbeddingService {
           const extractedContent = await documentExtractor.extractContent(msg.attachment);
           if (extractedContent) {
             // Chunk the document content
-            const chunks = this.chunkDocument(extractedContent.text, msg.attachment.fileName);
+            const chunks = this.chunkDocument(extractedContent.text);
             
             // Add each chunk as a separate text
             chunks.forEach((chunk, index) => {
-              const chunkContent = `Document: ${msg.attachment.fileName}\nType: ${extractedContent.metadata.fileType}\nChunk ${index + 1}/${chunks.length}\nContent: ${chunk}`;
+              const chunkContent = `Document: ${msg.attachment?.fileName || 'Unknown'}\nType: ${extractedContent.metadata.fileType}\nChunk ${index + 1}/${chunks.length}\nContent: ${chunk}`;
               allTexts.push(chunkContent);
               allChunkInfo.push({ chunkIndex: index, chunkTotal: chunks.length });
             });
             
             // If there's also message content, add it as a separate chunk
             if (content) {
-              const messageContent = `Message: ${content}\n\nDocument: ${msg.attachment.fileName} (${msg.attachment.fileType})`;
+              const messageContent = `Message: ${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`;
               allTexts.push(messageContent);
               allChunkInfo.push({ chunkIndex: chunks.length, chunkTotal: chunks.length + 1 });
             }
           } else {
             // Still include basic document info even if content extraction fails
             const fallbackContent = content 
-              ? `${content}\n\nDocument: ${msg.attachment.fileName} (${msg.attachment.fileType})`
-              : `Document: ${msg.attachment.fileName} (${msg.attachment.fileType})`;
+              ? `${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`
+              : `Document: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`;
             allTexts.push(fallbackContent);
             allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
           }
         } catch (error) {
-          console.error(`Error processing attachment ${msg.attachment.fileName}:`, error);
+          console.error(`Error processing attachment ${msg.attachment?.fileName || 'Unknown'}:`, error);
           // Still include basic document info even if processing fails
           const fallbackContent = content 
-            ? `${content}\n\nDocument: ${msg.attachment.fileName} (${msg.attachment.fileType}) - Processing failed`
-            : `Document: ${msg.attachment.fileName} (${msg.attachment.fileType}) - Processing failed`;
+            ? `${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'}) - Processing failed`
+            : `Document: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'}) - Processing failed`;
           allTexts.push(fallbackContent);
           allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
         }
@@ -103,7 +103,7 @@ export class EmbeddingService {
   /**
    * Chunk large documents into smaller pieces for better embedding
    */
-  private chunkDocument(text: string, fileName: string): string[] {
+  private chunkDocument(text: string): string[] {
     const maxChunkSize = 4000; // Characters per chunk
     const overlap = 200; // Overlap between chunks
     
@@ -176,17 +176,15 @@ export class EmbeddingService {
           const embeddingData = processedContents.map((content, index) => {
             // Find the original message for this content
             let originalMessage = batch.messages[0]; // Default to first message
-            let messageIndex = 0;
             
             // For chunked documents, we need to map back to the original message
             // This is a simplified approach - in practice, you might want more sophisticated mapping
             if (index < batch.messages.length) {
               originalMessage = batch.messages[index];
-              messageIndex = index;
             }
             
             const hasAttachment = !!originalMessage.attachment;
-            const contentType = hasAttachment 
+            const contentType: 'message' | 'document' | 'mixed' = hasAttachment 
               ? (originalMessage.content ? 'mixed' : 'document')
               : 'message';
             
@@ -196,8 +194,8 @@ export class EmbeddingService {
               content: content,
               embedding: embeddings[index],
               hasAttachment,
-              attachmentFileName: originalMessage.attachment?.fileName || null,
-              attachmentFileType: originalMessage.attachment?.fileType || null,
+              attachmentFileName: originalMessage.attachment?.fileName,
+              attachmentFileType: originalMessage.attachment?.fileType,
               contentType,
               chunkIndex: chunkInfo[index]?.chunkIndex || 0,
               chunkTotal: chunkInfo[index]?.chunkTotal || 1

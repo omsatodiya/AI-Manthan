@@ -80,7 +80,7 @@ export const ctaConfig: CTAConfig = {
     },
     {
       text: "Get Started",
-      href: "/hub",
+      href: "/community",
       variant: "secondary",
     },
   ],

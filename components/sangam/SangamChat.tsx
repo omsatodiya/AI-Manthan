@@ -7,7 +7,6 @@
 
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -176,7 +175,7 @@ export function SangamChat() {
     }
   };
 
-  const loadStats = async () => {
+  const loadStats = React.useCallback(async () => {
     if (!tenantId) return;
 
     try {
@@ -189,14 +188,14 @@ export function SangamChat() {
     } catch (error) {
       console.error('Error loading stats:', error);
     }
-  };
+  }, [tenantId]);
 
   // Load stats on component mount
   React.useEffect(() => {
     if (tenantId) {
       loadStats();
     }
-  }, [tenantId]);
+  }, [tenantId, loadStats]);
 
   if (!tenantId) {
     return (
@@ -226,7 +225,7 @@ export function SangamChat() {
             Sangam AI Assistant
           </CardTitle>
           <CardDescription>
-            Ask questions about your team's conversations or generate summaries
+            Ask questions about your team&apos;s conversations or generate summaries
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -295,7 +294,7 @@ export function SangamChat() {
                 Ask a Question
               </CardTitle>
               <CardDescription>
-                Ask Sangam about your team's conversations and decisions
+                Ask Sangam about your team&apos;s conversations and decisions
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -421,7 +420,7 @@ export function SangamChat() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Brain className="h-5 w-5" />
-              Sangam's Response
+              Sangam&apos;s Response
               {response.processingTime && (
                 <Badge variant="secondary" className="ml-auto">
                   {response.processingTime}ms
@@ -440,7 +439,7 @@ export function SangamChat() {
                   <div className="space-y-2">
                     <h4 className="font-medium">Sources ({response.sources.length})</h4>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {response.sources.map((source, index) => (
+                      {response.sources.map((source) => (
                         <div key={source.id} className="p-3 bg-muted rounded-lg">
                           <div className="flex justify-between items-start mb-2">
                             <Badge variant="outline">

@@ -19,32 +19,45 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host");
   const onTenantSubdomain = hasSubdomain(host);
 
-  const isAdminPath = pathname.startsWith("/admin");
-  const isUserPath = pathname.startsWith("/user");
+  const isHomePage = pathname === "/";
   const isAuthPath =
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password" ||
     pathname.startsWith("/api/auth/");
-  const isHomePage = pathname === "/";
 
-  const hasValidTenant =
-    onTenantSubdomain ||
-    (process.env.NODE_ENV !== "production" && process.env.TENANT);
+  const isPublicUserPath =
+    pathname.startsWith("/community") ||
+    pathname.startsWith("/connections") ||
+    pathname.startsWith("/events") ||
+    pathname.startsWith("/templates") ||
+    pathname.startsWith("/user") ||
+    pathname === "/announcements" ||
+    pathname.startsWith("/chat");
 
-  if (!hasValidTenant && !isHomePage) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
+  const isAdminOnlyPath =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/announcements/create-announcement") ||
+    pathname.startsWith("/announcements/edit-announcement") ||
+    pathname === "/events/event-registrations";
 
-  if (isAuthPath && !onTenantSubdomain) {
-    const devTenant = process.env.TENANT?.toLowerCase();
-    if (!devTenant) {
+  if (!onTenantSubdomain && process.env.NODE_ENV === "production") {
+    if (!isHomePage) {
       return NextResponse.redirect(new URL("/", request.url));
     }
+    return NextResponse.next();
   }
 
-  if (isAdminPath || isUserPath) {
+  if (isAuthPath) {
+    return NextResponse.next();
+  }
+
+  if (isHomePage) {
+    return NextResponse.next();
+  }
+
+  if (isPublicUserPath || isAdminOnlyPath) {
     if (!token) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
@@ -55,14 +68,13 @@ export async function middleware(request: NextRequest) {
       const { payload } = await jwtVerify(token, secret);
       const userRole = payload.role as "admin" | "user";
 
-      if (isAdminPath && userRole !== "admin") {
+      if (isAdminOnlyPath && userRole !== "admin") {
         return NextResponse.redirect(new URL("/user", request.url));
       }
 
       return NextResponse.next();
     } catch (err) {
       console.error("Middleware JWT Error:", err);
-
       const response = NextResponse.redirect(new URL("/login", request.url));
       response.cookies.delete("auth_token");
       return response;
@@ -76,6 +88,12 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/user/:path*",
+    "/community/:path*",
+    "/connections/:path*",
+    "/events/:path*",
+    "/templates/:path*",
+    "/announcements/:path*",
+    "/chat/:path*",
     "/login",
     "/signup",
     "/forgot-password",

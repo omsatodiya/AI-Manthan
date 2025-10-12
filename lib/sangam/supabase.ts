@@ -174,7 +174,7 @@ export class SangamSupabaseClient {
           const testEmbedding = allEmbeddings[0].embedding;
           
           if (testEmbedding && Array.isArray(testEmbedding)) {
-            const { data: testData, error: testError } = await supabase.rpc('match_messages', {
+            const { error: testError } = await supabase.rpc('match_messages', {
               query_embedding: testEmbedding,
               match_tenant_id: tenantId,
               match_count: 1,

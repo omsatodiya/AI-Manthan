@@ -70,7 +70,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
       try {
         // Check if user is registered
         const { data: registration, error: regError } = await supabase
-          .from("event_registrations")
+          .from("event-registrations")
           .select("id")
           .eq("event_id", event.id)
           .eq("user_id", currentUser.id)
@@ -84,7 +84,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
 
         // Get registration count
         const { count, error: countError } = await supabase
-          .from("event_registrations")
+          .from("event-registrations")
           .select("*", { count: 'exact', head: true })
           .eq("event_id", event.id);
 
@@ -131,7 +131,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
     try {
       // Check capacity again
       const { count, error: countError } = await supabase
-        .from("event_registrations")
+        .from("event-registrations")
         .select("*", { count: 'exact', head: true })
         .eq("event_id", event.id);
 
@@ -150,7 +150,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
 
       // Create registration record
       const { error: insertError } = await supabase
-        .from("event_registrations")
+        .from("event-registrations")
         .insert({
           event_id: event.id,
           user_id: currentUser.id,

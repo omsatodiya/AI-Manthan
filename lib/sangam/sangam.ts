@@ -8,7 +8,6 @@ import type {
   SangamQueryResponse,
   EmbeddingMatch,
   SangamConfig,
-  ChatEmbedding,
 } from "@/lib/types/sangam";
 import { sangamSupabase } from "./supabase";
 import { embeddingService } from "./embeddings";
@@ -298,7 +297,7 @@ export class SangamService {
   ): Promise<EmbeddingMatch[]> {
     const searchQueries = this.getSearchQueriesForInfoType(infoType);
 
-    let allMatches: EmbeddingMatch[] = [];
+    const allMatches: EmbeddingMatch[] = [];
 
     for (const query of searchQueries) {
       try {
