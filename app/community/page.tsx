@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Crown,
   ArrowLeft,
+  Trophy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -90,6 +91,25 @@ const CommunityPage = async () => {
                     </div>
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   </div>
+                </div>
+              </div>
+
+              {/* Quick Links - Moved above AI Assistant */}
+              <div>
+                <h3 className="text-sm font-semibold font-sans text-foreground mb-3">
+                  Quick Links
+                </h3>
+                <div className="space-y-2">
+                  <Link
+                    href="/leaderboard"
+                    className="w-full flex items-center gap-3 p-3 text-left rounded-lg bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all group"
+                  >
+                    <Trophy className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground">Leaderboard</p>
+                      <p className="text-xs text-muted-foreground">See top contributors</p>
+                    </div>
+                  </Link>
                 </div>
               </div>
 

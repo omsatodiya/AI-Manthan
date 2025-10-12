@@ -35,7 +35,7 @@ interface Message {
     email: string;
   };
   content: string;
-  attachments?: unknown;
+  attachments?: Record<string, unknown>;
   createdAt: string;
   readBy: string[];
   metadata?: Record<string, unknown>;
