@@ -252,7 +252,7 @@ export function useRealtimeChat({
       if (!channel || !isConnected) return;
 
       try {
-        const success = await chatService.deleteMessage(messageId, userId);
+        await chatService.deleteMessage(messageId, userId);
 
         const deletePayload: DeleteMessagePayload = {
           messageId,
@@ -365,11 +365,7 @@ export function useRealtimeChat({
       if (!channel || !isConnected) return;
 
       try {
-        const success = await chatService.addReaction(
-          messageId,
-          userId,
-          reactionType
-        );
+        await chatService.addReaction(messageId, userId, reactionType);
 
         const payload: AddReactionPayload = {
           messageId,
@@ -389,7 +385,7 @@ export function useRealtimeChat({
           current.map((msg) => {
             if (msg.id !== messageId) return msg;
 
-            let reactions = msg.reactions || [];
+            const reactions = msg.reactions || [];
 
             const existingGroup = reactions.find(
               (r) => r.type === reactionType

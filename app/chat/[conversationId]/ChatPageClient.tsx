@@ -81,7 +81,7 @@ export default function ChatPageClient({
         const userIds = [conversation.user_a, conversation.user_b];
         const { data: users, error: usersError } = await supabase
           .from("users")
-          .select("id, fullName, email")
+          .select("id, full_name, email")
           .in("id", userIds);
 
         if (usersError) {
@@ -91,17 +91,25 @@ export default function ChatPageClient({
 
         const userA = users?.find((u) => u.id === conversation.user_a);
         const userB = users?.find((u) => u.id === conversation.user_b);
+        const toFullName = (
+          u: { full_name?: string; fullName?: string } | undefined
+        ) =>
+          u
+            ? u.full_name ??
+              (u as { fullName?: string }).fullName ??
+              "Unknown User"
+            : "Unknown User";
 
         const transformedConversation: Conversation = {
           id: conversation.id,
           userA: {
             id: conversation.user_a,
-            fullName: userA?.fullName || "Unknown User",
+            fullName: toFullName(userA),
             email: userA?.email || "",
           },
           userB: {
             id: conversation.user_b,
-            fullName: userB?.fullName || "Unknown User",
+            fullName: toFullName(userB),
             email: userB?.email || "",
           },
           createdAt: conversation.created_at,

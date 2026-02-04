@@ -24,7 +24,8 @@ interface SupabaseMessageData {
   attachment_url?: string;
   users?: {
     id: string;
-    fullName: string;
+    full_name?: string;
+    fullName?: string;
   };
 }
 
@@ -36,7 +37,8 @@ interface SupabaseReactionData {
   created_at: string;
   users?: {
     id: string;
-    fullName: string;
+    full_name?: string;
+    fullName?: string;
   };
 }
 
@@ -140,9 +142,9 @@ export class ChatService {
         attachment_size,
         attachment_type,
         attachment_url,
-        users!chat_messages_user_id_fkey (
+        users (
           id,
-          fullName
+          full_name
         )
       `
       )
@@ -159,7 +161,7 @@ export class ChatService {
       content: messageData.content,
       user: {
         id: messageData.user_id,
-        name: messageData.users?.fullName || username,
+        name: messageData.users?.full_name ?? messageData.users?.fullName ?? username,
       },
       createdAt: messageData.created_at,
       updatedAt: messageData.updated_at,
@@ -225,9 +227,9 @@ export class ChatService {
           user_id,
           reaction_type,
           created_at,
-          users!chat_reactions_user_id_fkey (
+          users (
             id,
-            fullName
+            full_name
           )
         `
         )
@@ -242,7 +244,7 @@ export class ChatService {
           id: row.id,
           messageId: row.message_id,
           userId: row.user_id,
-          userName: row.users?.fullName || "Unknown User",
+          userName: row.users?.full_name ?? row.users?.fullName ?? "Unknown User",
           reactionType: row.reaction_type as ReactionType,
           createdAt: row.created_at,
         };
@@ -345,9 +347,9 @@ export class ChatService {
         user_id,
         reaction_type,
         created_at,
-        users!chat_reactions_user_id_fkey (
+        users (
           id,
-          fullName
+          full_name
         )
       `
       )
@@ -364,7 +366,7 @@ export class ChatService {
         id: reactionData.id,
         messageId: reactionData.message_id,
         userId: reactionData.user_id,
-        userName: reactionData.users?.fullName || 'Unknown User',
+        userName: reactionData.users?.full_name ?? reactionData.users?.fullName ?? 'Unknown User',
         reactionType: reactionData.reaction_type as ReactionType,
         createdAt: reactionData.created_at,
       },
@@ -415,9 +417,9 @@ export class ChatService {
           attachment_size,
           attachment_type,
           attachment_url,
-          users!chat_messages_user_id_fkey (
+          users (
             id,
-            fullName
+            full_name
           )
         `
         )
@@ -447,7 +449,7 @@ export class ChatService {
           content: row.content,
           user: {
             id: row.user_id,
-            name: row.users?.fullName || "Unknown User",
+            name: row.users?.full_name ?? row.users?.fullName ?? "Unknown User",
           },
           createdAt: row.created_at,
           updatedAt: row.updated_at,
@@ -497,9 +499,9 @@ export class ChatService {
         updated_at,
         user_id,
         tenant_id,
-        users!chat_messages_user_id_fkey (
+        users (
           id,
-          fullName
+          full_name
         )
       `
       )
@@ -515,7 +517,7 @@ export class ChatService {
       content: messageData.content,
       user: {
         id: messageData.user_id,
-        name: messageData.users?.fullName || username,
+        name: messageData.users?.full_name ?? messageData.users?.fullName ?? username,
       },
       createdAt: messageData.created_at,
       updatedAt: messageData.updated_at,
@@ -618,9 +620,9 @@ export class ChatService {
         updated_at,
         user_id,
         tenant_id,
-        users!chat_messages_user_id_fkey (
+        users (
           id,
-          fullName
+          full_name
         )
       `
       )
@@ -637,7 +639,7 @@ export class ChatService {
       content: messageData.content,
       user: {
         id: messageData.user_id,
-        name: messageData.users?.fullName || "Unknown User",
+        name: messageData.users?.full_name ?? messageData.users?.fullName ?? "Unknown User",
       },
       createdAt: messageData.created_at,
       updatedAt: messageData.updated_at,

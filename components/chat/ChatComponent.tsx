@@ -74,7 +74,7 @@ export function ChatComponent({
     updateMessage,
     removeMessage,
     markMessagesAsRead,
-  } = useMessagePagination({ conversationId });
+  } = useMessagePagination({ conversationId, currentUserId: currentUser?.id });
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -234,7 +234,7 @@ export function ChatComponent({
             // Fetch sender details separately
             const { data: sender, error: senderError } = await supabase
               .from("users")
-              .select("id, fullName, email")
+              .select("id, full_name, email")
               .eq("id", message.sender_id)
               .single();
 
@@ -242,13 +242,19 @@ export function ChatComponent({
               console.error("Error fetching sender details:", senderError);
             }
 
+            const senderFullName = sender
+              ? sender.full_name ??
+                (sender as { fullName?: string }).fullName ??
+                "Unknown User"
+              : "Unknown User";
+
             const newMessage: Message = {
               id: message.id,
               conversationId: message.conversation_id,
               senderId: message.sender_id,
               sender: {
                 id: sender?.id || message.sender_id,
-                fullName: sender?.fullName || "Unknown User",
+                fullName: senderFullName,
                 email: sender?.email || "",
               },
               content: message.content,

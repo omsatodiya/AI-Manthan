@@ -13,10 +13,10 @@ interface Message {
     email: string;
   };
   content: string;
-  attachments?: any;
+  attachments?: Record<string, unknown>;
   createdAt: string;
   readBy: string[];
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   isRead: boolean;
   isPending?: boolean;
 }
@@ -30,11 +30,13 @@ interface PaginationState {
 
 interface UseMessagePaginationProps {
   conversationId: string;
+  currentUserId?: string;
   initialLimit?: number;
 }
 
 export function useMessagePagination({
   conversationId,
+  currentUserId,
   initialLimit = 40,
 }: UseMessagePaginationProps) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -203,39 +205,45 @@ export function useMessagePagination({
   }, []);
 
   // Mark messages as read
-  const markMessagesAsRead = useCallback(async (conversationId: string) => {
-    try {
-      const response = await fetch("/api/messages/read", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          conversationId,
-        }),
-      });
-
-      if (response.ok) {
-        // Update local state to reflect read status
-        setMessages((prev) => {
-          const updated = prev.map((msg) => ({
-            ...msg,
-            readBy: msg.readBy.includes(msg.senderId)
-              ? msg.readBy
-              : [...msg.readBy, msg.senderId],
-            isRead: true,
-          }));
-          // Sort after update to maintain chronological order
-          return updated.sort(
-            (a, b) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
+  const markMessagesAsRead = useCallback(
+    async (conversationId: string) => {
+      try {
+        const response = await fetch("/api/messages/read", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            conversationId,
+          }),
         });
+
+        if (response.ok && currentUserId) {
+          setMessages((prev) => {
+            const updated = prev.map((msg) => {
+              if (msg.senderId === currentUserId) return msg;
+              const alreadyRead = msg.readBy.includes(currentUserId);
+              return {
+                ...msg,
+                readBy: alreadyRead
+                  ? msg.readBy
+                  : [...msg.readBy, currentUserId],
+                isRead: alreadyRead || true,
+              };
+            });
+            return updated.sort(
+              (a, b) =>
+                new Date(a.createdAt).getTime() -
+                new Date(b.createdAt).getTime()
+            );
+          });
+        }
+      } catch (error) {
+        console.error("Error marking messages as read:", error);
       }
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
-  }, []);
+    },
+    [currentUserId]
+  );
 
   // Reset pagination state
   const reset = useCallback(() => {

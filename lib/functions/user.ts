@@ -12,30 +12,19 @@ export const userFunctions = {
     if (error && error.code !== "PGRST116") console.error(error);
     if (!data) return null;
     
-    const row = data as {
-      id: string;
-      fullName: string;
-      email: string;
-      passwordHash: string;
-      role: "admin" | "user";
-      tenant_id: string | null;
-      otp?: string | null;
-      otpExpires?: number | null;
-      createdAt: string;
-      updatedAt: string;
-    };
-    
+    const row = data as Record<string, unknown>;
+    const fullName = (row.full_name ?? row.fullName) as string;
     return {
-      id: row.id,
-      fullName: row.fullName,
-      email: row.email,
-      passwordHash: row.passwordHash,
-      role: row.role,
-      tenantId: row.tenant_id ?? null,
-      otp: row.otp ?? null,
-      otpExpires: row.otpExpires ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.id as string,
+      fullName,
+      email: row.email as string,
+      passwordHash: (row.password_hash ?? row.passwordHash) as string,
+      role: row.role as "admin" | "user",
+      tenantId: (row.tenant_id ?? null) as string | null,
+      otp: (row.otp ?? null) as string | null,
+      otpExpires: (row.otp_expires ?? row.otpExpires ?? null) as number | null,
+      createdAt: (row.created_at ?? row.createdAt) as string,
+      updatedAt: (row.updated_at ?? row.updatedAt) as string,
     } as User;
   },
 
@@ -51,7 +40,20 @@ export const userFunctions = {
       .eq("tenant_id", tenantId)
       .single();
     if (error && error.code !== "PGRST116") console.error(error);
-    return data as User | null;
+    if (!data) return null;
+    const row = data as Record<string, unknown>;
+    return {
+      id: row.id as string,
+      fullName: (row.full_name ?? row.fullName) as string,
+      email: row.email as string,
+      passwordHash: (row.password_hash ?? row.passwordHash) as string,
+      role: row.role as "admin" | "user",
+      tenantId: (row.tenant_id ?? null) as string | null,
+      otp: (row.otp ?? null) as string | null,
+      otpExpires: (row.otp_expires ?? row.otpExpires ?? null) as number | null,
+      createdAt: (row.created_at ?? row.createdAt) as string,
+      updatedAt: (row.updated_at ?? row.updatedAt) as string,
+    } as User;
   },
 
   async findUserById(id: string): Promise<User | null> {
@@ -63,31 +65,18 @@ export const userFunctions = {
       .single();
     if (error && error.code !== "PGRST116") console.error(error);
     if (!data) return null;
-    
-    const row = data as {
-      id: string;
-      fullName: string;
-      email: string;
-      passwordHash: string;
-      role: "admin" | "user";
-      tenant_id: string | null;
-      otp?: string | null;
-      otpExpires?: number | null;
-      createdAt: string;
-      updatedAt: string;
-    };
-    
+    const row = data as Record<string, unknown>;
     return {
-      id: row.id,
-      fullName: row.fullName,
-      email: row.email,
-      passwordHash: row.passwordHash,
-      role: row.role,
-      tenantId: row.tenant_id ?? null,
-      otp: row.otp ?? null,
-      otpExpires: row.otpExpires ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.id as string,
+      fullName: (row.full_name ?? row.fullName) as string,
+      email: row.email as string,
+      passwordHash: (row.password_hash ?? row.passwordHash) as string,
+      role: row.role as "admin" | "user",
+      tenantId: (row.tenant_id ?? null) as string | null,
+      otp: (row.otp ?? null) as string | null,
+      otpExpires: (row.otp_expires ?? row.otpExpires ?? null) as number | null,
+      createdAt: (row.created_at ?? row.createdAt) as string,
+      updatedAt: (row.updated_at ?? row.updatedAt) as string,
     } as User;
   },
 
@@ -98,12 +87,12 @@ export const userFunctions = {
     const nowIso = new Date().toISOString();
     const insertPayload = {
       id: user.id,
-      fullName: user.fullName,
+      full_name: user.fullName,
       email: user.email.toLowerCase(),
-      passwordHash: user.passwordHash,
+      password_hash: user.passwordHash,
       role: user.role,
-      createdAt: nowIso,
-      updatedAt: nowIso,
+      created_at: nowIso,
+      updated_at: nowIso,
       tenant_id: user.tenantId ?? null,
     } as Record<string, unknown>;
     const { data, error } = await supabase
@@ -113,25 +102,18 @@ export const userFunctions = {
       .single();
     if (error) console.error(error);
     if (!data) return null;
-    const row = data as {
-      id: string;
-      fullName: string;
-      email: string;
-      passwordHash: string;
-      role: "admin" | "user";
-      tenant_id: string | null;
-      createdAt: string;
-      updatedAt: string;
-    };
+    const row = data as Record<string, unknown>;
     return {
-      id: row.id,
-      fullName: row.fullName,
-      email: row.email,
-      passwordHash: row.passwordHash,
-      role: row.role,
-      tenantId: row.tenant_id ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.id as string,
+      fullName: (row.full_name ?? row.fullName) as string,
+      email: row.email as string,
+      passwordHash: (row.password_hash ?? row.passwordHash) as string,
+      role: row.role as "admin" | "user",
+      tenantId: (row.tenant_id ?? null) as string | null,
+      otp: (row.otp ?? null) as string | null,
+      otpExpires: (row.otp_expires ?? row.otpExpires ?? null) as number | null,
+      createdAt: (row.created_at ?? row.createdAt) as string,
+      updatedAt: (row.updated_at ?? row.updatedAt) as string,
     } as User;
   },
 
@@ -139,19 +121,19 @@ export const userFunctions = {
     const supabase = await getSupabaseClient();
     const updatePayload: Record<string, unknown> = {};
     if (userData.fullName !== undefined)
-      updatePayload.fullName = userData.fullName;
+      updatePayload.full_name = userData.fullName;
     if (userData.email !== undefined)
       updatePayload.email = userData.email.toLowerCase();
     if (userData.passwordHash !== undefined)
-      updatePayload.passwordHash = userData.passwordHash;
+      updatePayload.password_hash = userData.passwordHash;
     if (userData.role !== undefined) updatePayload.role = userData.role;
     if (userData.tenantId !== undefined)
       updatePayload.tenant_id = userData.tenantId;
     if (userData.otp !== undefined) updatePayload.otp = userData.otp;
     if (userData.otpExpires !== undefined)
-      updatePayload.otpExpires = userData.otpExpires;
+      updatePayload.otp_expires = userData.otpExpires;
     if (userData.updatedAt !== undefined)
-      updatePayload.updatedAt = userData.updatedAt;
+      updatePayload.updated_at = userData.updatedAt;
 
     const { data, error } = await supabase
       .from("users")
@@ -161,25 +143,18 @@ export const userFunctions = {
       .single();
     if (error) console.error(error);
     if (!data) return null;
-    const row = data as {
-      id: string;
-      fullName: string;
-      email: string;
-      passwordHash: string;
-      role: "admin" | "user";
-      tenant_id: string | null;
-      createdAt: string;
-      updatedAt: string;
-    };
+    const row = data as Record<string, unknown>;
     return {
-      id: row.id,
-      fullName: row.fullName,
-      email: row.email,
-      passwordHash: row.passwordHash,
-      role: row.role,
-      tenantId: row.tenant_id ?? null,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.id as string,
+      fullName: (row.full_name ?? row.fullName) as string,
+      email: row.email as string,
+      passwordHash: (row.password_hash ?? row.passwordHash) as string,
+      role: row.role as "admin" | "user",
+      tenantId: (row.tenant_id ?? null) as string | null,
+      otp: (row.otp ?? null) as string | null,
+      otpExpires: (row.otp_expires ?? row.otpExpires ?? null) as number | null,
+      createdAt: (row.created_at ?? row.createdAt) as string,
+      updatedAt: (row.updated_at ?? row.updatedAt) as string,
     } as User;
   },
 

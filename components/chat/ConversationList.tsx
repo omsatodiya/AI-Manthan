@@ -99,13 +99,24 @@ export function ConversationList({ currentUser }: ConversationListProps) {
         if (userIds.size > 0) {
           const { data: users, error: usersError } = await supabase
             .from("users")
-            .select("id, fullName, email")
+            .select("id, full_name, email")
             .in("id", Array.from(userIds));
 
           if (usersError) {
             console.error("Error fetching user details:", usersError);
           } else {
-            usersData = users || [];
+            usersData = (users || []).map(
+              (u: {
+                id: string;
+                full_name?: string;
+                fullName?: string;
+                email: string;
+              }) => ({
+                id: u.id,
+                fullName: u.full_name ?? u.fullName ?? "Unknown User",
+                email: u.email ?? "",
+              })
+            );
           }
         }
 

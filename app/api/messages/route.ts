@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get Supabase server client
-    const supabase = await getSupabaseServerClient();
+    const supabase = getSupabaseServerClient();
 
     // Verify user is participant in conversation
     const { data: conversation, error: conversationError } = await supabase
@@ -111,13 +111,17 @@ export async function GET(request: NextRequest) {
     if (senderIds.size > 0) {
       const { data: senders, error: sendersError } = await supabase
         .from("users")
-        .select("id, fullName, email")
+        .select("id, full_name, email")
         .in("id", Array.from(senderIds));
 
       if (sendersError) {
         console.error("Error fetching sender details:", sendersError);
       } else {
-        sendersData = senders || [];
+        sendersData = (senders || []).map((s: { id: string; full_name?: string; fullName?: string; email: string }) => ({
+          id: s.id,
+          fullName: s.full_name ?? s.fullName ?? "Unknown User",
+          email: s.email ?? "",
+        }));
       }
     }
 
@@ -199,7 +203,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get Supabase server client
-    const supabase = await getSupabaseServerClient();
+    const supabase = getSupabaseServerClient();
 
     // Verify user is participant in conversation
     const { data: conversation, error: conversationError } = await supabase
@@ -254,7 +258,7 @@ export async function POST(request: NextRequest) {
     // Fetch sender details
     const { data: sender, error: senderError } = await supabase
       .from("users")
-      .select("id, fullName, email")
+      .select("id, full_name, email")
       .eq("id", currentUser.id)
       .single();
 
@@ -262,14 +266,15 @@ export async function POST(request: NextRequest) {
       console.error("Error fetching sender details:", senderError);
     }
 
-    // Transform message response
+    const senderFullName = sender ? (sender.full_name ?? (sender as { fullName?: string }).fullName) : null;
+
     const transformedMessage = {
       id: message.id,
       conversationId: message.conversation_id,
       senderId: message.sender_id,
       sender: {
         id: sender?.id || currentUser.id,
-        fullName: sender?.fullName || currentUser.name,
+        fullName: senderFullName || currentUser.name,
         email: sender?.email || currentUser.email,
       },
       content: message.content,
@@ -290,105 +295,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("Message creation error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
-}
-
-// PATCH /api/messages/read
-export async function PATCH(request: NextRequest) {
-  try {
-    // Get current user
-    const currentUser = await getCurrentUserAction();
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Parse request body
-    const body = await request.json();
-    const { conversationId, messageIds } = body;
-
-    // Validate input
-    if (!conversationId || typeof conversationId !== "string") {
-      return NextResponse.json(
-        { error: "conversationId is required and must be a string" },
-        { status: 400 }
-      );
-    }
-
-    // Get Supabase server client
-    const supabase = await getSupabaseServerClient();
-
-    // Verify user is participant in conversation
-    const { data: conversation, error: conversationError } = await supabase
-      .from("conversations")
-      .select("id, user_a, user_b")
-      .eq("id", conversationId)
-      .single();
-
-    if (conversationError || !conversation) {
-      return NextResponse.json(
-        { error: "Conversation not found" },
-        { status: 404 }
-      );
-    }
-
-    if (conversation.user_a !== currentUser.id && conversation.user_b !== currentUser.id) {
-      return NextResponse.json(
-        { error: "Access denied" },
-        { status: 403 }
-      );
-    }
-
-    let updateQuery;
-
-    if (messageIds && Array.isArray(messageIds) && messageIds.length > 0) {
-      // Mark specific messages as read
-      updateQuery = supabase
-        .from("messages")
-        .update({
-          read_by: `array_append(read_by, '${currentUser.id}')`
-        })
-        .in("id", messageIds)
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", currentUser.id) // Don't mark own messages as read
-        .select("id");
-    } else {
-      // Mark all unread messages in conversation as read
-      updateQuery = supabase
-        .from("messages")
-        .update({
-          read_by: `array_append(read_by, '${currentUser.id}')`
-        })
-        .eq("conversation_id", conversationId)
-        .neq("sender_id", currentUser.id) // Don't mark own messages as read
-        .not("read_by", "cs", `["${currentUser.id}"]`) // Only unread messages
-        .select("id");
-    }
-
-    const { data: updatedMessages, error: updateError } = await updateQuery;
-
-    if (updateError) {
-      console.error("Error marking messages as read:", updateError);
-      return NextResponse.json(
-        { error: "Failed to mark messages as read" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      updatedCount: updatedMessages?.length || 0,
-      messageIds: updatedMessages?.map(m => m.id) || [],
-    });
-
-  } catch (error) {
-    console.error("Mark messages as read error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -294,7 +294,7 @@ export const userInfoFunctions = {
         const fallbackUserIds = processedMatches.map((match: { user_id: string }) => match.user_id);
         const { data: fallbackUsers, error: fallbackUsersError } = await supabase
           .from('users')
-          .select('id, fullName, email, tenant_id')
+          .select('id, full_name, email, tenant_id')
           .in('id', fallbackUserIds);
 
         if (fallbackUsersError) {
@@ -305,7 +305,9 @@ export const userInfoFunctions = {
           }));
         }
 
-        // Combine fallback match data with user details
+        const toUserName = (u: { full_name?: string; fullName?: string }) =>
+          u?.full_name ?? (u as { fullName?: string })?.fullName ?? "Unknown User";
+
         const fallbackDetailedMatches: UserMatch[] = processedMatches.map((match: { user_id: string; similarity: number }) => {
           const foundUser = fallbackUsers?.find(u => u.id === match.user_id);
           return {
@@ -314,7 +316,7 @@ export const userInfoFunctions = {
             tenantId: foundUser?.tenant_id || null,
             user: foundUser ? {
               id: foundUser.id,
-              name: foundUser.fullName,
+              name: toUserName(foundUser),
               email: foundUser.email,
               tenantId: foundUser.tenant_id
             } : undefined
@@ -339,7 +341,7 @@ export const userInfoFunctions = {
       
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id, fullName, email, tenant_id')
+        .select('id, full_name, email, tenant_id')
         .in('id', userIds);
 
       console.log("🔵 findUserMatches: User details fetched", {
@@ -349,25 +351,26 @@ export const userInfoFunctions = {
 
       if (usersError) {
         console.error("🔴 findUserMatches: Error fetching user details", usersError);
-        // Return matches without user details if we can't fetch them
         return matches.map((match: { userId?: string; user_id?: string; similarity: number }) => ({
           userId: match.userId || match.user_id,
           similarity: match.similarity
         }));
       }
 
-      // Combine match data with user details, handling both userId and user_id fields
+      const toUserName = (u: { full_name?: string; fullName?: string }) =>
+        u?.full_name ?? (u as { fullName?: string })?.fullName ?? "Unknown User";
+
       const detailedMatches: UserMatch[] = matches.map((match: { userId?: string; user_id?: string; similarity: number }) => {
         const userId = match.userId || match.user_id;
         const foundUser = users?.find(u => u.id === userId);
-        
+
         return {
           userId: userId,
           similarity: match.similarity,
           tenantId: foundUser?.tenant_id || null,
           user: foundUser ? {
             id: foundUser.id,
-            name: foundUser.fullName,
+            name: toUserName(foundUser),
             email: foundUser.email,
             tenantId: foundUser.tenant_id
           } : undefined

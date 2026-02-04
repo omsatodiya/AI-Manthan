@@ -128,7 +128,7 @@ export default function ConnectionsPage() {
         const { data: incomingUsers, error: incomingUsersError } =
           await supabase
             .from("users")
-            .select("id, fullName, email")
+            .select("id, full_name, email")
             .in("id", incomingUserIds);
 
         if (incomingUsersError) {
@@ -139,12 +139,26 @@ export default function ConnectionsPage() {
           throw incomingUsersError;
         }
 
-        // Get user details for sent requests
+        const toUserWithFullName = (u: {
+          id: string;
+          full_name?: string;
+          fullName?: string;
+          email: string;
+        }) => ({
+          id: u.id,
+          fullName: u.full_name ?? u.fullName ?? "Unknown User",
+          email: u.email ?? "",
+        });
+
+        const incomingUsersMapped = (incomingUsers || []).map(
+          toUserWithFullName
+        );
+
         const sentUserIds =
           sentConnections?.map((conn) => conn.receiver_id) || [];
         const { data: sentUsers, error: sentUsersError } = await supabase
           .from("users")
-          .select("id, fullName, email")
+          .select("id, full_name, email")
           .in("id", sentUserIds);
 
         if (sentUsersError) {
@@ -152,11 +166,12 @@ export default function ConnectionsPage() {
           throw sentUsersError;
         }
 
-        // Combine connections with user details
+        const sentUsersMapped = (sentUsers || []).map(toUserWithFullName);
+
         const incomingWithUsers =
           incomingConnections?.map((connection) => ({
             ...connection,
-            requester: incomingUsers?.find(
+            requester: incomingUsersMapped.find(
               (user) => user.id === connection.requester_id
             ),
           })) || [];
@@ -164,7 +179,7 @@ export default function ConnectionsPage() {
         const sentWithUsers =
           sentConnections?.map((connection) => ({
             ...connection,
-            receiver: sentUsers?.find(
+            receiver: sentUsersMapped.find(
               (user) => user.id === connection.receiver_id
             ),
           })) || [];

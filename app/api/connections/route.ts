@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     // Check if receiver exists
     const { data: receiver, error: receiverError } = await supabase
       .from("users")
-      .select("id, fullName, email")
+      .select("id, full_name, email")
       .eq("id", receiverId)
       .single();
 
@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    const receiverName = receiver.full_name ?? (receiver as { fullName?: string }).fullName ?? "Unknown User";
 
     // Check if connection already exists
     const { data: existingConnection, error: connectionCheckError } = await supabase
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest) {
         createdAt: newConnection.created_at,
         receiver: {
           id: receiver.id,
-          name: receiver.fullName,
+          name: receiverName,
           email: receiver.email
         }
       }
@@ -245,13 +247,15 @@ export async function PATCH(request: NextRequest) {
     // Get requester details for response
     const { data: requester, error: requesterError } = await supabase
       .from("users")
-      .select("id, fullName, email")
+      .select("id, full_name, email")
       .eq("id", connection.requester_id)
       .single();
 
     if (requesterError) {
       console.error("🔴 /api/connections: Error fetching requester details", requesterError);
     }
+
+    const requesterName = requester ? (requester.full_name ?? (requester as { fullName?: string }).fullName ?? "Unknown User") : null;
 
     console.log("🔵 /api/connections: Connection updated successfully", {
       connectionId: updatedConnection.id,
@@ -268,7 +272,7 @@ export async function PATCH(request: NextRequest) {
         updatedAt: updatedConnection.updated_at,
         requester: requester ? {
           id: requester.id,
-          name: requester.fullName,
+          name: requesterName,
           email: requester.email
         } : null
       }

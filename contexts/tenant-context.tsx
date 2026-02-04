@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { Tenant } from "@/lib/types";
 import { getCurrentUserAction } from "@/app/actions/auth";
 
 interface TenantContextType {

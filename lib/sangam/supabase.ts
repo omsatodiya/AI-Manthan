@@ -219,34 +219,43 @@ export class SangamSupabaseClient {
    */
   async getEmbeddingStats(tenantId: string): Promise<EmbeddingStats> {
     try {
-      const { data, error } = await supabase.rpc('get_embedding_stats', {
-        target_tenant_id: tenantId
-      });
+      const defaultStats: EmbeddingStats = {
+        totalMessages: 0,
+        embeddedMessages: 0,
+        unembeddedMessages: 0,
+        lastEmbeddingCreated: null
+      };
 
-      if (error) {
-        console.error('Error fetching embedding stats:', error);
-        throw new Error(`Failed to fetch embedding stats: ${error.message}`);
+      const [totalRes, embeddedRes, lastRes] = await Promise.all([
+        supabase.from('chat_messages').select('id', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+        supabase.from('chat_embeddings').select('chat_id').eq('tenant_id', tenantId),
+        supabase.from('chat_embeddings').select('created_at').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      ]);
+
+      if (totalRes.error || embeddedRes.error) {
+        return defaultStats;
       }
 
-      const stats = data?.[0];
-      if (!stats) {
-        return {
-          totalMessages: 0,
-          embeddedMessages: 0,
-          unembeddedMessages: 0,
-          lastEmbeddingCreated: null
-        };
-      }
+      const totalMessages = totalRes.count ?? 0;
+      const embeddedChatIds = new Set((embeddedRes.data || []).map((r: { chat_id: string }) => r.chat_id));
+      const embeddedMessages = embeddedChatIds.size;
+      const unembeddedMessages = Math.max(0, totalMessages - embeddedMessages);
+      const lastEmbeddingCreated = lastRes.data?.created_at ?? null;
 
       return {
-        totalMessages: stats.total_messages || 0,
-        embeddedMessages: stats.embedded_messages || 0,
-        unembeddedMessages: stats.unembedded_messages || 0,
-        lastEmbeddingCreated: stats.last_embedding_created || null
+        totalMessages,
+        embeddedMessages,
+        unembeddedMessages,
+        lastEmbeddingCreated
       };
     } catch (error) {
       console.error('Error in getEmbeddingStats:', error);
-      throw error;
+      return {
+        totalMessages: 0,
+        embeddedMessages: 0,
+        unembeddedMessages: 0,
+        lastEmbeddingCreated: null
+      };
     }
   }
 
