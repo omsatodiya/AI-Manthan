@@ -1,18 +1,19 @@
 import { createClient } from "@supabase/supabase-js";
 import { Template, TemplateField } from "@/constants/templates";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY;
+function getTemplatesSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+  const anonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_OR_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.error("Missing Supabase configuration:", {
-    url: !!supabaseUrl,
-    key: !!supabaseKey,
-  });
-  throw new Error("Supabase configuration is missing");
+  if (!supabaseUrl) throw new Error("Supabase URL is missing");
+  const key = serviceKey || anonKey;
+  if (!key) throw new Error("Supabase key is missing");
+
+  return createClient(supabaseUrl, key);
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 export interface DatabaseTemplate {
   id: string;
@@ -34,6 +35,7 @@ export async function getTemplatesByTenant(
       return [];
     }
 
+    const supabase = getTemplatesSupabase();
     const { data, error } = await supabase
       .from("templates")
       .select("*")
@@ -52,6 +54,26 @@ export async function getTemplatesByTenant(
   }
 }
 
+export async function getAllTemplates(): Promise<Template[]> {
+  try {
+    const supabase = getTemplatesSupabase();
+    const { data, error } = await supabase
+      .from("templates")
+      .select("*")
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("Error fetching all templates:", error);
+      throw new Error(`Failed to fetch templates: ${error.message}`);
+    }
+
+    return (data || []).map(convertDatabaseTemplateToTemplate);
+  } catch (err) {
+    console.error("Error in getAllTemplates:", err);
+    throw err;
+  }
+}
+
 export async function getTemplateById(
   tenantId: string,
   templateId: string
@@ -61,6 +83,7 @@ export async function getTemplateById(
     return null;
   }
 
+  const supabase = getTemplatesSupabase();
   const { data, error } = await supabase
     .from("templates")
     .select("*")
@@ -87,6 +110,7 @@ export async function createTemplate(
     throw new Error("Empty tenant ID provided");
   }
 
+  const supabase = getTemplatesSupabase();
   const { data, error } = await supabase
     .from("templates")
     .insert({
@@ -122,6 +146,7 @@ export async function updateTemplate(
   if (updates.htmlContent) updateData.html_content = updates.htmlContent;
   if (updates.fields) updateData.fields = updates.fields;
 
+  const supabase = getTemplatesSupabase();
   const { data, error } = await supabase
     .from("templates")
     .update(updateData)
@@ -146,6 +171,7 @@ export async function deleteTemplate(
     throw new Error("Empty tenant ID provided");
   }
 
+  const supabase = getTemplatesSupabase();
   const { error } = await supabase
     .from("templates")
     .delete()
@@ -159,14 +185,17 @@ export async function deleteTemplate(
 }
 
 function convertDatabaseTemplateToTemplate(
-  dbTemplate: DatabaseTemplate
+  dbTemplate: Record<string, unknown>
 ): Template {
+  const htmlContent =
+    (dbTemplate.html_content as string) ?? (dbTemplate.htmlContent as string) ?? "";
+  const fields = (dbTemplate.fields as Template["fields"]) ?? [];
   return {
-    id: dbTemplate.id,
-    title: dbTemplate.title,
-    description: dbTemplate.description,
-    htmlContent: dbTemplate.html_content,
-    fields: dbTemplate.fields,
-    created_at: dbTemplate.created_at,
+    id: dbTemplate.id as string,
+    title: dbTemplate.title as string,
+    description: (dbTemplate.description as string) ?? "",
+    htmlContent,
+    fields: Array.isArray(fields) ? fields : [],
+    created_at: (dbTemplate.created_at as string) ?? new Date().toISOString(),
   };
 }

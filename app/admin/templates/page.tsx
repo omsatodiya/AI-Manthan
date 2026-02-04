@@ -15,11 +15,13 @@ import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
 import { ColumnDef } from "@tanstack/react-table";
 
-
 export default function AdminTemplatesPage() {
   const router = useRouter();
   const { tenantId, isLoading: tenantLoading } = useTenant();
-  const [data, setData] = useState<{ templates: Template[]; pageCount: number }>({
+  const [data, setData] = useState<{
+    templates: Template[];
+    pageCount: number;
+  }>({
     templates: [],
     pageCount: 0,
   });
@@ -46,22 +48,21 @@ export default function AdminTemplatesPage() {
   const [deleteTemplate, setDeleteTemplate] = useState<Template | null>(null);
 
   useEffect(() => {
-    if (!tenantId || tenantLoading) {
-      return;
-    }
+    if (tenantLoading) return;
 
     setIsLoading(true);
-    getTemplatesAction(tenantId).then((result) => {
+    getTemplatesAction(tenantId ?? undefined).then((result) => {
       if (result.success && result.data) {
         const filteredTemplates = result.data.filter(
           (template) =>
             template.title.toLowerCase().includes(filter.toLowerCase()) ||
-            template.description.toLowerCase().includes(filter.toLowerCase())
+            (template.description ?? "")
+              .toLowerCase()
+              .includes(filter.toLowerCase())
         );
         const pageCount = Math.ceil(filteredTemplates.length / pageSize);
         setData({ templates: filteredTemplates, pageCount });
       } else {
-        console.error("Failed to load templates:", result.message);
         setData({ templates: [], pageCount: 0 });
       }
       setIsLoading(false);
@@ -69,82 +70,86 @@ export default function AdminTemplatesPage() {
   }, [tenantId, tenantLoading, filter, refreshCounter]);
 
   const columns = useMemo(
-    () => [
-      {
-        accessorKey: "title",
-        header: "Title",
-        cell: ({ row }: { row: { getValue: (key: string) => string } }) => (
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
-              <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+    () =>
+      [
+        {
+          accessorKey: "title",
+          header: "Title",
+          cell: ({ row }: { row: { getValue: (key: string) => string } }) => (
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
+                <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
+              <div className="font-semibold text-foreground text-sm sm:text-base min-w-0">
+                <div className="truncate">{row.getValue("title")}</div>
+              </div>
             </div>
-            <div className="font-semibold text-foreground text-sm sm:text-base min-w-0">
-              <div className="truncate">{row.getValue("title")}</div>
-            </div>
-          </div>
-        ),
-      },
-      {
-        accessorKey: "description",
-        header: "Description",
-        cell: ({ row }: { row: { getValue: (key: string) => string } }) => {
-          const description = row.getValue("description") as string;
-          const truncatedDescription = description.length > 50 
-            ? `${description.substring(0, 50)}...` 
-            : description;
-          
-          return (
-            <div className="text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-xs sm:max-w-md">
-              {truncatedDescription}
-            </div>
-          );
+          ),
         },
-      },
-      {
-        accessorKey: "created_at",
-        header: "Created",
-        cell: ({ row }: { row: { original: { created_at?: string } } }) => {
-          const date = new Date(row.original.created_at || "");
-          return (
-            <div className="text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
-              {date.toLocaleDateString()}
-            </div>
-          );
+        {
+          accessorKey: "description",
+          header: "Description",
+          cell: ({ row }: { row: { getValue: (key: string) => string } }) => {
+            const description = (row.getValue("description") as string) ?? "";
+            const truncatedDescription =
+              description.length > 50
+                ? `${description.substring(0, 50)}...`
+                : description;
+
+            return (
+              <div className="text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-xs sm:max-w-md">
+                {truncatedDescription}
+              </div>
+            );
+          },
         },
-      },
-      {
-        accessorKey: "fields",
-        header: "Fields",
-        cell: ({ row }: { row: { original: { fields: unknown[] } } }) => (
-          <div className="text-muted-foreground text-xs sm:text-sm text-center">
-            {row.original.fields.length}
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }: { row: { original: { id: string } } }) => (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditTemplate(row.original as Template)}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteTemplate(row.original as Template)}
-              className="text-destructive hover:text-destructive"
-            >
-              Delete
-            </Button>
-          </div>
-        ),
-      },
-    ] as ColumnDef<Template>[],
+        {
+          accessorKey: "created_at",
+          header: "Created",
+          cell: ({ row }: { row: { original: { created_at?: string } } }) => {
+            const date = new Date(row.original.created_at || "");
+            return (
+              <div className="text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
+                {date.toLocaleDateString()}
+              </div>
+            );
+          },
+        },
+        {
+          accessorKey: "fields",
+          header: "Fields",
+          cell: ({ row }: { row: { original: { fields?: unknown[] } } }) => (
+            <div className="text-muted-foreground text-xs sm:text-sm text-center">
+              {Array.isArray(row.original.fields)
+                ? row.original.fields.length
+                : 0}
+            </div>
+          ),
+        },
+        {
+          id: "actions",
+          header: "Actions",
+          cell: ({ row }: { row: { original: { id: string } } }) => (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditTemplate(row.original as Template)}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteTemplate(row.original as Template)}
+                className="text-destructive hover:text-destructive"
+              >
+                Delete
+              </Button>
+            </div>
+          ),
+        },
+      ] as ColumnDef<Template>[],
     []
   );
 
@@ -175,7 +180,8 @@ export default function AdminTemplatesPage() {
             pageIndex={pageIndex}
             pageSize={pageSize}
             sorting={sorting}
-            searchPlaceholder="Search by title...">
+            searchPlaceholder="Search by title..."
+          >
             <Button onClick={() => setCreateTemplateOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Create Template
@@ -192,10 +198,10 @@ export default function AdminTemplatesPage() {
         />
       )}
       {editTemplate && (
-        <EditTemplateDialog 
-          template={editTemplate} 
+        <EditTemplateDialog
+          template={editTemplate}
           onTemplateUpdated={handleRefresh}
-          onOpenChange={() => setEditTemplate(null)} 
+          onOpenChange={() => setEditTemplate(null)}
         />
       )}
       {deleteTemplate && (

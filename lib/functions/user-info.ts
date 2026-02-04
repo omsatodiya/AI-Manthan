@@ -1,13 +1,20 @@
-import { getSupabaseClient } from "../database/clients";
+import { createClient } from "@supabase/supabase-js";
 import { UserInfo } from "../types/user-info";
 import { UserMatch } from "../types/database";
+
+function getSupabaseServiceClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) throw new Error("Supabase URL and service key required");
+  return createClient(url, key);
+}
 
 export const userInfoFunctions = {
   async getUserInfo(
     userId: string,
     tenantId?: string
   ): Promise<UserInfo | null> {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseServiceClient();
 
     const { data: initialData, error: initialError } = await supabase
       .from("user_info")
@@ -66,7 +73,7 @@ export const userInfoFunctions = {
   async createUserInfo(
     userInfo: Omit<UserInfo, "id" | "createdAt" | "updatedAt">
   ): Promise<UserInfo | null> {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseServiceClient();
     const insertBase: Record<string, unknown> = {
       user_id: userInfo.userId,
       role: userInfo.role,
@@ -87,28 +94,33 @@ export const userInfoFunctions = {
       event_scale: userInfo.eventScale,
       event_format: userInfo.eventFormat,
     };
-    const {
-      data: firstInsertData,
-      error: firstInsertError,
-    } = await supabase
+    const insertPayload = { ...insertBase, tenant_id: userInfo.tenantId ?? null };
+    const { data: firstInsertData, error: firstInsertError } = await supabase
       .from("user_info")
-      .insert({ ...insertBase, tenant_id: userInfo.tenantId ?? null })
+      .insert(insertPayload)
       .select()
       .single();
     let data = firstInsertData;
     const error = firstInsertError;
-    if (
-      error &&
-      (error as { code?: string }).code &&
-      ((error as { code?: string }).code === "42703" ||
-        (error as { code?: string }).code === "PGRST204")
-    ) {
-      const retry = await supabase
-        .from("user_info")
-        .insert(insertBase)
-        .select()
-        .single();
-      data = retry.data;
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "23503" && userInfo.tenantId) {
+        const fallback = await supabase
+          .from("user_info")
+          .insert({ ...insertBase, tenant_id: null })
+          .select()
+          .single();
+        data = fallback.data;
+      } else if (code === "42703" || code === "PGRST204") {
+        const retry = await supabase
+          .from("user_info")
+          .insert(insertBase)
+          .select()
+          .single();
+        data = retry.data;
+      } else {
+        console.error("createUserInfo failed:", error);
+      }
     }
 
     if (!data) return null;
@@ -144,9 +156,10 @@ export const userInfoFunctions = {
     userId: string,
     userInfoData: Partial<
       Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">
-    >
+    >,
+    tenantId?: string
   ): Promise<UserInfo | null> {
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseServiceClient();
     
     const updateData = {
       role: userInfoData.role,
@@ -170,13 +183,11 @@ export const userInfoFunctions = {
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>;
 
-    const {
-      data: firstUpdateData,
-      error: firstUpdateError,
-    } = await supabase
-      .from("user_info")
-      .update(updateData)
-      .eq("user_id", userId)
+    let query = supabase.from("user_info").update(updateData).eq("user_id", userId);
+    if (tenantId !== undefined) {
+      query = query.eq("tenant_id", tenantId);
+    }
+    const { data: firstUpdateData, error: firstUpdateError } = await query
       .select()
       .maybeSingle();
     let data = firstUpdateData;
@@ -187,12 +198,11 @@ export const userInfoFunctions = {
       ((error as { code?: string }).code === "42703" ||
         (error as { code?: string }).code === "PGRST204")
     ) {
-      const retry = await supabase
-        .from("user_info")
-        .update(updateData)
-        .eq("user_id", userId)
-        .select()
-        .maybeSingle();
+      let retryQuery = supabase.from("user_info").update(updateData).eq("user_id", userId);
+      if (tenantId !== undefined) {
+        retryQuery = retryQuery.eq("tenant_id", tenantId);
+      }
+      const retry = await retryQuery.select().maybeSingle();
       data = retry.data;
     }
 
@@ -235,7 +245,7 @@ export const userInfoFunctions = {
     }
   ): Promise<UserMatch[]> {
 
-    const supabase = await getSupabaseClient();
+    const supabase = getSupabaseServiceClient();
 
     try {
       // Call the database function to find matches using vector similarity

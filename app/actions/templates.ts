@@ -1,14 +1,27 @@
 "use server";
 
-import { getTemplatesByTenant, getTemplateById } from "@/lib/database/templates";
+import {
+  getTemplatesByTenant,
+  getAllTemplates,
+  getTemplateById,
+} from "@/lib/database/templates";
 
 export async function getTemplatesAction(tenantId?: string) {
   try {
-    if (!tenantId) {
+    const { getCurrentUserAction } = await import("./auth");
+    const currentUser = await getCurrentUserAction();
+    const resolvedTenantId = tenantId ?? currentUser?.tenantId ?? undefined;
+
+    if (currentUser?.role === "admin") {
+      const templates = await getAllTemplates();
+      return { success: true, data: templates };
+    }
+
+    if (!resolvedTenantId) {
       return { success: false, message: "No tenant ID provided" };
     }
 
-    const templates = await getTemplatesByTenant(tenantId);
+    const templates = await getTemplatesByTenant(resolvedTenantId);
     return { success: true, data: templates };
   } catch (error) {
     console.error("Error fetching templates:", error);
