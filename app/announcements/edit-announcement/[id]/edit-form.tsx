@@ -8,9 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { updateAnnouncementAction } from "@/app/actions/announcement";
+import {
+  createAnnouncementAction,
+  deleteAnnouncementAction,
+  updateAnnouncementAction,
+} from "@/app/actions/announcement";
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
+import { Switch } from "@/components/ui/switch";
+import QuestionRenderer from "@/components/announcements/question-renderer";
+import {
+  deleteAnnouncementOpportunityAction,
+  updateAnnouncementOpportunityAction,
+} from "@/app/actions/announcement-opportunity";
 
 interface EditAnnouncementFormProps {
   announcement: Announcement | null;
@@ -20,10 +30,14 @@ interface EditAnnouncementFormProps {
 export default function EditAnnouncementForm({ announcement, announcementId }: EditAnnouncementFormProps) {
   const router = useRouter();
   const [isSaving, setIsSaving] = useState(false);
+  const initialIsOpportunity = !!announcement?.isOpportunity;
   const [formData, setFormData] = useState({
     title: announcement?.title || "",
     description: announcement?.description || "",
     link: announcement?.link || "",
+    isOpportunity: !!announcement?.isOpportunity,
+    response: ((announcement as unknown as { response?: Record<string, unknown> | null })
+      ?.response ?? {}) as Record<string, unknown>,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +45,48 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
     setIsSaving(true);
 
     try {
-      const result = await updateAnnouncementAction(announcementId, formData);
+      let result:
+        | { success: true; data?: unknown }
+        | { success: false; error?: string };
+
+      if (formData.isOpportunity === initialIsOpportunity) {
+        if (formData.isOpportunity) {
+          result = await updateAnnouncementOpportunityAction(announcementId, {
+            title: formData.title,
+            description: formData.description,
+            link: formData.link,
+            response: formData.response,
+          });
+        } else {
+          result = await updateAnnouncementAction(announcementId, {
+            title: formData.title,
+            description: formData.description,
+            link: formData.link,
+          });
+        }
+      } else {
+        // Type toggled: migrate between tables.
+        if (formData.isOpportunity) {
+          const created = await createAnnouncementAction({
+            title: formData.title,
+            description: formData.description,
+            link: formData.link,
+            isOpportunity: true,
+            response: formData.response,
+          });
+          if (!created.success) result = created;
+          else result = await deleteAnnouncementAction(announcementId);
+        } else {
+          const created = await createAnnouncementAction({
+            title: formData.title,
+            description: formData.description,
+            link: formData.link,
+            isOpportunity: false,
+          });
+          if (!created.success) result = created;
+          else result = await deleteAnnouncementOpportunityAction(announcementId);
+        }
+      }
       
       if (result.success) {
         toast.success("Announcement updated successfully!");
@@ -47,7 +102,10 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
     }
   };
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (
+    field: "title" | "description" | "link" | "isOpportunity" | "response",
+    value: string | boolean | Record<string, unknown>
+  ) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -95,6 +153,25 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4 rounded-md border p-3">
+                  <Label htmlFor="isOpportunity">
+                    This is an opportunity announcement
+                  </Label>
+                  <Switch
+                    id="isOpportunity"
+                    checked={formData.isOpportunity}
+                    onCheckedChange={(checked) =>
+                      handleInputChange("isOpportunity", checked)
+                    }
+                    disabled={isSaving}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Enable this to add/edit opportunity application questions.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
@@ -129,6 +206,15 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
                   disabled={isSaving}
                 />
               </div>
+
+              {formData.isOpportunity && (
+                <QuestionRenderer
+                  responses={formData.response}
+                  onResponseChange={(responses) =>
+                    handleInputChange("response", responses)
+                  }
+                />
+              )}
 
               <div className="flex gap-4">
                 <Button

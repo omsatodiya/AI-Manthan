@@ -1,10 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Edit, Trash2, ExternalLink, Loader2, Calendar, Megaphone, MoreHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  Plus,
+  Edit,
+  Trash2,
+  ExternalLink,
+  Loader2,
+  Calendar,
+  Megaphone,
+  Eye,
+} from "lucide-react";
 import { getAnnouncementsAction, deleteAnnouncementAction } from "@/app/actions/announcement";
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
@@ -20,11 +30,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -39,6 +50,10 @@ export default function AdminAnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewingAnnouncement, setViewingAnnouncement] =
+    useState<Announcement | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isNavigating, startTransition] = useTransition();
 
   useEffect(() => {
     fetchAnnouncements();
@@ -182,12 +197,24 @@ export default function AdminAnnouncementsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="font-semibold">Title</TableHead>
-                    <TableHead className="font-semibold">Description</TableHead>
-                    <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="font-semibold">Created Date</TableHead>
-                    <TableHead className="font-semibold">Link</TableHead>
-                    <TableHead className="font-semibold w-[50px]"></TableHead>
+                    <TableHead className="font-semibold text-center">
+                      Title
+                    </TableHead>
+                    <TableHead className="font-semibold text-center">
+                      Description
+                    </TableHead>
+                    <TableHead className="font-semibold text-center">
+                      Type
+                    </TableHead>
+                    <TableHead className="font-semibold text-center">
+                      Created Date
+                    </TableHead>
+                    <TableHead className="font-semibold text-center">
+                      Link
+                    </TableHead>
+                    <TableHead className="font-semibold text-center w-[140px]">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -239,55 +266,81 @@ export default function AdminAnnouncementsPage() {
                           <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => router.push(`/announcements/edit-announcement/${announcement.id}`)}
-                              className="gap-2"
-                            >
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => setViewingAnnouncement(announcement)}
+                          >
+                            <span className="sr-only">View announcement</span>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              startTransition(() => {
+                                setEditingId(announcement.id);
+                                router.push(
+                                  `/announcements/edit-announcement/${announcement.id}`
+                                );
+                              })
+                            }
+                            disabled={isNavigating || deletingId === announcement.id}
+                          >
+                            <span className="sr-only">Edit announcement</span>
+                            {isNavigating && editingId === announcement.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
                               <Edit className="h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                  className="gap-2 text-destructive focus:text-destructive"
-                                  onSelect={(e) => e.preventDefault()}
-                                >
+                            )}
+                          </Button>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                disabled={deletingId === announcement.id}
+                              >
+                                <span className="sr-only">Delete announcement</span>
+                                {deletingId === announcement.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
                                   <Trash2 className="h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent className="max-w-md">
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle className="text-xl">Delete Announcement</AlertDialogTitle>
-                                  <AlertDialogDescription className="text-base pt-2">
-                                    Are you sure you want to delete &quot;{announcement.title}&quot;? This action cannot be undone and the announcement will be permanently removed.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDelete(announcement.id)}
-                                    disabled={deletingId === announcement.id}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    {deletingId === announcement.id && (
-                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                    )}
-                                    Delete Permanently
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                                )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="max-w-md">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle className="text-xl">
+                                  Delete Announcement
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-base pt-2">
+                                  Are you sure you want to delete &quot;
+                                  {announcement.title}
+                                  &quot;? This action cannot be undone and the
+                                  announcement will be permanently removed.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(announcement.id)}
+                                  disabled={deletingId === announcement.id}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Delete Permanently
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -297,6 +350,82 @@ export default function AdminAnnouncementsPage() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={!!viewingAnnouncement}
+        onOpenChange={(open) => (open ? null : setViewingAnnouncement(null))}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">
+              {viewingAnnouncement?.title ?? ""}
+            </DialogTitle>
+            <DialogDescription className="pt-2">
+              Announcement details
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="grid gap-2">
+              <div className="text-sm font-medium">Description</div>
+              <div className="max-h-64 overflow-auto rounded-md border bg-muted/20 p-3 text-sm leading-relaxed whitespace-pre-wrap break-words">
+                {viewingAnnouncement?.description || "No description provided."}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <div className="text-sm font-medium">Type</div>
+              <div>
+                {viewingAnnouncement?.isOpportunity ? (
+                  <Badge className="gap-1.5 px-2 py-1 font-normal shadow-sm bg-green-600 hover:bg-green-700">
+                    <Megaphone className="h-3 w-3" />
+                    Opportunity
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="px-2 py-1 font-normal">
+                    Announcement
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <div className="text-sm font-medium">Date</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="h-4 w-4" />
+                {viewingAnnouncement?.createdAt
+                  ? formatDate(viewingAnnouncement.createdAt)
+                  : "-"}
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <div className="text-sm font-medium">Link</div>
+              {viewingAnnouncement?.link ? (
+                <div className="flex items-center justify-between gap-3 rounded-md border p-3">
+                  <div className="min-w-0">
+                    <div className="text-sm text-muted-foreground break-all">
+                      {viewingAnnouncement.link}
+                    </div>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() =>
+                      window.open(viewingAnnouncement.link!, "_blank")
+                    }
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Open
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground">-</div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

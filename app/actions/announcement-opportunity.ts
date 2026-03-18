@@ -2,6 +2,8 @@
 
 import { getDb } from "@/lib/database";
 import { getCurrentUserAction } from "./auth";
+import { revalidatePath } from "next/cache";
+import { CreateAnnouncementOpportunityData } from "@/lib/types";
 
 export async function createAnnouncementOpportunityAction(
   title: string,
@@ -98,6 +100,36 @@ export async function deleteAnnouncementOpportunityAction(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error deleting announcement opportunity:", error);
+    return { success: false, error: "Internal server error" };
+  }
+}
+
+export async function updateAnnouncementOpportunityAction(
+  id: string,
+  data: Partial<CreateAnnouncementOpportunityData>
+) {
+  try {
+    const user = await getCurrentUserAction();
+    if (!user || user.role !== "admin") {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    if (!user.tenantId) {
+      return { success: false, error: "No tenant selected" };
+    }
+
+    const db = await getDb();
+    const updated = await db.updateAnnouncementOpportunity(id, data, user.tenantId);
+
+    if (!updated) {
+      return { success: false, error: "Failed to update opportunity announcement" };
+    }
+
+    revalidatePath("/admin/announcements");
+    revalidatePath("/announcements");
+    return { success: true, data: updated };
+  } catch (error) {
+    console.error("Error updating announcement opportunity:", error);
     return { success: false, error: "Internal server error" };
   }
 }
