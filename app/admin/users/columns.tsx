@@ -26,6 +26,11 @@ export const getColumns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
+    cell: ({ getValue }) => (
+      <div className="min-w-56 whitespace-normal break-words">
+        {String(getValue() ?? "")}
+      </div>
+    ),
   },
   {
     accessorKey: "email",

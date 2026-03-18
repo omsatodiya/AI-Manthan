@@ -46,7 +46,7 @@ export function CreateUserDialog({
 }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: { role: "user" },
+    defaultValues: { fullName: "", email: "", role: "user", password: "" },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -129,7 +129,7 @@ export function CreateUserDialog({
                 <FormItem>
                   <FormLabel>Password (Optional)</FormLabel>
                   <FormControl>
-                    <Input type="password" {...field} />
+                    <Input type="password" {...field} value={field.value ?? ""} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

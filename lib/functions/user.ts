@@ -241,11 +241,12 @@ export const userFunctions = {
 
     if (query) {
       queryBuilder = queryBuilder.or(
-        `fullName.ilike.%${query}%,email.ilike.%${query}%`
+        `full_name.ilike.%${query}%,fullName.ilike.%${query}%,email.ilike.%${query}%`
       );
     }
     if (sort) {
-      queryBuilder = queryBuilder.order(sort.id, { ascending: !sort.desc });
+      const sortKey = sort.id === "fullName" ? "full_name" : sort.id;
+      queryBuilder = queryBuilder.order(sortKey, { ascending: !sort.desc });
     }
 
     const { data, error, count } = await queryBuilder.range(
@@ -254,8 +255,27 @@ export const userFunctions = {
     );
     if (error) console.error(error);
 
+    const users = ((data as Record<string, unknown>[] | null) ?? []).map(
+      (row) =>
+        ({
+          id: row.id as string,
+          fullName: (row.full_name ??
+            row.fullName ??
+            row.name ??
+            "") as string,
+          email: (row.email ?? "") as string,
+          passwordHash: (row.password_hash ?? row.passwordHash ?? "") as string,
+          role: (row.role ?? "user") as "admin" | "user",
+          tenantId: (row.tenant_id ?? null) as string | null,
+          otp: (row.otp ?? null) as string | null,
+          otpExpires: (row.otp_expires ?? row.otpExpires ?? null) as number | null,
+          createdAt: (row.created_at ?? row.createdAt ?? "") as string,
+          updatedAt: (row.updated_at ?? row.updatedAt ?? "") as string,
+        }) as User
+    );
+
     return {
-      users: (data as User[]) ?? [],
+      users,
       totalCount: count ?? 0,
       pageCount: count ? Math.ceil(count / pageSize) : 0,
     };
