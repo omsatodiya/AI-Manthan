@@ -12,7 +12,7 @@ const commercialProposal: Template = {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><title>Proposal — {{text:clientName}}</title>
+  <meta charset="UTF-8"><title>Proposal - {{text:clientName}}</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.6; color: #1a1a1a; max-width: 820px; margin: 0 auto; padding: 40px; }
     h1 { font-size: 1.75rem; border-bottom: 2px solid #2563eb; padding-bottom: 8px; }

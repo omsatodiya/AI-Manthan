@@ -12,7 +12,7 @@ const sowOutline: Template = {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><title>SOW — {{text:projectTitle}}</title>
+  <meta charset="UTF-8"><title>SOW - {{text:projectTitle}}</title>
   <style>
     body { font-family: 'Segoe UI', sans-serif; line-height: 1.55; color: #111; max-width: 840px; margin: 0 auto; padding: 40px; }
     h1 { font-size: 1.5rem; }

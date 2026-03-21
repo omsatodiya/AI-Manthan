@@ -12,7 +12,7 @@ const discoverySummary: Template = {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><title>Discovery — {{text:accountName}}</title>
+  <meta charset="UTF-8"><title>Discovery - {{text:accountName}}</title>
   <style>
     body { font-family: Georgia, serif; line-height: 1.65; color: #222; max-width: 800px; margin: 0 auto; padding: 36px; }
     h1 { font-size: 1.6rem; }

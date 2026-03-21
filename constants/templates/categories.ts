@@ -21,7 +21,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategoryMeta[] = [
     id: "sales-revenue",
     label: "Sales & revenue",
     shortDescription:
-      "Proposals, discovery summaries, SOWs, RFP responses, renewals — client-facing and pipeline docs.",
+      "Proposals, discovery summaries, SOWs, RFP responses, renewals - client-facing and pipeline docs.",
     icon: TrendingUp,
   },
   {

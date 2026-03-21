@@ -12,7 +12,7 @@ const internalDealBrief: Template = {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><title>Deal brief — {{text:dealName}}</title>
+  <meta charset="UTF-8"><title>Deal brief - {{text:dealName}}</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.6; color: #111; max-width: 780px; margin: 0 auto; padding: 36px; background: #fafafa; }
     .box { background: #fff; padding: 28px; border-radius: 8px; border: 1px solid #e5e5e5; }

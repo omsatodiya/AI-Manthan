@@ -69,7 +69,7 @@ export default function AdminCreateTemplateCategoryPage() {
                 New template
               </h1>
               <p className="text-muted-foreground text-sm sm:text-base">
-                {meta?.label} — choose a starter layout
+                {meta?.label} - choose a starter layout
               </p>
             </div>
           </div>

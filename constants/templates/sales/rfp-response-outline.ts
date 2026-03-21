@@ -12,7 +12,7 @@ const rfpResponseOutline: Template = {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><title>RFP Response — {{text:rfpTitle}}</title>
+  <meta charset="UTF-8"><title>RFP Response - {{text:rfpTitle}}</title>
   <style>
     body { font-family: system-ui, sans-serif; line-height: 1.55; color: #1f2937; max-width: 860px; margin: 0 auto; padding: 40px; }
     h1 { font-size: 1.65rem; }
