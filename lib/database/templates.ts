@@ -1,5 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
-import { Template, TemplateField } from "@/constants/templates";
+import {
+  Template,
+  TemplateField,
+  type TemplateCategoryId,
+} from "@/constants/templates";
 
 function getTemplatesSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -22,6 +26,7 @@ export interface DatabaseTemplate {
   description: string;
   html_content: string;
   fields: TemplateField[];
+  category?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -119,6 +124,7 @@ export async function createTemplate(
       description: template.description,
       html_content: template.htmlContent,
       fields: template.fields,
+      category: template.category ?? "general",
     })
     .select()
     .single();
@@ -145,6 +151,7 @@ export async function updateTemplate(
   if (updates.description) updateData.description = updates.description;
   if (updates.htmlContent) updateData.html_content = updates.htmlContent;
   if (updates.fields) updateData.fields = updates.fields;
+  if (updates.category !== undefined) updateData.category = updates.category;
 
   const supabase = getTemplatesSupabase();
   const { data, error } = await supabase
@@ -190,6 +197,15 @@ function convertDatabaseTemplateToTemplate(
   const htmlContent =
     (dbTemplate.html_content as string) ?? (dbTemplate.htmlContent as string) ?? "";
   const fields = (dbTemplate.fields as Template["fields"]) ?? [];
+  const rawCategory = dbTemplate.category as string | null | undefined;
+  const category: TemplateCategoryId =
+    rawCategory === "sales-revenue" ||
+    rawCategory === "finance-leadership" ||
+    rawCategory === "operations-delivery" ||
+    rawCategory === "general"
+      ? rawCategory
+      : "general";
+
   return {
     id: dbTemplate.id as string,
     title: dbTemplate.title as string,
@@ -197,5 +213,6 @@ function convertDatabaseTemplateToTemplate(
     htmlContent,
     fields: Array.isArray(fields) ? fields : [],
     created_at: (dbTemplate.created_at as string) ?? new Date().toISOString(),
+    category,
   };
 }

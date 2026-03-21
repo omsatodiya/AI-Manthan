@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -29,10 +29,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createTemplateAction } from "@/app/actions/templates";
+import { TEMPLATE_CATEGORIES, isTemplateCategoryId } from "@/constants/templates/categories";
+import type { Template, TemplateCategoryId } from "@/constants/templates";
+
+function categoryFromJson(value: unknown): TemplateCategoryId {
+  return typeof value === "string" && isTemplateCategoryId(value)
+    ? value
+    : "general";
+}
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
+  category: z.enum(["sales-revenue", "finance-leadership", "operations-delivery", "general"]),
   htmlContent: z.string().min(1, "HTML content is required"),
   fields: z.array(z.object({
     key: z.string().min(1, "Field key is required"),
@@ -48,9 +57,15 @@ interface CreateTemplateDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onTemplateCreated: () => void;
+  defaultBlueprint?: Template | null;
 }
 
-export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTemplateCreated }: CreateTemplateDialogProps) {
+export function CreateTemplateDialog({
+  open: externalOpen,
+  onOpenChange,
+  onTemplateCreated,
+  defaultBlueprint,
+}: CreateTemplateDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
@@ -66,11 +81,20 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
     return text.replace(/\\n/g, '\n');
   };
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const defaultFormValues = useMemo((): FormData => {
+    if (defaultBlueprint) {
+      return {
+        title: defaultBlueprint.title,
+        description: defaultBlueprint.description,
+        category: (defaultBlueprint.category ?? "general") as FormData["category"],
+        htmlContent: normalizeLineBreaks(defaultBlueprint.htmlContent),
+        fields: defaultBlueprint.fields,
+      };
+    }
+    return {
       title: "",
       description: "",
+      category: "general" as const,
       htmlContent: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -134,7 +158,12 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
           placeholder: "Enter solution details",
         },
       ],
-    },
+    };
+  }, [defaultBlueprint]);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: defaultFormValues,
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -170,6 +199,7 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
        form.reset({
          title: parsed.title,
          description: parsed.description,
+         category: categoryFromJson(parsed.category),
          htmlContent: normalizeLineBreaks(parsed.htmlContent),
          fields: parsed.fields,
        });
@@ -215,6 +245,7 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
        const result = await createTemplateAction({
          title: data.title,
          description: data.description,
+         category: data.category,
          htmlContent: normalizeLineBreaks(data.htmlContent),
          fields: data.fields,
        });
@@ -286,6 +317,30 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TEMPLATE_CATEGORIES.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -539,6 +594,7 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
                     const jsonString = JSON.stringify({
                       title: formData.title,
                       description: formData.description,
+                      category: formData.category,
                       htmlContent: formData.htmlContent,
                       fields: formData.fields,
                     }, null, 2);
@@ -572,6 +628,7 @@ export function CreateTemplateDialog({ open: externalOpen, onOpenChange, onTempl
                        const result = await createTemplateAction({
                          title: parsed.title,
                          description: parsed.description,
+                         category: categoryFromJson(parsed.category),
                          htmlContent: normalizeLineBreaks(parsed.htmlContent),
                          fields: parsed.fields,
                        });

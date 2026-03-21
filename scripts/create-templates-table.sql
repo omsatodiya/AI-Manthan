@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS templates (
   description TEXT,
   html_content TEXT NOT NULL,
   fields JSONB NOT NULL DEFAULT '[]',
+  category VARCHAR(64) NOT NULL DEFAULT 'general',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

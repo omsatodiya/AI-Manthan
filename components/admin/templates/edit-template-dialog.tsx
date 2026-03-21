@@ -29,11 +29,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateTemplateAction } from "@/app/actions/templates";
-import { Template } from "@/constants/templates";
+import { Template, type TemplateCategoryId } from "@/constants/templates";
+import { TEMPLATE_CATEGORIES, isTemplateCategoryId } from "@/constants/templates/categories";
+
+function categoryFromJson(value: unknown): TemplateCategoryId {
+  return typeof value === "string" && isTemplateCategoryId(value)
+    ? value
+    : "general";
+}
 
 const formSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().min(1, "Description is required").max(500, "Description must be less than 500 characters"),
+  category: z.enum(["sales-revenue", "finance-leadership", "operations-delivery", "general"]),
   htmlContent: z.string().min(1, "HTML content is required"),
   fields: z.array(z.object({
     key: z.string().min(1, "Field key is required"),
@@ -75,6 +83,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
     defaultValues: {
       title: template?.title || "",
       description: template?.description || "",
+      category: (template?.category ?? "general") as TemplateCategoryId,
       htmlContent: normalizeLineBreaks(template?.htmlContent || ""),
       fields: template?.fields || [],
     },
@@ -91,6 +100,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
       form.reset({
         title: template.title,
         description: template.description,
+        category: template.category ?? "general",
         htmlContent: normalizeLineBreaks(template.htmlContent),
         fields: template.fields,
       });
@@ -125,6 +135,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
       form.reset({
         title: parsed.title,
         description: parsed.description,
+        category: categoryFromJson(parsed.category),
         htmlContent: normalizeLineBreaks(parsed.htmlContent),
         fields: parsed.fields,
       });
@@ -172,6 +183,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
       const result = await updateTemplateAction(template.id, {
         title: data.title,
         description: data.description,
+        category: data.category,
         htmlContent: normalizeLineBreaks(data.htmlContent),
         fields: data.fields,
       });
@@ -242,6 +254,30 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TEMPLATE_CATEGORIES.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -495,6 +531,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
                     const jsonString = JSON.stringify({
                       title: formData.title,
                       description: formData.description,
+                      category: formData.category,
                       htmlContent: formData.htmlContent,
                       fields: formData.fields,
                     }, null, 2);
@@ -530,6 +567,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
                       const result = await updateTemplateAction(template.id, {
                         title: parsed.title,
                         description: parsed.description,
+                        category: categoryFromJson(parsed.category),
                         htmlContent: normalizeLineBreaks(parsed.htmlContent),
                         fields: parsed.fields,
                       });

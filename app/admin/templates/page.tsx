@@ -7,10 +7,11 @@ import { FileText, Plus, ArrowLeft, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/custom/data-table";
-import { CreateTemplateDialog } from "@/components/admin/templates/create-template-dialog";
+import { PickTemplateCategoryDialog } from "@/components/admin/templates/pick-template-category-dialog";
 import { EditTemplateDialog } from "@/components/admin/templates/edit-template-dialog";
 import { DeleteTemplateDialog } from "@/components/admin/templates/delete-template-dialog";
 import { Template } from "@/constants/templates";
+import { getCategoryMeta } from "@/constants/templates/categories";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
 import { ColumnDef } from "@tanstack/react-table";
@@ -43,7 +44,7 @@ export default function AdminTemplatesPage() {
     }
   }, [filter, prevFilter]);
 
-  const [createTemplateOpen, setCreateTemplateOpen] = useState(false);
+  const [pickCategoryOpen, setPickCategoryOpen] = useState(false);
   const [editTemplate, setEditTemplate] = useState<Template | null>(null);
   const [deleteTemplate, setDeleteTemplate] = useState<Template | null>(null);
 
@@ -100,6 +101,19 @@ export default function AdminTemplatesPage() {
               <div className="text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-xs sm:max-w-md">
                 {truncatedDescription}
               </div>
+            );
+          },
+        },
+        {
+          accessorKey: "category",
+          header: "Category",
+          cell: ({ row }: { row: { original: Template } }) => {
+            const cat = row.original.category ?? "general";
+            const label = getCategoryMeta(cat)?.label ?? cat;
+            return (
+              <span className="text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
+                {label}
+              </span>
             );
           },
         },
@@ -182,7 +196,7 @@ export default function AdminTemplatesPage() {
             sorting={sorting}
             searchPlaceholder="Search by title..."
           >
-            <Button onClick={() => setCreateTemplateOpen(true)}>
+            <Button onClick={() => setPickCategoryOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Create Template
             </Button>
@@ -190,13 +204,10 @@ export default function AdminTemplatesPage() {
         )}
       </div>
 
-      {createTemplateOpen && (
-        <CreateTemplateDialog
-          open={createTemplateOpen}
-          onOpenChange={setCreateTemplateOpen}
-          onTemplateCreated={handleRefresh}
-        />
-      )}
+      <PickTemplateCategoryDialog
+        open={pickCategoryOpen}
+        onOpenChange={setPickCategoryOpen}
+      />
       {editTemplate && (
         <EditTemplateDialog
           template={editTemplate}

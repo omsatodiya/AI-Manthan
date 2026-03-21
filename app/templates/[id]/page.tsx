@@ -10,6 +10,8 @@ import { toPng } from "html-to-image";
 import { Download, Loader2, Sparkles, RotateCcw } from "lucide-react";
 
 import { Template } from "@/constants/templates";
+import { isTemplateCategoryId } from "@/constants/templates/categories";
+import { TemplateCategoryListPage } from "@/components/templates/template-category-list-page";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplateAction } from "@/app/actions/templates";
 import { Button } from "@/components/ui/button";
@@ -103,12 +105,19 @@ function populateTemplate(
   return result;
 }
 
-export default function TemplateEditorPage({
+export default function TemplatePage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const resolvedParams = use(params);
+  if (isTemplateCategoryId(resolvedParams.id)) {
+    return <TemplateCategoryListPage category={resolvedParams.id} />;
+  }
+  return <TemplateEditorById id={resolvedParams.id} />;
+}
+
+function TemplateEditorById({ id }: { id: string }) {
   const { tenantId, isLoading: tenantLoading } = useTenant();
   const previewRef = useRef<HTMLIFrameElement>(null);
   const [template, setTemplate] = useState<Template | null>(null);
@@ -124,7 +133,7 @@ export default function TemplateEditorPage({
       
       setIsLoading(true);
       try {
-        const result = await getTemplateAction(tenantId, resolvedParams.id);
+        const result = await getTemplateAction(tenantId, id);
         if (result.success && result.data) {
           console.log('Loaded template:', result.data);
           setTemplate(result.data);
@@ -141,7 +150,7 @@ export default function TemplateEditorPage({
     };
 
     loadTemplate();
-  }, [tenantId, tenantLoading, resolvedParams.id]);
+  }, [tenantId, tenantLoading, id]);
 
   const initialHtml = useMemo(() => {
     if (!template) return "";

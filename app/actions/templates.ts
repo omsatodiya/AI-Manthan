@@ -5,6 +5,7 @@ import {
   getAllTemplates,
   getTemplateById,
 } from "@/lib/database/templates";
+import type { TemplateCategoryId } from "@/constants/templates";
 
 export async function getTemplatesAction(tenantId?: string) {
   try {
@@ -47,6 +48,7 @@ export async function createTemplateAction(templateData: {
   title: string;
   description: string;
   htmlContent: string;
+  category?: TemplateCategoryId;
   fields: Array<{
     key: string;
     name: string;
@@ -69,6 +71,7 @@ export async function createTemplateAction(templateData: {
       description: templateData.description,
       htmlContent: templateData.htmlContent,
       fields: templateData.fields,
+      category: templateData.category ?? "general",
       created_at: new Date().toISOString(),
     });
 
@@ -83,6 +86,7 @@ export async function updateTemplateAction(templateId: string, updates: {
   title?: string;
   description?: string;
   htmlContent?: string;
+  category?: TemplateCategoryId;
   fields?: Array<{
     key: string;
     name: string;
@@ -91,7 +95,6 @@ export async function updateTemplateAction(templateId: string, updates: {
   }>;
 }) {
   try {
-    // Get current user to determine tenant
     const { getCurrentUserAction } = await import("./auth");
     const currentUser = await getCurrentUserAction();
     
@@ -100,13 +103,7 @@ export async function updateTemplateAction(templateId: string, updates: {
     }
 
     const { updateTemplate } = await import("@/lib/database/templates");
-    const updateData: Record<string, unknown> = {};
-    if (updates.title) updateData.title = updates.title;
-    if (updates.description) updateData.description = updates.description;
-    if (updates.htmlContent) updateData.html_content = updates.htmlContent;
-    if (updates.fields) updateData.fields = updates.fields;
-    
-    const template = await updateTemplate(currentUser.tenantId, templateId, updateData);
+    const template = await updateTemplate(currentUser.tenantId, templateId, updates);
 
     return { success: true, data: template };
   } catch (error) {

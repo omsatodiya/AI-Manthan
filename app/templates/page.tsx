@@ -1,101 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { ArrowLeft, FileText, ExternalLink } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/custom/data-table";
-import { Template } from "@/constants/templates";
-import { ColumnDef, SortingState, Updater } from "@tanstack/react-table";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
-
-const columns: ColumnDef<Template>[] = [
-  {
-    accessorKey: "title",
-    header: "Title",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2 sm:gap-3">
-        <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 flex-shrink-0">
-          <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-        </div>
-        <div className="font-semibold text-foreground text-sm sm:text-base min-w-0">
-          <div className="truncate">{row.getValue("title")}</div>
-        </div>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "description",
-    header: "Description",
-    cell: ({ row }) => {
-      const description = row.getValue("description") as string;
-      const truncatedDescription = description.length > 50 
-        ? `${description.substring(0, 50)}...` 
-        : description;
-      
-      return (
-        <div className="text-muted-foreground text-xs sm:text-sm leading-relaxed max-w-xs sm:max-w-md">
-          {truncatedDescription}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "created_at",
-    header: "Created",
-    cell: ({ row }) => {
-      const date = new Date(row.original.created_at || "");
-      return (
-        <div className="text-muted-foreground text-xs sm:text-sm whitespace-nowrap">
-          {date.toLocaleDateString()}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "fields",
-    header: "Fields",
-    cell: ({ row }) => (
-      <div className="text-muted-foreground text-xs sm:text-sm text-center">
-        {row.original.fields.length}
-      </div>
-    ),
-  },
-  {
-    id: "actions",
-    header: "Actions",
-    cell: ({ row }) => (
-      <Link href={`/templates/${row.original.id}`}>
-        <Button size="sm" className="h-7 sm:h-8 text-xs sm:text-sm">
-          <ExternalLink className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-          <span className="hidden sm:inline">Use Template</span>
-          <span className="sm:hidden">Use</span>
-        </Button>
-      </Link>
-    ),
-  },
-];
+import { Template } from "@/constants/templates";
+import {
+  TEMPLATE_CATEGORIES,
+  getCategoryMeta,
+  type TemplateCategoryId,
+} from "@/constants/templates/categories";
+import { cn } from "@/lib/utils";
 
 export default function TemplateSelectionPage() {
   const { tenantId, isLoading: tenantLoading } = useTenant();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [pageIndex, setPageIndex] = useState(0);
-  const [pageSize] = useState(10);
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     const loadTemplates = async () => {
-      // Don't load templates if tenant is still loading or tenantId is not available
       if (tenantLoading || !tenantId) {
         return;
       }
@@ -106,11 +37,9 @@ export default function TemplateSelectionPage() {
         if (result.success && result.data) {
           setTemplates(result.data);
         } else {
-          console.error("Failed to load templates:", result.message);
           setTemplates([]);
         }
-      } catch (error) {
-        console.error("Error loading templates:", error);
+      } catch {
         setTemplates([]);
       } finally {
         setIsLoading(false);
@@ -120,54 +49,22 @@ export default function TemplateSelectionPage() {
     loadTemplates();
   }, [tenantId, tenantLoading]);
 
-  const filteredTemplates = templates.filter(
-    (template) =>
-      template.title.toLowerCase().includes(filter.toLowerCase()) ||
-      template.description.toLowerCase().includes(filter.toLowerCase())
-  );
+  const GeneralIcon = getCategoryMeta("general")!.icon;
 
-  const pageCount = Math.ceil(filteredTemplates.length / pageSize);
-  const paginatedTemplates = filteredTemplates.slice(
-    pageIndex * pageSize,
-    (pageIndex + 1) * pageSize
-  );
-
-  const handlePageChange = (newPageIndex: number) => {
-    setPageIndex(newPageIndex);
-  };
-
-  const handleSortChange = (updater: Updater<SortingState>) => {
-    setSorting(updater);
-  };
-
-  const handleFilterChange = (newFilter: string) => {
-    setFilter(newFilter);
-    setPageIndex(0);
-  };
-
-  const handleRefresh = async () => {
-    setFilter("");
-    setPageIndex(0);
-    setSorting([]);
-
-    if (tenantId) {
-      setIsLoading(true);
-      try {
-        const result = await getTemplatesAction(tenantId);
-        if (result.success && result.data) {
-          setTemplates(result.data);
-        } else {
-          console.error("Failed to refresh templates:", result.message);
-          setTemplates([]);
-        }
-      } catch (error) {
-        console.error("Error refreshing templates:", error);
-        setTemplates([]);
-      } finally {
-        setIsLoading(false);
-      }
+  const countsByCategory = useMemo(() => {
+    const map: Record<TemplateCategoryId, number> = {
+      "sales-revenue": 0,
+      "finance-leadership": 0,
+      "operations-delivery": 0,
+      general: 0,
+    };
+    for (const t of templates) {
+      const c = (t.category ?? "general") as TemplateCategoryId;
+      if (c in map) map[c] += 1;
+      else map.general += 1;
     }
-  };
+    return map;
+  }, [templates]);
 
   if (tenantLoading || (isLoading && tenantId)) {
     return (
@@ -197,7 +94,6 @@ export default function TemplateSelectionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pt-16">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-        {/* Header Section */}
         <div className="mb-6 sm:mb-8">
           <div className="mb-4 sm:mb-6">
             <Link href="/">
@@ -209,47 +105,81 @@ export default function TemplateSelectionPage() {
             </Link>
           </div>
 
-          <div className="text-center mb-6 sm:mb-8">
+          <div className="text-center mb-8 sm:mb-10">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold tracking-tight text-foreground mb-3 sm:mb-4 font-sans">
               Document Templates
             </h1>
             <p className="text-base sm:text-lg lg:text-xl text-muted-foreground max-w-2xl mx-auto px-4 font-sans">
-              Choose from our collection of professional document templates
-              powered by AI
+              Choose a category, then pick a template to create AI-assisted
+              documents for your business
             </p>
           </div>
         </div>
 
-        {/* Data Table */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="pb-3 sm:pb-4 px-4 sm:px-6">
-            <CardTitle className="text-lg sm:text-xl lg:text-2xl font-semibold font-sans">
-              Available Templates
-            </CardTitle>
-            <CardDescription className="text-sm sm:text-base font-sans">
-              Select a template to start creating your professional document
-              with AI assistance
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="px-2 sm:px-4 lg:px-6">
-            <div className="overflow-x-auto">
-              <DataTable
-                columns={columns}
-                data={paginatedTemplates}
-                pageCount={pageCount}
-                onPageChange={handlePageChange}
-                onSortChange={handleSortChange}
-                onFilterChange={handleFilterChange}
-                onRefresh={handleRefresh}
-                isLoading={isLoading}
-                pageIndex={pageIndex}
-                pageSize={pageSize}
-                sorting={sorting}
-                searchPlaceholder="Search by Template Name..."
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-2 max-w-5xl mx-auto">
+          {TEMPLATE_CATEGORIES.filter((c) => c.id !== "general").map(
+            (cat) => {
+              const Icon = cat.icon;
+              const count = countsByCategory[cat.id];
+              return (
+                <Link
+                  key={cat.id}
+                  href={`/templates/${cat.id}`}
+                  className="group block"
+                >
+                  <Card
+                    className={cn(
+                      "h-full border-0 shadow-lg transition-all duration-200",
+                      "hover:shadow-xl hover:border-primary/20 hover:bg-muted/30"
+                    )}
+                  >
+                    <CardHeader className="space-y-3 sm:space-y-4">
+                      <div className="flex items-start gap-4">
+                        <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-xl bg-primary/10 text-primary shrink-0 group-hover:bg-primary/15 transition-colors">
+                          <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
+                        </div>
+                        <div className="min-w-0 flex-1 text-left">
+                          <CardTitle className="text-lg sm:text-xl font-semibold font-sans leading-tight">
+                            {cat.label}
+                          </CardTitle>
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-sans">
+                            {count} template{count === 1 ? "" : "s"}
+                          </p>
+                        </div>
+                      </div>
+                      <CardDescription className="text-sm sm:text-base leading-relaxed font-sans text-left pl-0 sm:pl-[4.5rem]">
+                        {cat.shortDescription}
+                      </CardDescription>
+                    </CardHeader>
+                  </Card>
+                </Link>
+              );
+            }
+          )}
+        </div>
+
+        {countsByCategory.general > 0 && (
+          <div className="max-w-5xl mx-auto mt-8">
+            <Link href="/templates/general" className="block">
+              <Card className="border border-dashed shadow-sm hover:bg-muted/20 transition-colors">
+                <CardHeader className="flex flex-row items-center gap-4 py-4">
+                  <div className="rounded-lg bg-muted p-2">
+                    <GeneralIcon className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="text-left">
+                    <CardTitle className="text-base font-medium">
+                      General
+                    </CardTitle>
+                    <CardDescription>
+                      {countsByCategory.general} uncategorized template
+                      {countsByCategory.general === 1 ? "" : "s"}
+                    </CardDescription>
+                  </div>
+                </CardHeader>
+              </Card>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

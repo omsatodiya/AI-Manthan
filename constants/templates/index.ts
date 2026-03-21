@@ -1,3 +1,7 @@
+import type { TemplateCategoryId, TemplateAudience } from "./categories";
+
+export type { TemplateCategoryId, TemplateAudience } from "./categories";
+
 export interface TemplateField {
   key: string;
   name: string;
@@ -12,4 +16,6 @@ export interface Template {
   htmlContent: string;
   fields: TemplateField[];
   created_at: string;
+  category?: TemplateCategoryId;
+  audience?: TemplateAudience;
 }
