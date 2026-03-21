@@ -33,77 +33,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "@/components/ui/toast";
 import { Toaster } from "@/components/ui/toast";
-
-// Function to convert \n characters to actual line breaks
-const normalizeLineBreaks = (text: string) => {
-  return text.replace(/\\n/g, '\n');
-};
-
-function populateTemplate(
-  templateContent: string,
-  data: Record<string, string>
-): string {
-  console.log("=== POPULATE TEMPLATE DEBUG ===");
-  console.log("Template content preview:", templateContent.substring(0, 300) + "...");
-  console.log("Data to populate with:", data);
-  
-  // Test the regex pattern
-  const testMatches = templateContent.match(/\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?([^}]+?)\s*\}\}/g);
-  console.log("All template variables found:", testMatches);
-  
-  const result = templateContent.replace(
-    /\{\{\s*(?:(text|points|table|paragraphs|bold|italic|heading):)?([^}]+?)\s*\}\}/g,
-    (match, type, key) => {
-      // For typed variables like {{heading:Executive Summary}}, use the key part after the colon
-      // For simple variables like {{Company Name}}, use the key directly
-      const dataKey = type ? key : key; // Both cases use the same key
-      const value = data[dataKey] || `[${dataKey}]`;
-      console.log(`Found template variable: "${match}" -> key: "${key}", type: "${type}", dataKey: "${dataKey}", value: "${value}"`);
-      switch (type) {
-        case "points":
-          return value
-            .split("\n")
-            .map((item) => (item.trim() ? `<li>${item.trim()}</li>` : ""))
-            .join("");
-        case "table":
-          const rows = value.split("\n").filter((r) => r.trim());
-          if (rows.length === 0) return "<table></table>";
-          const headers = rows[0]
-            .split(",")
-            .map((h) => `<th>${h.trim()}</th>`)
-            .join("");
-          const bodyRows = rows
-            .slice(1)
-            .map(
-              (row) =>
-                `<tr>${row
-                  .split(",")
-                  .map((c) => `<td>${c.trim()}</td>`)
-                  .join("")}</tr>`
-            )
-            .join("");
-          return `<table><thead><tr>${headers}</tr></thead><tbody>${bodyRows}</tbody></table>`;
-        case "paragraphs":
-          return value
-            .split("\n\n")
-            .map((p) => (p.trim() ? `<p>${p.trim()}</p>` : ""))
-            .join("");
-        case "bold":
-          return `<strong>${value}</strong>`;
-        case "italic":
-          return `<em>${value}</em>`;
-        case "heading":
-          return `<h3>${value}</h3>`;
-        default:
-          return value;
-      }
-    }
-  );
-  
-  console.log("Final populated result preview:", result.substring(0, 500) + "...");
-  console.log("=== END POPULATE TEMPLATE DEBUG ===");
-  return result;
-}
+import { normalizeLineBreaks, populateTemplate } from "@/lib/template-populate";
 
 export default function TemplatePage({
   params,

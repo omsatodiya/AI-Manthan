@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Trash2, GripVertical, FileText, Code } from "lucide-react";
@@ -31,6 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createTemplateAction } from "@/app/actions/templates";
 import { TEMPLATE_CATEGORIES, isTemplateCategoryId } from "@/constants/templates/categories";
 import type { Template, TemplateCategoryId } from "@/constants/templates";
+import { normalizeLineBreaks, populateTemplate } from "@/lib/template-populate";
 
 function categoryFromJson(value: unknown): TemplateCategoryId {
   return typeof value === "string" && isTemplateCategoryId(value)
@@ -75,11 +76,6 @@ export function CreateTemplateDialog({
   
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
-
-  // Function to convert \n characters to actual line breaks
-  const normalizeLineBreaks = (text: string) => {
-    return text.replace(/\\n/g, '\n');
-  };
 
   const defaultFormValues = useMemo((): FormData => {
     if (defaultBlueprint) {
@@ -165,6 +161,32 @@ export function CreateTemplateDialog({
     resolver: zodResolver(formSchema),
     defaultValues: defaultFormValues,
   });
+
+  const watchHtml = useWatch({ control: form.control, name: "htmlContent" });
+  const watchFields = useWatch({ control: form.control, name: "fields" });
+
+  const previewHtml = useMemo(() => {
+    const html = normalizeLineBreaks(watchHtml ?? "");
+    const fieldList = watchFields ?? [];
+    if (!html.trim()) {
+      return "<!DOCTYPE html><html><body style=\"font-family:system-ui;padding:24px;color:#64748b\">No HTML content yet.</body></html>";
+    }
+    const placeholderData = fieldList.reduce(
+      (acc, f) => {
+        const k = (f?.key ?? "").trim();
+        if (!k) return acc;
+        const label = (f?.name ?? "").trim() || k;
+        acc[k] = `[${label}]`;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+    try {
+      return populateTemplate(html, placeholderData);
+    } catch {
+      return html;
+    }
+  }, [watchHtml, watchFields]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -268,15 +290,17 @@ export function CreateTemplateDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="w-[calc(100vw-2rem)] max-w-5xl sm:max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-4 overflow-hidden p-6 sm:max-w-7xl max-h-[92vh]">
+        <DialogHeader className="shrink-0 space-y-2 text-left">
           <DialogTitle className="font-sans">Create New Template</DialogTitle>
           <DialogDescription className="font-sans">
             Create a new document template with customizable fields.
           </DialogDescription>
         </DialogHeader>
-        
-        <Tabs defaultValue="form" className="w-full">
+
+        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:max-w-[52%] lg:pr-1">
+        <Tabs defaultValue="form" className="flex w-full min-h-0 flex-1 flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="form" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -654,6 +678,20 @@ export function CreateTemplateDialog({
             </div>
           </TabsContent>
         </Tabs>
+          </div>
+
+          <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-lg border bg-muted/40 lg:min-h-0 lg:max-w-[48%]">
+            <div className="shrink-0 border-b bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground">
+              Preview
+            </div>
+            <iframe
+              title="Template preview"
+              className="min-h-[min(55vh,420px)] w-full flex-1 border-0 bg-white"
+              srcDoc={previewHtml}
+              sandbox="allow-same-origin allow-scripts"
+            />
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
