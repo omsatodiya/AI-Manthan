@@ -17,7 +17,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, ArrowRight, User as UserIcon, LogOut, Settings, Shield } from "lucide-react";
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { NAVBAR } from "@/constants/layout/navbar-constants";
 import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
@@ -30,44 +30,32 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const isAdmin = user?.role === "admin";
 
   useEffect(() => {
     const handleScroll = () => {
-      const isScrolled = window.scrollY > 20;
-      if (isScrolled !== scrolled) {
-        setScrolled(isScrolled);
-      }
+      const nextScrolled = window.scrollY > 20;
+      setScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [scrolled]);
+  }, []);
 
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const currentUser = await getCurrentUserAction();
-        setUser(currentUser);
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkUser();
+  const checkUser = useCallback(async () => {
+    try {
+      const currentUser = await getCurrentUserAction();
+      setUser(currentUser);
+    } catch {
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isOpen]);
+    checkUser();
+  }, [checkUser, pathname]);
 
   const handleLogout = async () => {
     try {
@@ -96,14 +84,39 @@ export function Navbar() {
     }
   };
 
-  const navItems = NAVBAR.links.map((link) => {
-    const Icon = link.icon;
-    return {
-      href: link.href,
-      label: link.label,
-      icon: <Icon className="h-4 w-4" />,
+  const navItems = useMemo(
+    () =>
+      NAVBAR.links.map((link) => {
+        const Icon = link.icon;
+        return {
+          href: link.href,
+          label: link.label,
+          icon: <Icon className="h-4 w-4" />,
+        };
+      }),
+    []
+  );
+
+  useEffect(() => {
+    const onWindowFocus = () => {
+      void checkUser();
     };
-  });
+    window.addEventListener("focus", onWindowFocus);
+    return () => {
+      window.removeEventListener("focus", onWindowFocus);
+    };
+  }, [checkUser]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
 
   return (
     <motion.header
@@ -178,8 +191,7 @@ export function Navbar() {
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  {(user.role === "admin" ||
-                    user.email?.endsWith("@admin")) && (
+                  {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link href="/admin" className="cursor-pointer">
                         <Shield className="mr-2 h-4 w-4" />
@@ -277,8 +289,7 @@ export function Navbar() {
                               Dashboard
                             </Link>
                           </Button>
-                          {(user.role === "admin" ||
-                            user.email?.endsWith("@admin")) && (
+                          {isAdmin && (
                             <Button
                               asChild
                               variant="outline"
