@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useState, useEffect, useMemo } from "react";
+import { useForm, useFieldArray, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Plus, Trash2, GripVertical, FileText, Code } from "lucide-react";
@@ -12,7 +12,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,6 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { updateTemplateAction } from "@/app/actions/templates";
 import { Template, type TemplateCategoryId } from "@/constants/templates";
 import { TEMPLATE_CATEGORIES, isTemplateCategoryId } from "@/constants/templates/categories";
+import { normalizeLineBreaks, populateTemplate } from "@/lib/template-populate";
 
 function categoryFromJson(value: unknown): TemplateCategoryId {
   return typeof value === "string" && isTemplateCategoryId(value)
@@ -73,11 +73,6 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
     }
   };
 
-  // Function to convert \n characters to actual line breaks
-  const normalizeLineBreaks = (text: string) => {
-    return text.replace(/\\n/g, '\n');
-  };
-
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -93,6 +88,32 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
     control: form.control,
     name: "fields",
   });
+
+  const watchHtml = useWatch({ control: form.control, name: "htmlContent" });
+  const watchFields = useWatch({ control: form.control, name: "fields" });
+
+  const previewHtml = useMemo(() => {
+    const html = normalizeLineBreaks(watchHtml ?? "");
+    const fieldList = watchFields ?? [];
+    if (!html.trim()) {
+      return "<!DOCTYPE html><html><body style=\"font-family:system-ui;padding:24px;color:#64748b\">No HTML content yet.</body></html>";
+    }
+    const placeholderData = fieldList.reduce(
+      (acc, f) => {
+        const k = (f?.key ?? "").trim();
+        if (!k) return acc;
+        const label = (f?.name ?? "").trim() || k;
+        acc[k] = `[${label}]`;
+        return acc;
+      },
+      {} as Record<string, string>
+    );
+    try {
+      return populateTemplate(html, placeholderData);
+    } catch {
+      return html;
+    }
+  }, [watchHtml, watchFields]);
 
   // Update form when template changes
   useEffect(() => {
@@ -205,15 +226,22 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="flex w-[calc(100vw-2rem)] max-w-7xl flex-col gap-4 overflow-hidden p-6 sm:max-w-7xl max-h-[92vh]">
+        <DialogHeader className="shrink-0 space-y-2 text-left">
           <DialogTitle className="font-sans">Edit Template</DialogTitle>
           <DialogDescription className="font-sans">
             Update the template details and content.
           </DialogDescription>
         </DialogHeader>
-        
-        <Tabs defaultValue="form" className="w-full">
+
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden"
+          >
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-muted/15 lg:flex-row lg:items-stretch">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border-b lg:max-w-[52%] lg:border-b-0 lg:border-r lg:p-4">
+        <Tabs defaultValue="form" className="flex w-full min-h-0 flex-1 flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="form" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
@@ -226,8 +254,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
           </TabsList>
           
           <TabsContent value="form" className="space-y-4">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -464,21 +491,7 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
                 </div>
               ))}
             </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Updating..." : "Update Template"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+            </div>
           </TabsContent>
           
           <TabsContent value="json" className="space-y-4">
@@ -542,57 +555,31 @@ export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }
                   Export to JSON
                 </Button>
               </div>
-              
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    if (!jsonInput.trim()) {
-                      setJsonError("Please enter JSON data");
-                      return;
-                    }
-                    
-                    if (!template) return;
-                    
-                    try {
-                      const parsed = JSON.parse(jsonInput);
-                      const result = await updateTemplateAction(template.id, {
-                        title: parsed.title,
-                        description: parsed.description,
-                        category: categoryFromJson(parsed.category),
-                        htmlContent: normalizeLineBreaks(parsed.htmlContent),
-                        fields: parsed.fields,
-                      });
-
-                      if (result.success) {
-                        toast.success("Template updated successfully");
-                        setJsonInput("");
-                        setJsonError("");
-                        setOpen(false);
-                        onTemplateUpdated();
-                      } else {
-                        toast.error(result.message || "Failed to update template");
-                      }
-                    } catch (error) {
-                      setJsonError(error instanceof Error ? error.message : "Invalid JSON format");
-                    }
-                  }}
-                  disabled={isSubmitting || !jsonInput.trim()}
-                >
-                  {isSubmitting ? "Updating..." : "Update from JSON"}
-                </Button>
-              </DialogFooter>
             </div>
           </TabsContent>
         </Tabs>
+              </div>
+
+              <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden bg-muted/30 lg:min-h-0 lg:max-w-[48%]">
+            <div className="shrink-0 border-b bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground">
+              Preview
+            </div>
+            <iframe
+              title="Template preview"
+              className="min-h-[min(55vh,420px)] w-full flex-1 border-0 bg-white"
+              srcDoc={previewHtml}
+              sandbox="allow-same-origin allow-scripts"
+            />
+          </div>
+            </div>
+
+            <div className="flex shrink-0 justify-end border-t pt-4">
+              <Button type="submit" disabled={isSubmitting} size="lg">
+                {isSubmitting ? "Saving..." : "Save template"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

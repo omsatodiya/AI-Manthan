@@ -12,7 +12,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -298,8 +297,13 @@ export function CreateTemplateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto lg:max-w-[52%] lg:pr-1">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden"
+          >
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border bg-muted/15 lg:flex-row lg:items-stretch">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto border-b lg:max-w-[52%] lg:border-b-0 lg:border-r lg:p-4">
         <Tabs defaultValue="form" className="flex w-full min-h-0 flex-1 flex-col">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="form" className="flex items-center gap-2">
@@ -313,8 +317,7 @@ export function CreateTemplateDialog({
           </TabsList>
           
           <TabsContent value="form" className="space-y-4">
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -551,21 +554,7 @@ export function CreateTemplateDialog({
                 </div>
               ))}
             </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setOpen(false)}
-                    disabled={isSubmitting}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Creating..." : "Create Template"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+            </div>
           </TabsContent>
           
           <TabsContent value="json" className="space-y-4">
@@ -629,58 +618,12 @@ export function CreateTemplateDialog({
                   Export to JSON
                 </Button>
               </div>
-              
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setOpen(false)}
-                  disabled={isSubmitting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={async () => {
-                    if (!jsonInput.trim()) {
-                      setJsonError("Please enter JSON data");
-                      return;
-                    }
-                    
-                     try {
-                       const parsed = JSON.parse(jsonInput);
-                       const result = await createTemplateAction({
-                         title: parsed.title,
-                         description: parsed.description,
-                         category: categoryFromJson(parsed.category),
-                         htmlContent: normalizeLineBreaks(parsed.htmlContent),
-                         fields: parsed.fields,
-                       });
-
-                      if (result.success) {
-                        toast.success("Template created successfully");
-                        setJsonInput("");
-                        setJsonError("");
-                        setOpen(false);
-                        onTemplateCreated();
-                      } else {
-                        toast.error(result.message || "Failed to create template");
-                      }
-                    } catch (error) {
-                      setJsonError(error instanceof Error ? error.message : "Invalid JSON format");
-                    }
-                  }}
-                  disabled={isSubmitting || !jsonInput.trim()}
-                >
-                  {isSubmitting ? "Creating..." : "Create from JSON"}
-                </Button>
-              </DialogFooter>
             </div>
           </TabsContent>
         </Tabs>
-          </div>
+              </div>
 
-          <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-lg border bg-muted/40 lg:min-h-0 lg:max-w-[48%]">
+              <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden bg-muted/30 lg:min-h-0 lg:max-w-[48%]">
             <div className="shrink-0 border-b bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground">
               Preview
             </div>
@@ -691,7 +634,15 @@ export function CreateTemplateDialog({
               sandbox="allow-same-origin allow-scripts"
             />
           </div>
-        </div>
+            </div>
+
+            <div className="flex shrink-0 justify-end border-t pt-4">
+              <Button type="submit" disabled={isSubmitting} size="lg">
+                {isSubmitting ? "Saving..." : "Save template"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

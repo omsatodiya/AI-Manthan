@@ -3,13 +3,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SortingState } from "@tanstack/react-table";
-import { FileText, Plus, ArrowLeft, Loader2 } from "lucide-react";
+import { FileText, Plus, ArrowLeft, Loader2, Eye, Pencil, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/custom/data-table";
 import { PickTemplateCategoryDialog } from "@/components/admin/templates/pick-template-category-dialog";
 import { EditTemplateDialog } from "@/components/admin/templates/edit-template-dialog";
 import { DeleteTemplateDialog } from "@/components/admin/templates/delete-template-dialog";
+import { TemplatePreviewDialog } from "@/components/admin/templates/template-preview-dialog";
 import { Template } from "@/constants/templates";
 import { getCategoryMeta } from "@/constants/templates/categories";
 import { useTenant } from "@/contexts/tenant-context";
@@ -45,6 +46,7 @@ export default function AdminTemplatesPage() {
   }, [filter, prevFilter]);
 
   const [pickCategoryOpen, setPickCategoryOpen] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [editTemplate, setEditTemplate] = useState<Template | null>(null);
   const [deleteTemplate, setDeleteTemplate] = useState<Template | null>(null);
 
@@ -54,12 +56,11 @@ export default function AdminTemplatesPage() {
     setIsLoading(true);
     getTemplatesAction(tenantId ?? undefined).then((result) => {
       if (result.success && result.data) {
-        const filteredTemplates = result.data.filter(
-          (template) =>
-            template.title.toLowerCase().includes(filter.toLowerCase()) ||
-            (template.description ?? "")
-              .toLowerCase()
-              .includes(filter.toLowerCase())
+        const filteredTemplates = result.data.filter((template: Template) =>
+          template.title.toLowerCase().includes(filter.toLowerCase()) ||
+          (template.description ?? "")
+            .toLowerCase()
+            .includes(filter.toLowerCase())
         );
         const pageCount = Math.ceil(filteredTemplates.length / pageSize);
         setData({ templates: filteredTemplates, pageCount });
@@ -142,26 +143,46 @@ export default function AdminTemplatesPage() {
         },
         {
           id: "actions",
-          header: "Actions",
-          cell: ({ row }: { row: { original: { id: string } } }) => (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditTemplate(row.original as Template)}
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteTemplate(row.original as Template)}
-                className="text-destructive hover:text-destructive"
-              >
-                Delete
-              </Button>
-            </div>
+          header: () => (
+            <div className="w-full text-center font-medium">Actions</div>
           ),
+          cell: ({ row }: { row: { original: Template } }) => {
+            const t = row.original;
+            return (
+              <div className="flex items-center justify-center gap-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Preview template"
+                  onClick={() => setPreviewTemplate(t)}
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Edit template"
+                  onClick={() => setEditTemplate(t)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="Delete template"
+                  onClick={() => setDeleteTemplate(t)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          },
         },
       ] as ColumnDef<Template>[],
     []
@@ -207,6 +228,13 @@ export default function AdminTemplatesPage() {
       <PickTemplateCategoryDialog
         open={pickCategoryOpen}
         onOpenChange={setPickCategoryOpen}
+      />
+      <TemplatePreviewDialog
+        template={previewTemplate}
+        open={previewTemplate !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewTemplate(null);
+        }}
       />
       {editTemplate && (
         <EditTemplateDialog
