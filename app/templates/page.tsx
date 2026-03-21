@@ -12,6 +12,10 @@ import {
 } from "@/components/ui/card";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
+import {
+  readTemplatesCache,
+  writeTemplatesCache,
+} from "@/lib/templates-client-cache";
 import { Template } from "@/constants/templates";
 import {
   TEMPLATE_CATEGORIES,
@@ -26,27 +30,39 @@ export default function TemplateSelectionPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadTemplates = async () => {
-      if (tenantLoading || !tenantId) {
-        return;
-      }
+    if (tenantLoading || !tenantId) {
+      return;
+    }
 
-      setIsLoading(true);
+    const cached = readTemplatesCache(tenantId);
+    if (cached) {
+      setTemplates(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+    (async () => {
       try {
         const result = await getTemplatesAction(tenantId);
+        if (cancelled) return;
         if (result.success && result.data) {
           setTemplates(result.data);
+          writeTemplatesCache(tenantId, result.data);
         } else {
           setTemplates([]);
         }
       } catch {
-        setTemplates([]);
+        if (!cancelled) setTemplates([]);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
-    };
+    })();
 
-    loadTemplates();
+    return () => {
+      cancelled = true;
+    };
   }, [tenantId, tenantLoading]);
 
   const GeneralIcon = getCategoryMeta("general")!.icon;

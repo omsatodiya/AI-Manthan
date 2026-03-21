@@ -16,17 +16,15 @@ import { getCategoryMeta } from "@/constants/templates/categories";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
 import { ColumnDef } from "@tanstack/react-table";
+import {
+  invalidateTemplatesCache,
+  writeTemplatesCache,
+} from "@/lib/templates-client-cache";
 
 export default function AdminTemplatesPage() {
   const router = useRouter();
   const { tenantId, isLoading: tenantLoading } = useTenant();
-  const [data, setData] = useState<{
-    templates: Template[];
-    pageCount: number;
-  }>({
-    templates: [],
-    pageCount: 0,
-  });
+  const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -35,7 +33,10 @@ export default function AdminTemplatesPage() {
   const pageSize = 10;
 
   const [refreshCounter, setRefreshCounter] = useState(0);
-  const handleRefresh = () => setRefreshCounter((prev) => prev + 1);
+  const handleRefresh = () => {
+    if (tenantId) invalidateTemplatesCache(tenantId);
+    setRefreshCounter((prev) => prev + 1);
+  };
 
   const [prevFilter, setPrevFilter] = useState("");
   useEffect(() => {
@@ -50,26 +51,38 @@ export default function AdminTemplatesPage() {
   const [editTemplate, setEditTemplate] = useState<Template | null>(null);
   const [deleteTemplate, setDeleteTemplate] = useState<Template | null>(null);
 
+  const data = useMemo(() => {
+    const filtered = allTemplates.filter(
+      (template) =>
+        template.title.toLowerCase().includes(filter.toLowerCase()) ||
+        (template.description ?? "")
+          .toLowerCase()
+          .includes(filter.toLowerCase())
+    );
+    return {
+      templates: filtered,
+      pageCount: Math.ceil(filtered.length / pageSize),
+    };
+  }, [allTemplates, filter, pageSize]);
+
   useEffect(() => {
     if (tenantLoading) return;
-
+    let cancelled = false;
     setIsLoading(true);
     getTemplatesAction(tenantId ?? undefined).then((result) => {
+      if (cancelled) return;
       if (result.success && result.data) {
-        const filteredTemplates = result.data.filter((template: Template) =>
-          template.title.toLowerCase().includes(filter.toLowerCase()) ||
-          (template.description ?? "")
-            .toLowerCase()
-            .includes(filter.toLowerCase())
-        );
-        const pageCount = Math.ceil(filteredTemplates.length / pageSize);
-        setData({ templates: filteredTemplates, pageCount });
+        setAllTemplates(result.data);
+        if (tenantId) writeTemplatesCache(tenantId, result.data);
       } else {
-        setData({ templates: [], pageCount: 0 });
+        setAllTemplates([]);
       }
       setIsLoading(false);
     });
-  }, [tenantId, tenantLoading, filter, refreshCounter]);
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, tenantLoading, refreshCounter]);
 
   const columns = useMemo(
     () =>
@@ -198,7 +211,7 @@ export default function AdminTemplatesPage() {
           <h1 className="text-3xl font-bold font-serif">Template Management</h1>
         </div>
 
-        {isLoading && !data.templates.length ? (
+        {isLoading && allTemplates.length === 0 ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>

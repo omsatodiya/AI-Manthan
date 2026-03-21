@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/card";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
+import {
+  invalidateTemplatesCache,
+  readTemplatesCache,
+  writeTemplatesCache,
+} from "@/lib/templates-client-cache";
 import { getTemplateListColumns } from "@/components/templates/template-columns";
 import {
   getCategoryMeta,
@@ -40,27 +45,39 @@ export function TemplateCategoryListPage({
   const columns = useMemo(() => getTemplateListColumns(), []);
 
   useEffect(() => {
-    const loadTemplates = async () => {
-      if (tenantLoading || !tenantId) {
-        return;
-      }
+    if (tenantLoading || !tenantId) {
+      return;
+    }
 
-      setIsLoading(true);
+    const cached = readTemplatesCache(tenantId);
+    if (cached) {
+      setTemplates(cached);
+      setIsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsLoading(true);
+    (async () => {
       try {
         const result = await getTemplatesAction(tenantId);
+        if (cancelled) return;
         if (result.success && result.data) {
           setTemplates(result.data);
+          writeTemplatesCache(tenantId, result.data);
         } else {
           setTemplates([]);
         }
       } catch {
-        setTemplates([]);
+        if (!cancelled) setTemplates([]);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
-    };
+    })();
 
-    loadTemplates();
+    return () => {
+      cancelled = true;
+    };
   }, [tenantId, tenantLoading]);
 
   const categoryTemplates = useMemo(() => {
@@ -98,11 +115,13 @@ export function TemplateCategoryListPage({
     setSorting([]);
 
     if (tenantId) {
+      invalidateTemplatesCache(tenantId);
       setIsLoading(true);
       try {
         const result = await getTemplatesAction(tenantId);
         if (result.success && result.data) {
           setTemplates(result.data);
+          writeTemplatesCache(tenantId, result.data);
         } else {
           setTemplates([]);
         }
