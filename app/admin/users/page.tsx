@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, PlusCircle } from "lucide-react";
 import { User } from "@/lib/types";
 import { getUsersAction } from "@/app/actions/admin";
 import { useTenant } from "@/contexts/tenant-context";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DataTable } from "@/components/custom/data-table";
 import { getColumns } from "./columns";
 import { Button } from "@/components/ui/button";
@@ -14,9 +15,11 @@ import { CreateUserDialog } from "@/components/admin/users/create-user-dialog";
 import { EditUserDialog } from "@/components/admin/users/edit-user-dialog";
 import { DeleteUserDialog } from "@/components/admin/users/delete-user-dialog";
 
+const SEARCH_DEBOUNCE_MS = 400;
+
 export default function AdminUsersPage() {
   const router = useRouter();
-  const { tenantId } = useTenant();
+  const { tenantId, isLoading: tenantLoading } = useTenant();
   const [data, setData] = useState<{ users: User[]; pageCount: number }>({
     users: [],
     pageCount: 0,
@@ -31,29 +34,44 @@ export default function AdminUsersPage() {
   const [refreshCounter, setRefreshCounter] = useState(0);
   const handleRefresh = () => setRefreshCounter((prev) => prev + 1);
 
-  const [prevFilter, setPrevFilter] = useState("");
+  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_MS);
+
+  const [prevDebouncedFilter, setPrevDebouncedFilter] = useState("");
   useEffect(() => {
-    if (filter !== prevFilter) {
+    if (debouncedFilter !== prevDebouncedFilter) {
       setPageIndex(0);
-      setPrevFilter(filter);
+      setPrevDebouncedFilter(debouncedFilter);
     }
-  }, [filter, prevFilter]);
+  }, [debouncedFilter, prevDebouncedFilter]);
 
   useEffect(() => {
+    if (tenantLoading) return;
+    let cancelled = false;
     setIsLoading(true);
     getUsersAction({
       pageIndex,
       pageSize,
-      query: filter,
+      query: debouncedFilter,
       sort: sorting[0]
         ? { id: sorting[0].id, desc: sorting[0].desc }
         : undefined,
       tenantId: tenantId || undefined,
     }).then((result) => {
+      if (cancelled) return;
       setData({ users: result.users, pageCount: result.pageCount });
       setIsLoading(false);
     });
-  }, [pageIndex, filter, sorting, refreshCounter, tenantId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    pageIndex,
+    debouncedFilter,
+    sorting,
+    refreshCounter,
+    tenantId,
+    tenantLoading,
+  ]);
 
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
@@ -78,7 +96,7 @@ export default function AdminUsersPage() {
           <h1 className="text-3xl font-bold font-serif">User Management</h1>
         </div>
 
-        {isLoading && !data.users.length ? (
+        {tenantLoading || (isLoading && !data.users.length) ? (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
@@ -106,11 +124,17 @@ export default function AdminUsersPage() {
       <CreateUserDialog
         open={createUserOpen}
         onOpenChange={setCreateUserOpen}
+        onUserCreated={handleRefresh}
       />
-      <EditUserDialog user={editUser} onOpenChange={() => setEditUser(null)} />
+      <EditUserDialog
+        user={editUser}
+        onOpenChange={() => setEditUser(null)}
+        onUserUpdated={handleRefresh}
+      />
       <DeleteUserDialog
         user={deleteUser}
         onOpenChange={() => setDeleteUser(null)}
+        onUserDeleted={handleRefresh}
       />
     </main>
   );

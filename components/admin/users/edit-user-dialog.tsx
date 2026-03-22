@@ -41,9 +41,14 @@ const formSchema = z.object({
 interface EditUserDialogProps {
   user: User | null;
   onOpenChange: (open: boolean) => void;
+  onUserUpdated?: () => void;
 }
 
-export function EditUserDialog({ user, onOpenChange }: EditUserDialogProps) {
+export function EditUserDialog({
+  user,
+  onOpenChange,
+  onUserUpdated,
+}: EditUserDialogProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
   });
@@ -63,6 +68,7 @@ export function EditUserDialog({ user, onOpenChange }: EditUserDialogProps) {
     if (result.success) {
       toast.success("User Updated", { description: result.message });
       onOpenChange(false);
+      onUserUpdated?.();
     } else {
       toast.error("Update Failed", { description: result.message });
     }

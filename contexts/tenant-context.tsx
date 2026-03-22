@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getCurrentUserAction } from "@/app/actions/auth";
+import { getCurrentUserCached } from "@/lib/auth-client-cache";
 
 interface TenantContextType {
   tenantId: string | null;
@@ -30,7 +30,7 @@ export function TenantProvider({ children }: TenantProviderProps) {
           return;
         }
 
-        const currentUser = await getCurrentUserAction();
+        const currentUser = await getCurrentUserCached();
 
         if (currentUser?.tenantId) {
           setTenantIdState(currentUser.tenantId);

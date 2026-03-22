@@ -20,11 +20,13 @@ import { Button } from "@/components/ui/button";
 interface DeleteUserDialogProps {
   user: User | null;
   onOpenChange: (open: boolean) => void;
+  onUserDeleted?: () => void;
 }
 
 export function DeleteUserDialog({
   user,
   onOpenChange,
+  onUserDeleted,
 }: DeleteUserDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -35,6 +37,7 @@ export function DeleteUserDialog({
     if (result.success) {
       toast.success("User Deleted", { description: result.message });
       onOpenChange(false);
+      onUserDeleted?.();
     } else {
       toast.error("Deletion Failed", { description: result.message });
     }

@@ -40,9 +40,11 @@ const formSchema = z.object({
 export function CreateUserDialog({
   open,
   onOpenChange,
+  onUserCreated,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onUserCreated?: () => void;
 }) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -55,6 +57,7 @@ export function CreateUserDialog({
       toast.success("User Created", { description: result.message });
       onOpenChange(false);
       form.reset();
+      onUserCreated?.();
     } else {
       toast.error("Creation Failed", { description: result.message });
     }

@@ -20,7 +20,11 @@ import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { NAVBAR } from "@/constants/layout/navbar-constants";
-import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
+import { logoutAction } from "@/app/actions/auth";
+import {
+  getCurrentUserCached,
+  invalidateCurrentUserCache,
+} from "@/lib/auth-client-cache";
 import { AuthUser } from "@/lib/types";
 
 export function Navbar() {
@@ -44,7 +48,7 @@ export function Navbar() {
 
   const checkUser = useCallback(async () => {
     try {
-      const currentUser = await getCurrentUserAction();
+      const currentUser = await getCurrentUserCached();
       setUser(currentUser);
     } catch {
       setUser(null);
@@ -55,11 +59,12 @@ export function Navbar() {
 
   useEffect(() => {
     checkUser();
-  }, [checkUser, pathname]);
+  }, [checkUser]);
 
   const handleLogout = async () => {
     try {
       await logoutAction();
+      invalidateCurrentUserCache();
 
       setUser(null);
 
@@ -73,6 +78,7 @@ export function Navbar() {
       }
     } catch (error) {
       console.error("Logout failed:", error);
+      invalidateCurrentUserCache();
       setUser(null);
       const protectedPaths = ["/admin", "/user", "/dashboard"];
       const isonProtectedPage = protectedPaths.some((path) =>

@@ -15,7 +15,11 @@ import {
   Megaphone,
   Eye,
 } from "lucide-react";
-import { getAnnouncementsAction, deleteAnnouncementAction } from "@/app/actions/announcement";
+import { deleteAnnouncementAction } from "@/app/actions/announcement";
+import {
+  getAnnouncementsListCached,
+  invalidateAdminAnnouncementsCache,
+} from "@/lib/admin-announcements-cache";
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
 import {
@@ -56,27 +60,33 @@ export default function AdminAnnouncementsPage() {
   const [isNavigating, startTransition] = useTransition();
 
   useEffect(() => {
-    fetchAnnouncements();
-  }, []);
-
-  const fetchAnnouncements = async () => {
-    try {
-      const result = await getAnnouncementsAction();
-      if (result.success) {
-        setAnnouncements((result.data || []).map(announcement => ({
-          ...announcement,
-          createdBy: 'userId' in announcement ? announcement.userId : announcement.createdBy
-        })));
-      } else {
-        toast.error(result.error || "Failed to fetch announcements");
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getAnnouncementsListCached();
+        if (cancelled) return;
+        if (result.success) {
+          setAnnouncements((result.data || []).map((announcement) => ({
+            ...announcement,
+            createdBy:
+              "userId" in announcement
+                ? announcement.userId
+                : announcement.createdBy,
+          })));
+        } else {
+          toast.error(result.error || "Failed to fetch announcements");
+        }
+      } catch (error) {
+        console.error("Error fetching announcements:", error);
+        if (!cancelled) toast.error("An unexpected error occurred");
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    } catch (error) {
-      console.error("Error fetching announcements:", error);
-      toast.error("An unexpected error occurred");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
@@ -84,7 +94,8 @@ export default function AdminAnnouncementsPage() {
       const result = await deleteAnnouncementAction(id);
       if (result.success) {
         toast.success("Announcement deleted successfully!");
-        setAnnouncements(prev => prev.filter(ann => ann.id !== id));
+        invalidateAdminAnnouncementsCache();
+        setAnnouncements((prev) => prev.filter((ann) => ann.id !== id));
       } else {
         toast.error(result.error || "Failed to delete announcement");
       }

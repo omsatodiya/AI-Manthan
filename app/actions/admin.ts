@@ -5,11 +5,11 @@ import { getDb } from "@/lib/database";
 import { GetUsersParams } from "@/lib/types";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
-import { getCurrentUserAction } from "./auth";
+import { getSessionUser } from "@/lib/auth/session";
 
 export async function getAdminAnalyticsAction() {
   const db = await getDb();
-  const currentUser = await getCurrentUserAction();
+  const currentUser = await getSessionUser();
   const tenantId = currentUser?.tenantId;
   return db.getAdminAnalytics(tenantId || undefined);
 }
@@ -17,7 +17,7 @@ export async function getAdminAnalyticsAction() {
 export async function getUsersAction(params: GetUsersParams) {
   const db = await getDb();
 
-  const currentUser = await getCurrentUserAction();
+  const currentUser = await getSessionUser();
   const tenantId = currentUser?.tenantId || undefined;
   return db.getPaginatedUsers({ ...params, tenantId });
 }

@@ -26,7 +26,11 @@ import {
   BarChart3,
 } from "lucide-react";
 
-import { getCurrentUserAction, logoutAction } from "@/app/actions/auth";
+import { logoutAction } from "@/app/actions/auth";
+import {
+  getCurrentUserCached,
+  invalidateCurrentUserCache,
+} from "@/lib/auth-client-cache";
 import { updateUserNameAction, deleteUserAction } from "@/app/actions/user";
 import { AuthUser } from "@/lib/types";
 
@@ -101,7 +105,7 @@ export default function UserPage() {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const currentUser = await getCurrentUserAction();
+        const currentUser = await getCurrentUserCached();
         if (currentUser) {
           setUser(currentUser);
           form.reset({ fullName: currentUser.name });
@@ -117,8 +121,10 @@ export default function UserPage() {
   const handleLogout = async () => {
     try {
       await logoutAction();
+      invalidateCurrentUserCache();
       router.push("/");
     } catch {
+      invalidateCurrentUserCache();
       router.push("/");
     }
   };
