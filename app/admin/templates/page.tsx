@@ -3,16 +3,35 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { SortingState } from "@tanstack/react-table";
-import { FileText, Plus, ArrowLeft, Loader2, Eye, Pencil, Trash2 } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  ArrowLeft,
+  Loader2,
+  Eye,
+  Pencil,
+  Trash2,
+  ListFilter,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { DataTable } from "@/components/custom/data-table";
 import { PickTemplateCategoryDialog } from "@/components/admin/templates/pick-template-category-dialog";
 import { EditTemplateDialog } from "@/components/admin/templates/edit-template-dialog";
 import { DeleteTemplateDialog } from "@/components/admin/templates/delete-template-dialog";
 import { TemplatePreviewDialog } from "@/components/admin/templates/template-preview-dialog";
 import { Template } from "@/constants/templates";
-import { getCategoryMeta } from "@/constants/templates/categories";
+import {
+  getCategoryMeta,
+  TEMPLATE_CATEGORIES,
+  type TemplateCategoryId,
+} from "@/constants/templates/categories";
+import { cn } from "@/lib/utils";
 import { useTenant } from "@/contexts/tenant-context";
 import { getTemplatesAction } from "@/app/actions/templates";
 import { ColumnDef } from "@tanstack/react-table";
@@ -20,6 +39,8 @@ import {
   invalidateTemplatesCache,
   writeTemplatesCache,
 } from "@/lib/templates-client-cache";
+
+type CategoryFilter = "all" | TemplateCategoryId;
 
 export default function AdminTemplatesPage() {
   const router = useRouter();
@@ -29,6 +50,8 @@ export default function AdminTemplatesPage() {
 
   const [sorting, setSorting] = useState<SortingState>([]);
   const [filter, setFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>("all");
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const pageSize = 10;
 
@@ -46,24 +69,33 @@ export default function AdminTemplatesPage() {
     }
   }, [filter, prevFilter]);
 
+  useEffect(() => {
+    setPageIndex(0);
+  }, [categoryFilter]);
+
   const [pickCategoryOpen, setPickCategoryOpen] = useState(false);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
   const [editTemplate, setEditTemplate] = useState<Template | null>(null);
   const [deleteTemplate, setDeleteTemplate] = useState<Template | null>(null);
 
   const data = useMemo(() => {
-    const filtered = allTemplates.filter(
+    let list = allTemplates;
+    if (categoryFilter !== "all") {
+      list = list.filter(
+        (t) => (t.category ?? "general") === categoryFilter
+      );
+    }
+    const q = filter.toLowerCase();
+    list = list.filter(
       (template) =>
-        template.title.toLowerCase().includes(filter.toLowerCase()) ||
-        (template.description ?? "")
-          .toLowerCase()
-          .includes(filter.toLowerCase())
+        template.title.toLowerCase().includes(q) ||
+        (template.description ?? "").toLowerCase().includes(q)
     );
     return {
-      templates: filtered,
-      pageCount: Math.ceil(filtered.length / pageSize),
+      templates: list,
+      pageCount: Math.ceil(list.length / pageSize),
     };
-  }, [allTemplates, filter, pageSize]);
+  }, [allTemplates, filter, pageSize, categoryFilter]);
 
   useEffect(() => {
     if (tenantLoading) return;
@@ -229,6 +261,67 @@ export default function AdminTemplatesPage() {
             pageSize={pageSize}
             sorting={sorting}
             searchPlaceholder="Search by title..."
+            toolbarExtra={
+              <Popover
+                open={filterPopoverOpen}
+                onOpenChange={setFilterPopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    aria-label="Filter by category"
+                    className={cn(
+                      categoryFilter !== "all" &&
+                        "border-primary text-primary"
+                    )}
+                  >
+                    <ListFilter className="h-4 w-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 p-2" align="start">
+                  <div className="space-y-1">
+                    <p className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                      Category
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCategoryFilter("all");
+                        setFilterPopoverOpen(false);
+                      }}
+                      className={cn(
+                        "flex w-full rounded-md px-2 py-2 text-left text-sm hover:bg-muted",
+                        categoryFilter === "all" && "bg-muted font-medium"
+                      )}
+                    >
+                      All categories
+                    </button>
+                    {TEMPLATE_CATEGORIES.map((cat) => {
+                      const Icon = cat.icon;
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setCategoryFilter(cat.id);
+                            setFilterPopoverOpen(false);
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted",
+                            categoryFilter === cat.id && "bg-muted font-medium"
+                          )}
+                        >
+                          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0">{cat.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            }
           >
             <Button onClick={() => setPickCategoryOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />

@@ -35,6 +35,7 @@ interface DataTableProps<TData, TValue> {
   sorting: SortingState;
   children?: React.ReactNode;
   searchPlaceholder?: string;
+  toolbarExtra?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -51,6 +52,7 @@ export function DataTable<TData, TValue>({
   sorting,
   children,
   searchPlaceholder = "Search by name or email...",
+  toolbarExtra,
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,
@@ -80,7 +82,7 @@ export function DataTable<TData, TValue>({
             onChange={(event) => onFilterChange(event.target.value)}
             className="max-w-sm"
           />
-          {/* --- REFRESH BUTTON ADDED HERE --- */}
+          {toolbarExtra}
           <Button
             variant="outline"
             size="icon"

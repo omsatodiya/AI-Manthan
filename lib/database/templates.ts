@@ -45,7 +45,7 @@ export async function getTemplatesByTenant(
       .from("templates")
       .select("*")
       .eq("tenant_id", tenantId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching templates:", error);
@@ -65,7 +65,7 @@ export async function getAllTemplates(): Promise<Template[]> {
     const { data, error } = await supabase
       .from("templates")
       .select("*")
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching all templates:", error);
