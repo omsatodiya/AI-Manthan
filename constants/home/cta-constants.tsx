@@ -74,13 +74,13 @@ export const ctaConfig: CTAConfig = {
   ],
   buttons: [
     {
-      text: "Start Your Community",
-      href: "/signup",
+      text: "Get Started",
+      href: "/community",
       variant: "primary",
     },
     {
-      text: "Get Started",
-      href: "/community",
+      text: "Sign in",
+      href: "/login",
       variant: "secondary",
     },
   ],

@@ -84,7 +84,7 @@ export default function TemplateSelectionPage() {
 
   if (tenantLoading || (isLoading && tenantId)) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center px-4 pt-16">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 sm:h-12 sm:w-12 border-b-2 border-primary mx-auto mb-3 sm:mb-4"></div>
           <p className="text-muted-foreground text-sm sm:text-base">
@@ -97,7 +97,7 @@ export default function TemplateSelectionPage() {
 
   if (!tenantId) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center px-4 pt-16">
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center px-4">
         <div className="text-center">
           <p className="text-muted-foreground text-sm sm:text-base">
             No tenant selected. Please select a tenant to view templates.
@@ -108,7 +108,7 @@ export default function TemplateSelectionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pt-16">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="mb-6 sm:mb-8">
           <div className="mb-4 sm:mb-6">

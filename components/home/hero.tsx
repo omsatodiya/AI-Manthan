@@ -4,8 +4,13 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { HERO_CONTENT } from "@/constants/home/hero-constants";
 import { Background } from "@/components/home/background";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { cn } from "@/lib/utils";
 
 export function Hero() {
+  const user = useCurrentUser();
+  const showGuestCtas = user === null;
+
   return (
     <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden font-sans pt-28 sm:pt-4 md:pt-24 lg:pt-28 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3] dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220]">
       <Background />
@@ -26,36 +31,41 @@ export function Hero() {
           </motion.h1>
 
           <motion.p
-            className="text-lg md:text-xl text-foreground/80 dark:text-foreground mb-10 max-w-2xl font-sans"
+            className={cn(
+              "text-lg md:text-xl text-foreground/80 dark:text-foreground max-w-2xl font-sans",
+              showGuestCtas ? "mb-10" : "mb-16"
+            )}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.2 }}>
             {HERO_CONTENT.description}
           </motion.p>
 
-          <motion.div
-            className="flex flex-col sm:flex-row gap-4 mb-16 w-full justify-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}>
-            <Button
-              size="lg"
-              className="bg-primary hover:bg-chart-2 text-primary-foreground text-base py-6 px-8 font-sans font-semibold rounded-md"
-              asChild>
-              <Link href={HERO_CONTENT.ctas.primary.href}>
-                {HERO_CONTENT.ctas.primary.label}
-              </Link>
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-border text-foreground/80 bg-transparent hover:bg-secondary hover:text-foreground text-base py-6 px-8 font-sans font-semibold rounded-md"
-              asChild>
-              <Link href={HERO_CONTENT.ctas.secondary.href}>
-                {HERO_CONTENT.ctas.secondary.label}
-              </Link>
-            </Button>
-          </motion.div>
+          {showGuestCtas && (
+            <motion.div
+              className="flex flex-col sm:flex-row gap-4 mb-16 w-full justify-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}>
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-chart-2 text-primary-foreground text-base py-6 px-8 font-sans font-semibold rounded-md"
+                asChild>
+                <Link href={HERO_CONTENT.ctas.primary.href}>
+                  {HERO_CONTENT.ctas.primary.label}
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-border text-foreground/80 bg-transparent hover:bg-secondary hover:text-foreground text-base py-6 px-8 font-sans font-semibold rounded-md"
+                asChild>
+                <Link href={HERO_CONTENT.ctas.secondary.href}>
+                  {HERO_CONTENT.ctas.secondary.label}
+                </Link>
+              </Button>
+            </motion.div>
+          )}
 
           <motion.div
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 pb-16 gap-4 md:gap-6 w-full max-w-4xl"

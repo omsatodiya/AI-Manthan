@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Users, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { ctaConfig } from "@/constants/home/cta-constants";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export function CTA() {
+  const user = useCurrentUser();
+  const showGuestCtas = user === null;
   const { badge, heading, features, buttons, dashboard } = ctaConfig;
 
   return (
@@ -74,34 +77,36 @@ export function CTA() {
               ))}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              {buttons.map((button, index) => {
-                const isPrimary = button.variant === "primary";
-                return (
-                  <Button
-                    key={index}
-                    size="lg"
-                    variant={isPrimary ? "default" : "outline"}
-                    className={
-                      isPrimary
-                        ? "bg-background hover:bg-background/90 text-foreground font-medium shadow-lg font-sans dark:bg-foreground dark:text-background"
-                        : "bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 font-medium backdrop-blur-sm font-sans dark:border-foreground dark:text-foreground dark:hover:bg-foreground/10"
-                    }
-                    asChild>
-                    <Link href={button.href}>
-                      {isPrimary ? (
-                        <span className="flex items-center">
-                          {button.text}
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </span>
-                      ) : (
-                        button.text
-                      )}
-                    </Link>
-                  </Button>
-                );
-              })}
-            </div>
+            {showGuestCtas && (
+              <div className="flex flex-col sm:flex-row gap-4">
+                {buttons.map((button, index) => {
+                  const isPrimary = button.variant === "primary";
+                  return (
+                    <Button
+                      key={index}
+                      size="lg"
+                      variant={isPrimary ? "default" : "outline"}
+                      className={
+                        isPrimary
+                          ? "bg-background hover:bg-background/90 text-foreground font-medium shadow-lg font-sans dark:bg-foreground dark:text-background"
+                          : "bg-transparent border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10 font-medium backdrop-blur-sm font-sans dark:border-foreground dark:text-foreground dark:hover:bg-foreground/10"
+                      }
+                      asChild>
+                      <Link href={button.href}>
+                        {isPrimary ? (
+                          <span className="flex items-center">
+                            {button.text}
+                            <ArrowRight className="ml-2 h-4 w-4" />
+                          </span>
+                        ) : (
+                          button.text
+                        )}
+                      </Link>
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
           </motion.div>
 
           <motion.div

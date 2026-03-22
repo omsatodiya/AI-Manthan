@@ -49,6 +49,21 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  if (
+    (pathname === "/login" || pathname === "/signup") &&
+    token &&
+    JWT_SECRET
+  ) {
+    try {
+      const secret = new TextEncoder().encode(JWT_SECRET);
+      const { payload } = await jwtVerify(token, secret);
+      const userRole = payload.role as "admin" | "user";
+      const dest = userRole === "admin" ? "/admin" : "/user";
+      return NextResponse.redirect(new URL(dest, request.url));
+    } catch {
+    }
+  }
+
   if (isAuthPath) {
     return NextResponse.next();
   }
