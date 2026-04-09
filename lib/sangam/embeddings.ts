@@ -12,6 +12,13 @@ import type {
 import { sangamSupabase } from './supabase';
 import { documentExtractor } from './document-extractor';
 
+type ProcessedSegment = {
+  messageId: string;
+  contentType: 'message' | 'document' | 'mixed';
+  chunkIndex: number;
+  chunkTotal: number;
+};
+
 export class EmbeddingService {
   private config: EmbeddingConfig;
 
@@ -28,71 +35,93 @@ export class EmbeddingService {
   /**
    * Generate embeddings for a batch of messages
    */
-  async generateEmbeddings(messages: UnembeddedMessage[]): Promise<{ embeddings: number[][], processedContents: string[], chunkInfo: Array<{chunkIndex: number, chunkTotal: number}> }> {
+  async generateEmbeddings(messages: UnembeddedMessage[]): Promise<{ embeddings: number[][], processedContents: string[], chunkInfo: Array<{chunkIndex: number, chunkTotal: number}>, segments: ProcessedSegment[] }> {
     if (messages.length === 0) {
-      return { embeddings: [], processedContents: [], chunkInfo: [] };
+      return { embeddings: [], processedContents: [], chunkInfo: [], segments: [] };
     }
 
     const allTexts: string[] = [];
     const allChunkInfo: Array<{chunkIndex: number, chunkTotal: number}> = [];
+    const segments: ProcessedSegment[] = [];
 
-    // Process messages to include document content with chunking
     for (const msg of messages) {
       const content = this.normalizeText(msg.content);
       
-      // If message has an attachment, extract document content and chunk it
       if (msg.attachment) {
         try {
           const extractedContent = await documentExtractor.extractContent(msg.attachment);
           if (extractedContent) {
-            // Chunk the document content
             const chunks = this.chunkDocument(extractedContent.text);
             
-            // Add each chunk as a separate text
             chunks.forEach((chunk, index) => {
               const chunkContent = `Document: ${msg.attachment?.fileName || 'Unknown'}\nType: ${extractedContent.metadata.fileType}\nChunk ${index + 1}/${chunks.length}\nContent: ${chunk}`;
               allTexts.push(chunkContent);
               allChunkInfo.push({ chunkIndex: index, chunkTotal: chunks.length });
+              segments.push({
+                messageId: msg.id,
+                contentType: 'document',
+                chunkIndex: index,
+                chunkTotal: chunks.length
+              });
             });
             
-            // If there's also message content, add it as a separate chunk
             if (content) {
               const messageContent = `Message: ${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`;
               allTexts.push(messageContent);
               allChunkInfo.push({ chunkIndex: chunks.length, chunkTotal: chunks.length + 1 });
+              segments.push({
+                messageId: msg.id,
+                contentType: 'mixed',
+                chunkIndex: chunks.length,
+                chunkTotal: chunks.length + 1
+              });
             }
           } else {
-            // Still include basic document info even if content extraction fails
             const fallbackContent = content 
               ? `${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`
               : `Document: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`;
             allTexts.push(fallbackContent);
             allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
+            segments.push({
+              messageId: msg.id,
+              contentType: content ? 'mixed' : 'document',
+              chunkIndex: 0,
+              chunkTotal: 1
+            });
           }
         } catch (error) {
           console.error(`Error processing attachment ${msg.attachment?.fileName || 'Unknown'}:`, error);
-          // Still include basic document info even if processing fails
           const fallbackContent = content 
             ? `${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'}) - Processing failed`
             : `Document: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'}) - Processing failed`;
           allTexts.push(fallbackContent);
           allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
+          segments.push({
+            messageId: msg.id,
+            contentType: content ? 'mixed' : 'document',
+            chunkIndex: 0,
+            chunkTotal: 1
+          });
         }
       } else {
-        // Regular message without attachment
         allTexts.push(content);
         allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
+        segments.push({
+          messageId: msg.id,
+          contentType: 'message',
+          chunkIndex: 0,
+          chunkTotal: 1
+        });
       }
     }
-    
-    // Log the final content that will be embedded
     
     try {
       const response = await this.callOpenAIAPI(allTexts);
       return {
         embeddings: response.data.map(item => item.embedding),
         processedContents: allTexts,
-        chunkInfo: allChunkInfo
+        chunkInfo: allChunkInfo,
+        segments
       };
     } catch (error) {
       console.error('Error generating embeddings:', error);
@@ -167,56 +196,51 @@ export class EmbeddingService {
       // Generate embeddings in batches to avoid API limits
       const batches = this.createBatches(messages, 50); // OpenAI allows up to 2048 inputs per request
       let totalProcessed = 0;
+      const batchErrors: string[] = [];
 
       for (const batch of batches) {
         try {
-          const { embeddings, processedContents, chunkInfo } = await this.generateEmbeddings(batch.messages);
-          
-          // Insert embeddings into database with chunking support
-          const embeddingData = processedContents.map((content, index) => {
-            // Find the original message for this content
-            let originalMessage = batch.messages[0]; // Default to first message
-            
-            // For chunked documents, we need to map back to the original message
-            // This is a simplified approach - in practice, you might want more sophisticated mapping
-            if (index < batch.messages.length) {
-              originalMessage = batch.messages[index];
-            }
-            
-            const hasAttachment = !!originalMessage.attachment;
-            const contentType: 'message' | 'document' | 'mixed' = hasAttachment 
-              ? (originalMessage.content ? 'mixed' : 'document')
-              : 'message';
-            
-            const embeddingRecord = {
-              tenantId,
-              chatId: originalMessage.id,
-              content: content,
-              embedding: embeddings[index],
-              hasAttachment,
-              attachmentFileName: originalMessage.attachment?.fileName,
-              attachmentFileType: originalMessage.attachment?.fileType,
-              contentType,
-              chunkIndex: chunkInfo[index]?.chunkIndex || 0,
-              chunkTotal: chunkInfo[index]?.chunkTotal || 1
-            };
-            
-            // Debug: Show what's being stored in database
-            if (hasAttachment) {
-            }
-            
-            return embeddingRecord;
-          });
+          const { embeddings, processedContents, segments } = await this.generateEmbeddings(batch.messages);
+          const messageMap = new Map(batch.messages.map((message) => [message.id, message]));
+          const embeddingData = processedContents
+            .map((content, index) => {
+              const segment = segments[index];
+              const sourceMessage = segment ? messageMap.get(segment.messageId) : null;
+              if (!segment || !sourceMessage || !embeddings[index]) {
+                return null;
+              }
+              return {
+                tenantId,
+                chatId: sourceMessage.id,
+                content,
+                embedding: embeddings[index],
+                hasAttachment: !!sourceMessage.attachment,
+                attachmentFileName: sourceMessage.attachment?.fileName,
+                attachmentFileType: sourceMessage.attachment?.fileType,
+                contentType: segment.contentType,
+                chunkIndex: segment.chunkIndex,
+                chunkTotal: segment.chunkTotal
+              };
+            })
+            .filter((item): item is NonNullable<typeof item> => item !== null);
 
           await sangamSupabase.insertEmbeddings(embeddingData);
           totalProcessed += batch.messages.length;
 
         } catch (error) {
           console.error(`Error processing batch:`, error);
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown batch error";
+          if (!batchErrors.includes(errorMessage)) {
+            batchErrors.push(errorMessage);
+          }
           // Continue with next batch instead of failing completely
         }
       }
 
+      if (totalProcessed === 0 && batchErrors.length > 0) {
+        return { processedCount: 0, error: batchErrors[0] };
+      }
       return { processedCount: totalProcessed };
     } catch (error) {
       console.error('Error processing unembedded messages:', error);
@@ -268,13 +292,22 @@ export class EmbeddingService {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+          const errorMessage = errorData.error?.message || 'Unknown error';
+          if (response.status === 401) {
+            throw new Error(`Invalid OPENAI_API_KEY: ${errorMessage}`);
+          }
+          throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorMessage}`);
         }
 
         const data: OpenAIImbeddingResponse = await response.json();
         return data;
       } catch (error) {
         console.error(`OpenAI API attempt ${attempt} failed:`, error);
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+        if (message.includes("invalid openai_api_key")) {
+          throw error;
+        }
         
         if (attempt === this.config.maxRetries) {
           throw error;
@@ -319,6 +352,52 @@ export class EmbeddingService {
    */
   async getEmbeddingStats(tenantId: string) {
     return await sangamSupabase.getEmbeddingStats(tenantId);
+  }
+
+  async processMessageOnUpload(
+    tenantId: string,
+    messageId: string
+  ): Promise<{ processedCount: number; error?: string }> {
+    try {
+      const message = await sangamSupabase.getMessageForEmbedding(tenantId, messageId);
+      if (!message) {
+        return { processedCount: 0, error: 'Message not found for embedding' };
+      }
+      const { embeddings, processedContents, segments } = await this.generateEmbeddings([message]);
+      const embeddingData = processedContents
+        .map((content, index) => {
+          const segment = segments[index];
+          if (!segment || !embeddings[index]) {
+            return null;
+          }
+          return {
+            tenantId,
+            chatId: message.id,
+            content,
+            embedding: embeddings[index],
+            hasAttachment: !!message.attachment,
+            attachmentFileName: message.attachment?.fileName,
+            attachmentFileType: message.attachment?.fileType,
+            contentType: segment.contentType,
+            chunkIndex: segment.chunkIndex,
+            chunkTotal: segment.chunkTotal
+          };
+        })
+        .filter((item): item is NonNullable<typeof item> => item !== null);
+
+      if (embeddingData.length === 0) {
+        return { processedCount: 0 };
+      }
+
+      await sangamSupabase.deleteEmbedding(message.id);
+      await sangamSupabase.insertEmbeddings(embeddingData);
+      return { processedCount: 1 };
+    } catch (error) {
+      return {
+        processedCount: 0,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   /**

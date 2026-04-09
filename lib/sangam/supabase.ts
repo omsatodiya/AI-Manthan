@@ -31,7 +31,62 @@ function isMissingEmbeddingsTableError(error: unknown): boolean {
   );
 }
 
+function isMissingTypedMatchFunctionError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = String((error as { code?: string }).code || '');
+  const message = String((error as { message?: string }).message || '').toLowerCase();
+  return code === 'PGRST202' && message.includes('match_messages_with_types');
+}
+
 export class SangamSupabaseClient {
+  async getMessageForEmbedding(
+    tenantId: string,
+    messageId: string
+  ): Promise<UnembeddedMessage | null> {
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .select(`
+        id,
+        content,
+        created_at,
+        attachment_id,
+        attachment_name,
+        attachment_type,
+        attachment_size,
+        attachment_url
+      `)
+      .eq('tenant_id', tenantId)
+      .eq('id', messageId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null;
+      }
+      throw new Error(`Failed to fetch message for embedding: ${error.message}`);
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    return {
+      id: data.id,
+      content: data.content || '',
+      createdAt: data.created_at,
+      attachment:
+        data.attachment_id || data.attachment_url || data.attachment_name
+          ? {
+              id: data.attachment_id || data.attachment_url || data.id,
+              fileName: data.attachment_name || 'Attachment',
+              fileType: data.attachment_type || 'application/octet-stream',
+              fileSize: data.attachment_size || 0,
+              fileUrl: data.attachment_url || ''
+            }
+          : null
+    };
+  }
+
   /**
    * Get unembedded messages for a tenant
    */
@@ -151,6 +206,13 @@ export class SangamSupabaseClient {
     contentTypes?: string[]
   ): Promise<EmbeddingMatch[]> {
     try {
+      if (
+        !Array.isArray(queryEmbedding) ||
+        queryEmbedding.length === 0 ||
+        queryEmbedding.some((value) => typeof value !== 'number' || Number.isNaN(value))
+      ) {
+        throw new Error('Invalid query embedding generated for similarity search');
+      }
 
       // Use the original function if no content types specified
       if (!contentTypes) {
@@ -164,40 +226,6 @@ export class SangamSupabaseClient {
         if (error) {
           console.error('Error performing similarity search:', error);
           throw new Error(`Failed to perform similarity search: ${error.message}`);
-        }
-
-        
-        // Debug: Check if there are any embeddings in the database
-        const { data: allEmbeddings, error: checkError } = await supabase
-          .from('chat_embeddings')
-          .select('id, content, has_attachment, embedding')
-          .eq('tenant_id', tenantId)
-          .limit(5);
-        
-        if (checkError) {
-          console.error('Error checking embeddings:', checkError);
-        } else {
-        }
-        
-        // Test the database function directly with a simple query
-        if (allEmbeddings && allEmbeddings.length > 0) {
-          const testEmbedding = allEmbeddings[0].embedding;
-          
-          if (testEmbedding && Array.isArray(testEmbedding)) {
-            const { error: testError } = await supabase.rpc('match_messages', {
-              query_embedding: testEmbedding,
-              match_tenant_id: tenantId,
-              match_count: 1,
-              similarity_threshold: 0.1 // Very low threshold for testing
-            });
-            
-            if (testError) {
-              console.error('🔍 Database function test error:', testError);
-            } else {
-            }
-          } else {
-            console.error('🔍 Test embedding is not a valid array!');
-          }
         }
         
         return data || [];
@@ -213,6 +241,24 @@ export class SangamSupabaseClient {
       });
 
       if (error) {
+        if (isMissingTypedMatchFunctionError(error)) {
+          const { data: fallbackData, error: fallbackError } = await supabase.rpc('match_messages', {
+            query_embedding: queryEmbedding,
+            match_tenant_id: tenantId,
+            match_count: Math.max(matchCount * 3, 20),
+            similarity_threshold: similarityThreshold
+          });
+          if (fallbackError) {
+            console.error('Error performing fallback similarity search:', fallbackError);
+            throw new Error(`Failed to perform fallback similarity search: ${fallbackError.message}`);
+          }
+          const allowedTypes = new Set(contentTypes);
+          return (fallbackData || [])
+            .filter((item: EmbeddingMatch) =>
+              !!item.contentType && allowedTypes.has(item.contentType)
+            )
+            .slice(0, matchCount);
+        }
         console.error('Error performing similarity search:', error);
         throw new Error(`Failed to perform similarity search: ${error.message}`);
       }

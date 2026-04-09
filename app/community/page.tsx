@@ -5,9 +5,6 @@ import { SangamChat } from "@/components/community/sangam-chat";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import {
   Users,
-  MessageCircle,
-  Crown,
-  ArrowLeft,
   Trophy,
 } from "lucide-react";
 import Link from "next/link";
@@ -20,50 +17,10 @@ const CommunityPage = async () => {
   }
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-    <div className="h-screen w-full bg-background">
-      {/* Header */}
-      <div className="h-16 bg-card/80 backdrop-blur-sm border-b border-border shadow-sm">
-        <div className="h-full px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="p-2 hover:bg-muted rounded-lg transition-colors">
-              <ArrowLeft className="h-5 w-5 text-muted-foreground" />
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-lg shadow-md">
-                <MessageCircle className="h-6 w-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold font-sans text-foreground">
-                  Community
-                </h1>
-                <p className="text-sm font-sans text-muted-foreground">
-                  Connect with your team
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium font-sans text-foreground">
-                Online
-              </span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full border border-primary/20">
-              <Crown className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-medium font-sans text-foreground">
-                {currentUser.name}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="h-[calc(100vh-5rem)] w-full overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+    <div className="h-full w-full bg-background">
       {/* Main Content */}
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex h-full">
         {/* Sidebar */}
         <div className="w-80 bg-card/60 backdrop-blur-sm border-r border-border shadow-sm flex flex-col">
           <div className="p-6 flex-1 overflow-y-auto">

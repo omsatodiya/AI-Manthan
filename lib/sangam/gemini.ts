@@ -1,9 +1,4 @@
-/**
- * Sangam Gemini Service
- * Handles AI reasoning and response generation using Google Gemini
- */
-
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import OpenAI from 'openai';
 import type { 
   EmbeddingMatch, 
   SangamConfig, 
@@ -11,16 +6,21 @@ import type {
 } from '@/lib/types/sangam';
 
 export class GeminiService {
-  private genAI: GoogleGenerativeAI;
+  private client: OpenAI;
   private config: SangamConfig;
+  private model: string;
 
   constructor(config?: Partial<SangamConfig>) {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      throw new Error('GEMINI_API_KEY environment variable is not set');
+      throw new Error('GROQ_API_KEY environment variable is not set');
     }
 
-    this.genAI = new GoogleGenerativeAI(apiKey);
+    this.client = new OpenAI({
+      apiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+    });
+    this.model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
     this.config = {
       maxResults: 10,
       similarityThreshold: 0.5,
@@ -30,36 +30,44 @@ export class GeminiService {
     };
   }
 
-  /**
-   * Generate a response using RAG (Retrieval-Augmented Generation)
-   */
   async generateResponse(context: SangamContext): Promise<string> {
+    const prompt = this.buildPrompt(context);
     try {
-      const prompt = this.buildPrompt(context);
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      const text = response.text();
-
-      if (!text || text.trim().length === 0) {
-        throw new Error('Empty response from Gemini');
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const completion = await this.client.chat.completions.create({
+            model: this.model,
+            temperature: 0.2,
+            messages: [
+              { role: 'system', content: context.systemPrompt },
+              { role: 'user', content: prompt },
+            ],
+          });
+          const text = completion.choices[0]?.message?.content?.trim();
+          if (text) {
+            return text;
+          }
+          throw new Error('Empty response from Groq');
+        } catch (error) {
+          if (attempt === 3) {
+            throw error;
+          }
+          const status = (error as { status?: number })?.status;
+          if (status && status !== 429 && status !== 500 && status !== 503) {
+            throw error;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
+        }
       }
-
-      return text.trim();
+      throw new Error('Failed to generate response');
     } catch (error) {
-      console.error('Error generating Gemini response:', error);
+      console.error('Error generating Groq response:', error);
       throw new Error(`Failed to generate response: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
-  /**
-   * Build the prompt for Gemini based on context
-   */
   private buildPrompt(context: SangamContext): string {
     const { question, relevantMessages, systemPrompt, maxContextLength } = context;
-
-    // Build context from relevant messages
     const contextText = this.buildContextText(relevantMessages, maxContextLength);
 
     return `${systemPrompt}
@@ -72,9 +80,6 @@ USER QUESTION: ${question}
 Please provide a helpful, accurate response based on the context above. If the context doesn't contain enough information to answer the question, please say so clearly.`;
   }
 
-  /**
-   * Build context text from relevant messages
-   */
   private buildContextText(messages: EmbeddingMatch[], maxLength: number): string {
     if (messages.length === 0) {
       return 'No relevant context found.';
@@ -97,9 +102,6 @@ Please provide a helpful, accurate response based on the context above. If the c
     return contextText.trim() || 'No relevant context found.';
   }
 
-  /**
-   * Get the default system prompt for Sangam
-   */
   private getDefaultSystemPrompt(): string {
     return `You are Sangam, an AI assistant for business communities. Your role is to help users recall and understand their team's conversations and decisions.
 
@@ -134,9 +136,6 @@ RESPONSE GUIDELINES:
 Remember: You are helping teams stay organized and informed about their collaborative work.`;
   }
 
-  /**
-   * Generate a summary of recent conversations
-   */
   async generateSummary(
     messages: EmbeddingMatch[], 
     timeRange?: string
@@ -153,9 +152,6 @@ Remember: You are helping teams stay organized and informed about their collabor
     return await this.generateResponse(context);
   }
 
-  /**
-   * Get system prompt for summarization tasks
-   */
   private getSummarySystemPrompt(): string {
     return `You are Sangam, creating a summary of team conversations. 
 
@@ -170,9 +166,6 @@ Focus on:
 Structure your summary with clear headings and bullet points. Be comprehensive but concise.`;
   }
 
-  /**
-   * Answer a specific question about conversations
-   */
   async answerQuestion(
     question: string, 
     messages: EmbeddingMatch[]
@@ -187,9 +180,6 @@ Structure your summary with clear headings and bullet points. Be comprehensive b
     return await this.generateResponse(context);
   }
 
-  /**
-   * Extract key information from conversations
-   */
   async extractKeyInfo(
     messages: EmbeddingMatch[], 
     infoType: 'decisions' | 'deadlines' | 'documents' | 'action-items'
@@ -211,20 +201,17 @@ Structure your summary with clear headings and bullet points. Be comprehensive b
     return await this.generateResponse(context);
   }
 
-  /**
-   * Validate Gemini API configuration
-   */
   async validateConfiguration(): Promise<{ valid: boolean; error?: string }> {
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = process.env.GROQ_API_KEY;
       if (!apiKey) {
-        return { valid: false, error: 'GEMINI_API_KEY environment variable is not set' };
+        return { valid: false, error: 'GROQ_API_KEY environment variable is not set' };
       }
 
-      // Test API with a simple request
-      const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-      const result = await model.generateContent('Hello, this is a test.');
-      await result.response;
+      await this.client.chat.completions.create({
+        model: this.model,
+        messages: [{ role: 'user', content: 'Hello, this is a test.' }],
+      });
 
       return { valid: true };
     } catch (error) {
@@ -235,13 +222,10 @@ Structure your summary with clear headings and bullet points. Be comprehensive b
     }
   }
 
-  /**
-   * Get model information
-   */
   getModelInfo(): { model: string; maxTokens: number } {
     return {
-      model: 'gemini-2.5-flash',
-      maxTokens: 1000000
+      model: this.model,
+      maxTokens: 131072
     };
   }
 }

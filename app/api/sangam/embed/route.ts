@@ -42,17 +42,20 @@ export async function POST(request: NextRequest) {
     // Process unembedded messages
     console.log(`Processing embeddings for tenant: ${tenantId}`);
     const result = await sangamService.processUnembeddedMessages(tenantId, batchSize);
+    const isSuccess = !result.error;
 
     const response: EmbeddingResponse = {
-      success: result.processedCount > 0 || result.processedCount === 0,
+      success: isSuccess,
       message: result.processedCount > 0 
         ? `Successfully processed ${result.processedCount} messages`
-        : 'No unembedded messages found',
+        : result.error
+          ? 'Failed to process messages'
+          : 'No unembedded messages found',
       processedCount: result.processedCount,
       error: result.error
     };
 
-    return NextResponse.json(response);
+    return NextResponse.json(response, { status: isSuccess ? 200 : 400 });
 
   } catch (error) {
     console.error('Error in embed API route:', error);

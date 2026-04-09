@@ -96,8 +96,7 @@ export class DocumentExtractor {
       }
 
       if (fileType === 'application/pdf') {
-        // Handle PDF files with OCR
-        return await this.extractTextFromPDF();
+        return await this.extractTextFromPDF(buffer);
       }
 
       if (fileType.includes('word') || fileType.includes('document')) {
@@ -127,17 +126,20 @@ export class DocumentExtractor {
   /**
    * Extract text from PDF using OCR
    */
-  private async extractTextFromPDF(): Promise<string> {
+  private async extractTextFromPDF(buffer: ArrayBuffer): Promise<string> {
     try {
-      console.log('Extracting text from PDF using OCR...');
-      
-      // For now, return a placeholder since Tesseract.js has issues with Next.js SSR
-      // TODO: Implement proper OCR solution or use alternative approach
-      console.log('PDF OCR temporarily disabled due to Next.js compatibility issues');
-      return 'PDF document content (OCR temporarily disabled - contains scanned text or images)';
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const pdfParse = require('pdf-parse/lib/pdf-parse.js');
+      const nodeBuffer = Buffer.from(buffer);
+      const result = await pdfParse(nodeBuffer);
+      const text = typeof result?.text === 'string' ? result.text.trim() : '';
+      if (text.length > 0) {
+        return text;
+      }
+      return 'PDF document uploaded (no extractable text found)';
     } catch (error) {
-      console.error('Error extracting PDF text with OCR:', error);
-      return 'PDF document content (OCR extraction failed)';
+      console.error('Error extracting PDF text:', error);
+      return 'PDF document uploaded (text extraction failed)';
     }
   }
 

@@ -392,6 +392,10 @@ export class SangamService {
     );
   }
 
+  async processMessageOnUpload(tenantId: string, messageId: string) {
+    return await embeddingService.processMessageOnUpload(tenantId, messageId);
+  }
+
   /**
    * Validate all service configurations
    */

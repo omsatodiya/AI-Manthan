@@ -343,6 +343,14 @@ export function useRealtimeChat({
           tenantId
         );
 
+        if (message && tenantId) {
+          fetch("/api/sangam/embed-message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tenantId, messageId: message.id }),
+          }).catch(() => undefined);
+        }
+
         await channel.send({
           type: "broadcast",
           event: EVENT_MESSAGE_TYPE,
