@@ -1,9 +1,78 @@
 import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
 import { getTemplateById } from "@/lib/database/templates";
 import { getCurrentUserAction } from "@/app/actions/auth";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getGroqClient() {
+  const apiKey = process.env.GROQ_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error("GROQ_API_KEY_MISSING");
+  }
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://api.groq.com/openai/v1",
+  });
+}
+
+async function generateWithRetry(prompt: string) {
+  const groq = getGroqClient();
+  const models = [process.env.GROQ_MODEL?.trim() || "llama-3.3-70b-versatile"];
+  const maxAttemptsPerModel = 2;
+  let lastError: unknown = null;
+
+  for (const modelName of models) {
+    for (let attempt = 1; attempt <= maxAttemptsPerModel; attempt += 1) {
+      try {
+        const result = await groq.chat.completions.create({
+          model: modelName,
+          temperature: 0.2,
+          response_format: { type: "json_object" },
+          messages: [{ role: "user", content: prompt }],
+        });
+        const content = result.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error("GROQ_EMPTY_RESPONSE");
+        }
+        return content;
+      } catch (error) {
+        lastError = error;
+        const status = (error as { status?: number }).status;
+        const statusText =
+          ((error as { statusText?: string }).statusText || "").toLowerCase();
+        const message =
+          ((error as { message?: string }).message || "").toLowerCase();
+        const code = ((error as { code?: string }).code || "").toLowerCase();
+        const isInvalidKey =
+          status === 401 ||
+          code.includes("invalid_api_key") ||
+          message.includes("invalid api key") ||
+          message.includes("incorrect api key");
+        if (isInvalidKey) {
+          throw new Error("GROQ_API_KEY_INVALID");
+        }
+        const isRetryable =
+          status === 429 ||
+          status === 503 ||
+          status === 502 ||
+          status === 504 ||
+          statusText.includes("service unavailable") ||
+          message.includes("temporarily unavailable") ||
+          message.includes("high demand");
+        if (isRetryable && attempt < maxAttemptsPerModel) {
+          await sleep(600 * attempt);
+          continue;
+        }
+        break;
+      }
+    }
+  }
+
+  throw lastError;
+}
 
 // Function to convert \n characters to actual line breaks
 const normalizeLineBreaks = (text: string) => {
@@ -208,9 +277,7 @@ CRITICAL: The JSON object keys MUST match exactly with the field keys above. For
 
 Remember: Return ONLY the JSON object with the field keys and generated content.`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
+    const responseText = await generateWithRetry(prompt);
     
     console.log("AI Response:", responseText);
 
@@ -243,7 +310,7 @@ Remember: Return ONLY the JSON object with the field keys and generated content.
         });
       }
     } catch (e) {
-      console.error("Failed to parse Gemini JSON response:", responseText);
+      console.error("Failed to parse Groq JSON response:", responseText);
       console.error("Parse error:", e);
       return NextResponse.json(
         { error: "Failed to parse AI response. Please try again with more detailed input." },
@@ -259,6 +326,51 @@ Remember: Return ONLY the JSON object with the field keys and generated content.
     });
   } catch (error) {
     console.error("API Error:", error);
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message === "GROQ_API_KEY_MISSING" ||
+      message === "GROQ_API_KEY_INVALID"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "AI service is not configured correctly. Set a valid GROQ_API_KEY in your environment and redeploy.",
+        },
+        { status: 502 }
+      );
+    }
+    const status = (error as { status?: number }).status;
+    const statusText = (error as { statusText?: string }).statusText || "";
+    if (status === 404) {
+      return NextResponse.json(
+        {
+          error:
+            "Configured Groq model is unavailable. Set GROQ_MODEL to a supported model.",
+        },
+        { status: 502 }
+      );
+    }
+    if (status === 429 || status === 503) {
+      return NextResponse.json(
+        {
+          error:
+            "AI service is temporarily overloaded. Please try again in a few seconds.",
+        },
+        { status: 503 }
+      );
+    }
+    if (
+      typeof statusText === "string" &&
+      statusText.toLowerCase().includes("service unavailable")
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "AI service is temporarily unavailable. Please try again shortly.",
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "An internal server error occurred" },
       { status: 500 }
