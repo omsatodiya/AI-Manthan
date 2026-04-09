@@ -42,8 +42,29 @@ interface SupabaseReactionData {
   };
 }
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+function getStoragePathFromPublicUrl(url: string, bucket: string): string | null {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return decodeURIComponent(url.slice(idx + marker.length));
+}
+
+function normalizeBucketName(value?: string | null): string {
+  const raw = (value ?? "").trim();
+  if (!raw) return "chat-attachments";
+  return raw.replace(/^['"]+|['"]+$/g, "");
+}
+
 export class ChatService {
   private supabase: ReturnType<typeof createBrowserClient>;
+  private storageBucket: string;
 
   constructor() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -56,6 +77,54 @@ export class ChatService {
     }
 
     this.supabase = createBrowserClient(supabaseUrl, supabaseKey);
+    this.storageBucket = normalizeBucketName(
+      process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET
+    );
+  }
+
+  private async uploadFileViaApi(
+    file: File,
+    filePath: string,
+    tenantId?: string | null
+  ): Promise<{ path: string; publicUrl: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("filePath", filePath);
+    formData.append("bucket", this.storageBucket);
+    if (tenantId) {
+      formData.append("tenantId", tenantId);
+    }
+
+    const response = await fetch("/api/chat/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    const isJson = contentType.toLowerCase().includes("application/json");
+    const payload = isJson ? await response.json().catch(() => null) : null;
+    const rawText = !isJson ? await response.text().catch(() => "") : "";
+    if (!response.ok) {
+      const fallbackMessage =
+        rawText && rawText.startsWith("<")
+          ? "Upload API returned HTML instead of JSON. This usually means a redirect or route interception."
+          : rawText || `Upload API request failed with status ${response.status}`;
+      const message =
+        payload && typeof payload.error === "string"
+          ? payload.error
+          : fallbackMessage;
+      throw new Error(message);
+    }
+
+    if (
+      !payload ||
+      typeof payload.path !== "string" ||
+      typeof payload.publicUrl !== "string"
+    ) {
+      throw new Error("Invalid upload response from server");
+    }
+
+    return { path: payload.path, publicUrl: payload.publicUrl };
   }
 
   /**
@@ -67,40 +136,66 @@ export class ChatService {
     tenantId,
   }: UploadFileParams): Promise<MessageAttachment> {
     try {
-      // Create unique file path
       const timestamp = Date.now();
       const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const bucket = "chat-attachments";
+      const bucket = this.storageBucket;
       const folderPath = tenantId ? `tenant-${tenantId}` : "global";
       const filePath = `${folderPath}/${userId}/${timestamp}_${sanitizedFileName}`;
+      let uploadedPath = "";
+      let publicUrl = "";
 
-      // Upload file to Supabase Storage
-      const { data: uploadData, error: uploadError } =
-        await this.supabase.storage.from(bucket).upload(filePath, file, {
+      const { data: uploadData, error: uploadError } = await this.supabase.storage
+        .from(bucket)
+        .upload(filePath, file, {
           cacheControl: "3600",
           upsert: false,
+          contentType: file.type || "application/octet-stream",
         });
 
       if (uploadError) {
-        console.error("Failed to upload file:", uploadError);
-        throw uploadError;
+        const uploaded = await this.uploadFileViaApi(file, filePath, tenantId);
+        uploadedPath = uploaded.path;
+        publicUrl = uploaded.publicUrl;
+      } else if (uploadData?.path) {
+        uploadedPath = uploadData.path;
+        const { data: urlData } = this.supabase.storage
+          .from(bucket)
+          .getPublicUrl(filePath);
+        publicUrl = urlData.publicUrl;
+      }
+      if (!uploadedPath || !publicUrl) {
+        const uploaded = await this.uploadFileViaApi(file, filePath, tenantId);
+        uploadedPath = uploaded.path;
+        publicUrl = uploaded.publicUrl;
       }
 
-      // Get public URL
-      const { data: urlData } = this.supabase.storage
-        .from(bucket)
-        .getPublicUrl(filePath);
-
       const attachment: MessageAttachment = {
-        id: uploadData.path,
+        id: uploadedPath,
         fileName: file.name,
         fileSize: file.size,
         fileType: file.type,
-        fileUrl: urlData.publicUrl,
+        fileUrl: publicUrl,
       };
 
       return attachment;
     } catch (error) {
+      if (
+        error instanceof TypeError &&
+        String(error.message || "").toLowerCase().includes("failed to fetch")
+      ) {
+        const timestamp = Date.now();
+        const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const folderPath = tenantId ? `tenant-${tenantId}` : "global";
+        const filePath = `${folderPath}/${userId}/${timestamp}_${sanitizedFileName}`;
+        const uploaded = await this.uploadFileViaApi(file, filePath, tenantId);
+        return {
+          id: uploaded.path,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          fileUrl: uploaded.publicUrl,
+        };
+      }
       console.error("Error uploading file:", error);
       throw error;
     }
@@ -116,21 +211,16 @@ export class ChatService {
     attachment: MessageAttachment,
     tenantId?: string | null
   ): Promise<ChatMessageWithUser> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (this.supabase as any)
-      .from("chat_messages")
-      .insert({
-        user_id: userId,
-        content: content || `Sent ${attachment.fileName}`,
-        tenant_id: tenantId || null,
-        attachment_id: attachment.id,
-        attachment_name: attachment.fileName,
-        attachment_size: attachment.fileSize,
-        attachment_type: attachment.fileType,
-        attachment_url: attachment.fileUrl,
-      })
-      .select(
-        `
+    const basePayload = {
+      user_id: userId,
+      content: content || `Sent ${attachment.fileName}`,
+      tenant_id: tenantId || null,
+      attachment_name: attachment.fileName,
+      attachment_size: attachment.fileSize,
+      attachment_type: attachment.fileType,
+      attachment_url: attachment.fileUrl,
+    };
+    const selectClause = `
         id,
         content,
         created_at,
@@ -146,16 +236,52 @@ export class ChatService {
           id,
           full_name
         )
-      `
-      )
+      `;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let insertResult = await (this.supabase as any)
+      .from("chat_messages")
+      .insert({
+        ...basePayload,
+        attachment_id: isUuid(attachment.id) ? attachment.id : null,
+      })
+      .select(selectClause)
       .single();
 
+    // If schema still expects attachment_id uuid and rejects non-uuid/path use null and keep URL.
+    if (insertResult.error && String(insertResult.error.message || "").toLowerCase().includes("attachment_id")) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      insertResult = await (this.supabase as any)
+        .from("chat_messages")
+        .insert({
+          ...basePayload,
+          attachment_id: null,
+        })
+        .select(selectClause)
+        .single();
+    }
+
+    const { data, error } = insertResult;
     if (error) {
       console.error("Failed to insert message with attachment:", error);
-      throw error;
+      throw new Error(error.message || "Failed to insert message with attachment");
     }
 
     const messageData = data as SupabaseMessageData;
+    const resolvedAttachment =
+      messageData.attachment_url ||
+      messageData.attachment_name ||
+      attachment.fileUrl ||
+      attachment.fileName
+        ? {
+            id: messageData.attachment_id || attachment.id,
+            fileName: messageData.attachment_name || attachment.fileName,
+            fileSize: messageData.attachment_size || attachment.fileSize,
+            fileType: messageData.attachment_type || attachment.fileType,
+            fileUrl: messageData.attachment_url || attachment.fileUrl,
+          }
+        : null;
+
     return {
       id: messageData.id,
       content: messageData.content,
@@ -166,15 +292,7 @@ export class ChatService {
       createdAt: messageData.created_at,
       updatedAt: messageData.updated_at,
       isEdited: false,
-      attachment: messageData.attachment_id
-        ? {
-            id: messageData.attachment_id,
-            fileName: messageData.attachment_name || "",
-            fileSize: messageData.attachment_size || 0,
-            fileType: messageData.attachment_type || "",
-            fileUrl: messageData.attachment_url || "",
-          }
-        : null,
+      attachment: resolvedAttachment,
     };
   }
 
@@ -444,27 +562,34 @@ export class ChatService {
       // Fetch reactions for all messages - note: we need currentUserId here
       // For now, we'll fetch reactions separately in the hook
       const messages: ChatMessageWithUser[] = data.map(
-        (row: SupabaseMessageData) => ({
-          id: row.id,
-          content: row.content,
-          user: {
-            id: row.user_id,
-            name: row.users?.full_name ?? row.users?.fullName ?? "Unknown User",
-          },
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-          isEdited: isMessageEdited(row.created_at, row.updated_at),
-          attachment: row.attachment_id
-            ? {
-                id: row.attachment_id,
-                fileName: row.attachment_name || "",
-                fileSize: row.attachment_size || 0,
-                fileType: row.attachment_type || "",
-                fileUrl: row.attachment_url || "",
-              }
-            : null,
-          reactions: [], // Will be populated by the hook
-        })
+        (row: SupabaseMessageData) => {
+          const hasAttachment =
+            !!row.attachment_url ||
+            !!row.attachment_name ||
+            !!row.attachment_id;
+
+          return {
+            id: row.id,
+            content: row.content,
+            user: {
+              id: row.user_id,
+              name: row.users?.full_name ?? row.users?.fullName ?? "Unknown User",
+            },
+            createdAt: row.created_at,
+            updatedAt: row.updated_at,
+            isEdited: isMessageEdited(row.created_at, row.updated_at),
+            attachment: hasAttachment
+              ? {
+                  id: row.attachment_id || row.attachment_url || row.id,
+                  fileName: row.attachment_name || "Attachment",
+                  fileSize: row.attachment_size || 0,
+                  fileType: row.attachment_type || "application/octet-stream",
+                  fileUrl: row.attachment_url || "",
+                }
+              : null,
+            reactions: [], // Will be populated by the hook
+          };
+        }
       );
 
       return messages;
@@ -530,15 +655,18 @@ export class ChatService {
    */
   async deleteFile(filePath: string): Promise<void> {
     try {
-      const bucket = "chat-attachments";
+      const bucket = this.storageBucket;
 
       const { error } = await this.supabase.storage
         .from(bucket)
         .remove([filePath]);
 
       if (error) {
-        console.error("Failed to delete file from storage:", error);
-        throw error;
+        const message = error.message?.toLowerCase() || "";
+        if (message.includes("bucket not found")) {
+          return;
+        }
+        throw new Error(error.message || "Failed to delete file from storage");
       }
     } catch (error) {
       console.error("Error deleting file:", error);
@@ -580,10 +708,20 @@ export class ChatService {
 
     // If message had an attachment, delete the file from storage
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((messageData as any)?.attachment_id) {
+    if ((messageData as any)?.attachment_id || (messageData as any)?.attachment_url) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await this.deleteFile((messageData as any).attachment_id);
+        const storedAttachmentId = (messageData as any).attachment_id as string | null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const storedAttachmentUrl = (messageData as any).attachment_url as string | null;
+        const filePath =
+          (storedAttachmentId && !isUuid(storedAttachmentId) ? storedAttachmentId : null) ||
+          (storedAttachmentUrl
+            ? getStoragePathFromPublicUrl(storedAttachmentUrl, this.storageBucket)
+            : null);
+        if (filePath) {
+          await this.deleteFile(filePath);
+        }
       } catch (error) {
         // Log error but don't fail the operation if file deletion fails
         console.error(

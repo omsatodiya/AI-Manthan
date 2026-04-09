@@ -19,6 +19,10 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host");
   const onTenantSubdomain = hasSubdomain(host);
 
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
+
   const isHomePage = pathname === "/";
   const isAuthPath =
     pathname === "/login" ||

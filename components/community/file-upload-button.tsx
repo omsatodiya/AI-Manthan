@@ -47,10 +47,14 @@ export const FileUploadButton = ({ onFileSelect, disabled }: FileUploadButtonPro
     try {
       setIsUploading(true)
       await onFileSelect(file)
-    } catch {
+    } catch (error) {
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to upload file. Please try again.'
       toast({
         title: 'Upload failed',
-        description: 'Failed to upload file. Please try again.',
+        description,
         variant: 'destructive',
       })
     } finally {

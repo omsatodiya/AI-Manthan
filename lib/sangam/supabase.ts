@@ -21,6 +21,16 @@ if (!supabaseUrl || !supabaseServiceKey) {
 // Create Supabase client with service key for admin operations
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+function isMissingEmbeddingsTableError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const code = String((error as { code?: string }).code || '');
+  const message = String((error as { message?: string }).message || '').toLowerCase();
+  return (
+    code === 'PGRST205' &&
+    message.includes("could not find the table 'public.chat_embeddings'")
+  );
+}
+
 export class SangamSupabaseClient {
   /**
    * Get unembedded messages for a tenant
@@ -315,6 +325,36 @@ export class SangamSupabaseClient {
         .limit(limit);
 
       if (error) {
+        if (isMissingEmbeddingsTableError(error)) {
+          const { data: fallbackMessages, error: fallbackError } = await supabase
+            .from('chat_messages')
+            .select('id, tenant_id, content, created_at, updated_at')
+            .eq('tenant_id', tenantId)
+            .or('content.not.is.null,attachment_id.not.is.null')
+            .order('created_at', { ascending: false })
+            .limit(limit);
+
+          if (fallbackError) {
+            console.error('Error fetching fallback messages:', fallbackError);
+            throw new Error(`Failed to fetch fallback messages: ${fallbackError.message}`);
+          }
+
+          return (fallbackMessages || []).map(row => ({
+            id: row.id,
+            tenantId: row.tenant_id,
+            chatId: row.id,
+            content: row.content || '',
+            embedding: [],
+            hasAttachment: false,
+            attachmentFileName: undefined,
+            attachmentFileType: undefined,
+            contentType: 'message',
+            chunkIndex: 0,
+            chunkTotal: 1,
+            createdAt: row.created_at,
+            updatedAt: row.updated_at || row.created_at
+          }));
+        }
         console.error('Error fetching all embeddings:', error);
         throw new Error(`Failed to fetch embeddings: ${error.message}`);
       }

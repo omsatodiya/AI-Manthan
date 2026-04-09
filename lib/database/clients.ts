@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 
 let cachedSupabase: SupabaseClient | null = null;
 
+const RETRYABLE_MESSAGES = ["fetch failed", "network", "eai_again", "etimedout"];
+
 function resolveSupabaseEnv(serverOnly: boolean) {
   const isBrowser = !serverOnly && typeof window !== "undefined";
   const url = isBrowser
@@ -30,6 +32,41 @@ function resolveSupabaseEnv(serverOnly: boolean) {
   return { url, anonKey };
 }
 
+async function fetchWithRetry(
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1]
+) {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await fetch(input, init);
+    } catch (error) {
+      lastError = error;
+      const message =
+        error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
+      const isRetryable = RETRYABLE_MESSAGES.some((token) => message.includes(token));
+      if (!isRetryable || attempt === 2) {
+        throw error;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200 * (attempt + 1)));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("Supabase fetch failed");
+}
+
+function createSupabaseClient(url: string, key: string) {
+  return createClient(url, key, {
+    global: {
+      fetch: fetchWithRetry,
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}
+
 export async function getSupabaseClient() {
   if (cachedSupabase) {
     return cachedSupabase;
@@ -37,11 +74,11 @@ export async function getSupabaseClient() {
   const { url, anonKey } = resolveSupabaseEnv(
     typeof window === "undefined"
   );
-  cachedSupabase = createClient(url, anonKey);
+  cachedSupabase = createSupabaseClient(url, anonKey);
   return cachedSupabase;
 }
 
 export function getSupabaseServerClient() {
   const { url, anonKey } = resolveSupabaseEnv(true);
-  return createClient(url, anonKey);
+  return createSupabaseClient(url, anonKey);
 }
