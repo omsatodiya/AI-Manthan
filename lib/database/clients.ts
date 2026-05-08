@@ -82,3 +82,14 @@ export function getSupabaseServerClient() {
   const { url, anonKey } = resolveSupabaseEnv(true);
   return createSupabaseClient(url, anonKey);
 }
+
+export function getSupabaseAdminClient() {
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+
+  if (!url || !serviceKey) {
+    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_KEY are required for admin client.");
+  }
+
+  return createSupabaseClient(url, serviceKey);
+}

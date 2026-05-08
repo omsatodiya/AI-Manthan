@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "../database/clients";
+import { getSupabaseAdminClient } from "../database/clients";
 import { 
   TenantApplication, 
   CreateTenantApplicationData, 
@@ -11,7 +11,7 @@ export const tenantApplicationFunctions = {
     applicantId: string,
     data: CreateTenantApplicationData
   ): Promise<TenantApplication | null> {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseAdminClient();
     const { data: result, error } = await supabase
       .from("tenant_applications")
       .insert({
@@ -43,7 +43,7 @@ export const tenantApplicationFunctions = {
   },
 
   async getTenantApplications(status?: ApplicationStatus): Promise<TenantApplication[]> {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseAdminClient();
     let query = supabase.from("tenant_applications").select("*");
     
     if (status) {
@@ -72,7 +72,7 @@ export const tenantApplicationFunctions = {
   },
 
   async getMyTenantApplications(applicantId: string): Promise<TenantApplication[]> {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseAdminClient();
     const { data, error } = await supabase
       .from("tenant_applications")
       .select("*")
@@ -102,7 +102,7 @@ export const tenantApplicationFunctions = {
     data: ReviewTenantApplicationData,
     reviewedBy: string
   ): Promise<TenantApplication | null> {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseAdminClient();
     const updatePayload = {
       status: data.status,
       rejection_note: data.rejectionNote,
