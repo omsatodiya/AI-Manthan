@@ -3,6 +3,7 @@ export interface Tenant {
   name: string;
   slug: string;
   description?: string | null;
+  isPublic: boolean;
   settings?: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
@@ -16,7 +17,7 @@ export interface TenantMember {
   status: MemberStatus;
   permissions?: string[] | null;
   joinedAt: string;
-  user?: import("./user").User | null;
+  user?: Partial<import("./user").User> | null;
   tenant?: Tenant | null;
 }
 

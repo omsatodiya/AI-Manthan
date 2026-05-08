@@ -1,5 +1,66 @@
 import { getSupabaseClient } from "../database/clients";
-import { Tenant, TenantMember, TenantInvitation, MemberStatus } from "../types/tenant";
+import { Tenant, TenantMember, TenantInvitation, MemberStatus, TenantRole } from "../types/tenant";
+
+// ---------------------------------------------------------------------------
+// Types for Raw DB Rows (Internal)
+// ---------------------------------------------------------------------------
+interface RawTenantMemberRow {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  role: TenantRole;
+  status: MemberStatus;
+  permissions?: string[] | null;
+  joined_at?: string;
+  created_at: string;
+  user?: {
+    id: string;
+    full_name?: string;
+    fullName?: string;
+    name?: string;
+    email?: string;
+  } | null;
+  tenant?: {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    is_public: boolean;
+    settings: Record<string, unknown> | null;
+    created_at: string;
+    updated_at: string;
+  } | null;
+}
+
+// ---------------------------------------------------------------------------
+// Helper: map a raw DB row → TenantMember (handles snake_case DB columns)
+// ---------------------------------------------------------------------------
+function rowToTenantMember(row: RawTenantMemberRow): TenantMember {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    tenantId: row.tenant_id,
+    role: row.role,
+    status: row.status,
+    permissions: row.permissions,
+    joinedAt: row.joined_at || row.created_at,
+    user: row.user ? {
+      id: row.user.id,
+      fullName: row.user.full_name || row.user.fullName || row.user.name || "",
+      email: row.user.email || "",
+    } : null,
+    tenant: row.tenant ? {
+      id: row.tenant.id,
+      name: row.tenant.name,
+      slug: row.tenant.slug,
+      description: row.tenant.description,
+      isPublic: row.tenant.is_public,
+      settings: row.tenant.settings,
+      createdAt: row.tenant.created_at,
+      updatedAt: row.tenant.updated_at,
+    } : null,
+  };
+}
 
 export const tenantFunctions = {
   async findTenantById(id: string): Promise<Tenant | null> {
@@ -10,7 +71,11 @@ export const tenantFunctions = {
       .eq("id", id)
       .single();
     if (error && error.code !== "PGRST116") console.error(error);
-    return data as Tenant | null;
+    if (!data) return null;
+    return {
+      ...data,
+      isPublic: data.is_public
+    } as Tenant;
   },
 
   async findTenantBySlug(slug: string): Promise<Tenant | null> {
@@ -21,7 +86,11 @@ export const tenantFunctions = {
       .eq("slug", slug)
       .single();
     if (error && error.code !== "PGRST116") console.error(error);
-    return data as Tenant | null;
+    if (!data) return null;
+    return {
+      ...data,
+      isPublic: data.is_public
+    } as Tenant;
   },
 
   async createTenant(
@@ -34,12 +103,17 @@ export const tenantFunctions = {
         name: tenant.name,
         slug: tenant.slug,
         description: tenant.description,
+        is_public: tenant.isPublic,
         settings: tenant.settings,
       })
       .select()
       .single();
     if (error) console.error(error);
-    return data as Tenant | null;
+    if (!data) return null;
+    return {
+      ...data,
+      isPublic: data.is_public
+    } as Tenant;
   },
 
   async updateTenant(
@@ -51,6 +125,7 @@ export const tenantFunctions = {
     if (data.name !== undefined) updatePayload.name = data.name;
     if (data.slug !== undefined) updatePayload.slug = data.slug;
     if (data.description !== undefined) updatePayload.description = data.description;
+    if (data.isPublic !== undefined) updatePayload.is_public = data.isPublic;
     if (data.settings !== undefined) updatePayload.settings = data.settings;
 
     const { data: result, error } = await supabase
@@ -60,7 +135,11 @@ export const tenantFunctions = {
       .select()
       .single();
     if (error) console.error(error);
-    return result as Tenant | null;
+    if (!result) return null;
+    return {
+      ...result,
+      isPublic: result.is_public
+    } as Tenant;
   },
 
   async deleteTenant(id: string): Promise<boolean> {
@@ -89,7 +168,7 @@ export const tenantFunctions = {
       
     const { data, error } = await query;
     if (error) console.error(error);
-    return (data as TenantMember[]) ?? [];
+    return ((data as RawTenantMemberRow[] | null) ?? []).map(rowToTenantMember);
   },
 
   async getTenantMembersByUser(userId: string): Promise<TenantMember[]> {
@@ -105,7 +184,43 @@ export const tenantFunctions = {
       )
       .eq("user_id", userId);
     if (error) console.error(error);
-    return (data as TenantMember[]) ?? [];
+    return ((data as RawTenantMemberRow[] | null) ?? []).map(rowToTenantMember);
+  },
+
+  async getManagedTenants(userId: string): Promise<TenantMember[]> {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from("tenant_members")
+      .select(
+        `
+        *,
+        user:users(*),
+        tenant:tenants(*)
+      `
+      )
+      .eq("user_id", userId)
+      .in("role", ["owner", "admin"])
+      .eq("status", "active");
+    if (error) console.error(error);
+    return ((data as RawTenantMemberRow[] | null) ?? []).map(rowToTenantMember);
+  },
+
+  async findTenantMemberById(id: string): Promise<TenantMember | null> {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from("tenant_members")
+      .select(
+        `
+        *,
+        user:users(*),
+        tenant:tenants(*)
+      `
+      )
+      .eq("id", id)
+      .single();
+    if (error && error.code !== "PGRST116") console.error(error);
+    if (!data) return null;
+    return rowToTenantMember(data as RawTenantMemberRow);
   },
 
   async addTenantMember(
@@ -130,7 +245,8 @@ export const tenantFunctions = {
       )
       .single();
     if (error) console.error(error);
-    return data as TenantMember | null;
+    if (!data) return null;
+    return rowToTenantMember(data as RawTenantMemberRow);
   },
 
   async updateTenantMember(
@@ -158,7 +274,8 @@ export const tenantFunctions = {
       )
       .single();
     if (error) console.error(error);
-    return result as TenantMember | null;
+    if (!result) return null;
+    return rowToTenantMember(result as RawTenantMemberRow);
   },
 
   async removeTenantMember(id: string): Promise<boolean> {

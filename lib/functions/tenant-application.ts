@@ -20,6 +20,7 @@ export const tenantApplicationFunctions = {
         company_name: data.orgName,
         requested_slug: data.requestedSlug,
         company_description: data.description,
+        is_public: data.isPublic,
         status: "pending",
       })
       .select()
@@ -34,6 +35,7 @@ export const tenantApplicationFunctions = {
       orgName: result.company_name as string,
       requestedSlug: result.requested_slug as string,
       description: result.company_description as string | null,
+      isPublic: result.is_public as boolean,
       status: result.status as ApplicationStatus,
       reviewedBy: result.reviewed_by as string | null,
       reviewedAt: result.reviewed_at as string | null,
@@ -77,6 +79,7 @@ export const tenantApplicationFunctions = {
       orgName: result.company_name as string,
       requestedSlug: result.requested_slug as string,
       description: result.company_description as string | null,
+      isPublic: result.is_public as boolean,
       status: result.status as ApplicationStatus,
       reviewedBy: result.reviewed_by as string | null,
       reviewedAt: result.reviewed_at as string | null,
@@ -105,6 +108,7 @@ export const tenantApplicationFunctions = {
       orgName: result.company_name as string,
       requestedSlug: result.requested_slug as string,
       description: result.company_description as string | null,
+      isPublic: result.is_public as boolean,
       status: result.status as ApplicationStatus,
       reviewedBy: result.reviewed_by as string | null,
       reviewedAt: result.reviewed_at as string | null,
@@ -145,6 +149,7 @@ export const tenantApplicationFunctions = {
           name: result.company_name,
           slug: result.requested_slug,
           description: result.company_description,
+          isPublic: result.is_public,
           settings: {},
         });
 
@@ -170,6 +175,7 @@ export const tenantApplicationFunctions = {
       orgName: result.company_name as string,
       requestedSlug: result.requested_slug as string,
       description: result.company_description as string | null,
+      isPublic: result.is_public as boolean,
       status: result.status as ApplicationStatus,
       reviewedBy: result.reviewed_by as string | null,
       reviewedAt: result.reviewed_at as string | null,
@@ -222,6 +228,7 @@ export const tenantApplicationFunctions = {
       orgName: result.company_name as string,
       requestedSlug: result.requested_slug as string,
       description: result.company_description as string | null,
+      isPublic: result.is_public as boolean,
       status: result.status as ApplicationStatus,
       reviewedBy: result.reviewed_by as string | null,
       reviewedAt: result.reviewed_at as string | null,

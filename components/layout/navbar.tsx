@@ -25,6 +25,7 @@ import {
   getCurrentUserCached,
   invalidateCurrentUserCache,
 } from "@/lib/auth-client-cache";
+import { getManagedTenantsAction } from "@/app/actions/tenant-member";
 import { SessionUser } from "@/lib/types";
 import { isSuperAdmin } from "@/lib/super-admin";
 
@@ -35,6 +36,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCommunityAdmin, setIsCommunityAdmin] = useState(false);
   const isAdmin = useMemo(() => isSuperAdmin(user), [user]);
 
   useEffect(() => {
@@ -51,8 +53,16 @@ export function Navbar() {
     try {
       const currentUser = await getCurrentUserCached();
       setUser(currentUser);
+      
+      if (currentUser) {
+        const result = await getManagedTenantsAction();
+        setIsCommunityAdmin(result.success && (result.tenants?.length ?? 0) > 0);
+      } else {
+        setIsCommunityAdmin(false);
+      }
     } catch {
       setUser(null);
+      setIsCommunityAdmin(false);
     } finally {
       setIsLoading(false);
     }
@@ -212,6 +222,14 @@ export function Navbar() {
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  {isCommunityAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/community-management" className="cursor-pointer">
+                        <Building2 className="mr-2 h-4 w-4" />
+                        Community Management
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   {/* Global Admin Link (preserved for future use) */}
                   {false && (
                     <DropdownMenuItem asChild>
@@ -331,6 +349,20 @@ export function Navbar() {
                                 onClick={() => setIsOpen(false)}>
                                 <Shield className="h-4 w-4" />
                                 Tenant Applications
+                              </Link>
+                            </Button>
+                          )}
+                          {isCommunityAdmin && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              className="w-full">
+                              <Link
+                                href="/community-management"
+                                className="flex items-center justify-center gap-2"
+                                onClick={() => setIsOpen(false)}>
+                                <Building2 className="h-4 w-4" />
+                                Community Management
                               </Link>
                             </Button>
                           )}

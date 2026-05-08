@@ -68,6 +68,7 @@ export async function getTenantMembersAction() {
           id,
           name,
           slug,
+          is_public,
           created_at
         )
       `

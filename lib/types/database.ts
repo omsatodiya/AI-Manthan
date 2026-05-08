@@ -45,6 +45,7 @@ export interface DatabaseAdapter {
 
   getTenantMembers(tenantId: string, status?: import("./tenant").MemberStatus): Promise<TenantMember[]>;
   getTenantMembersByUser(userId: string): Promise<TenantMember[]>;
+  getManagedTenants(userId: string): Promise<TenantMember[]>;
   addTenantMember(
     member: Omit<TenantMember, "id" | "joinedAt" | "user" | "tenant">
   ): Promise<TenantMember | null>;

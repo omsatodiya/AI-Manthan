@@ -15,6 +15,7 @@ interface RawTenantMember {
     id: string;
     name: string;
     slug: string;
+    is_public: boolean;
     created_at: string;
   }[] | null;
 }
@@ -57,6 +58,7 @@ export function useTenantData(): UseTenantDataReturn {
                 id: member.tenants[0].id,
                 name: member.tenants[0].name,
                 slug: member.tenants[0].slug,
+                isPublic: member.tenants[0].is_public,
                 createdAt: member.tenants[0].created_at,
                 updatedAt: member.tenants[0].created_at,
               }

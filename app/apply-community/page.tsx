@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/card";
 import { submitTenantApplicationAction } from "@/app/actions/tenant-application";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 const slugRegex = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -60,6 +61,7 @@ const formSchema = z.object({
     .string()
     .max(500, "Description must be less than 500 characters.")
     .optional(),
+  isPublic: z.boolean(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -80,6 +82,7 @@ export default function ApplyCommunityPage() {
       orgName: "",
       requestedSlug: "",
       description: "",
+      isPublic: true,
     },
   });
 
@@ -290,6 +293,28 @@ export default function ApplyCommunityPage() {
                               </span>
                             </div>
                             <FormMessage className="text-xs font-medium" />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="isPublic"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border/50 p-4 bg-muted/10">
+                            <div className="space-y-0.5">
+                              <FormLabel className="text-base font-serif font-medium">Public Visibility</FormLabel>
+                              <FormDescription className="text-xs font-sans">
+                                Allow your community to be discovered by others in the network.
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                disabled={isLoading}
+                              />
+                            </FormControl>
                           </FormItem>
                         )}
                       />

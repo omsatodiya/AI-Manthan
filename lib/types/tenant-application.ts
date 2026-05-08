@@ -6,6 +6,7 @@ export interface TenantApplication {
     orgName: string;
     requestedSlug: string;
     description?: string | null;
+    isPublic: boolean;
     status: ApplicationStatus;
     reviewedBy?: string | null;
     reviewedAt?: string | null;
@@ -18,6 +19,7 @@ export interface CreateTenantApplicationData {
     orgName: string;
     requestedSlug: string;
     description?: string;
+    isPublic: boolean;
 }
 
 export interface ReviewTenantApplicationData {
