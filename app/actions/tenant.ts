@@ -45,3 +45,13 @@ export async function hasActiveTenantMembershipAction() {
         };
     }
 }
+
+export async function getTenantMembersByUserAction(userId: string) {
+    try {
+        const db = await getDb();
+        return await db.getTenantMembersByUser(userId);
+    } catch (error) {
+        console.error("getTenantMembersByUserAction", error);
+        return [];
+    }
+}

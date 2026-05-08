@@ -32,6 +32,7 @@ import {
   invalidateCurrentUserCache,
 } from "@/lib/auth-client-cache";
 import { updateUserNameAction, deleteUserAction } from "@/app/actions/user";
+import { hasActiveTenantMembershipAction } from "@/app/actions/tenant";
 import { SessionUser } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ export default function UserPage() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isValidatingMembership, setIsValidatingMembership] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -153,6 +155,24 @@ export default function UserPage() {
     }
     setIsSubmitting(false);
   }
+
+  const handleMatchNavigation = async () => {
+    setIsValidatingMembership(true);
+    try {
+      const result = await hasActiveTenantMembershipAction();
+
+      if (result.success && result.hasMembership) {
+        router.push("/user/match");
+      } else {
+        toast.error("You need to join a community or organization first.");
+      }
+    } catch (error) {
+      console.error("handleMatchNavigation", error);
+      toast.error("Failed to check membership status. Please try again.");
+    } finally {
+      setIsValidatingMembership(false);
+    }
+  };
 
   // const generateEmbedding = async () => {
   //   if (!user) return;
@@ -412,10 +432,17 @@ export default function UserPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => router.push("/user/match")}
+                  onClick={handleMatchNavigation}
+                  disabled={isValidatingMembership}
                 >
-                  <Users className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-                  <Users className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                  {isValidatingMembership ? (
+                    <Loader2 className="h-[1.2rem] w-[1.2rem] animate-spin" />
+                  ) : (
+                    <>
+                      <Users className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                      <Users className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                    </>
+                  )}
                   <span className="sr-only">Match with other users</span>
                 </Button>
               </CardContent>
