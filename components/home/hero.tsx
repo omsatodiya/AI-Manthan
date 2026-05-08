@@ -84,7 +84,7 @@ export function Hero() {
                 variant="outline"
                 className="border-primary/20 text-primary hover:bg-primary/5 text-base py-6 px-10 font-sans font-bold rounded-md transition-all"
                 asChild>
-                <Link href="/dashboard">
+                <Link href="/user">
                   My Dashboard
                 </Link>
               </Button>

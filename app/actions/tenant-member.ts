@@ -2,6 +2,7 @@
 
 import { getCurrentUserAction } from "./auth";
 import { tenantFunctions } from "@/lib/functions/tenant";
+import { userFunctions } from "@/lib/functions/user";
 import { Tenant, MemberStatus, TenantRole } from "@/lib/types/tenant";
 import { revalidatePath } from "next/cache";
 
@@ -12,7 +13,7 @@ export async function getManagedTenantsAction() {
   try {
     const user = await getCurrentUserAction();
     if (!user) {
-      return { success: false, error: "Unauthorized" };
+      return { success: false as const, error: "Unauthorized" };
     }
 
     const memberships = await tenantFunctions.getManagedTenants(user.id);
@@ -22,10 +23,10 @@ export async function getManagedTenantsAction() {
       .map(m => m.tenant)
       .filter((t): t is Tenant => !!t);
 
-    return { success: true, tenants: managedTenants };
+    return { success: true as const, tenants: managedTenants };
   } catch (error) {
     console.error("getManagedTenantsAction error:", error);
-    return { success: false, error: "Failed to fetch managed communities" };
+    return { success: false as const, error: "Failed to fetch managed communities" };
   }
 }
 
@@ -37,7 +38,7 @@ export async function getPendingJoinRequestsAction(tenantId: string) {
   try {
     const user = await getCurrentUserAction();
     if (!user) {
-      return { success: false, error: "Unauthorized" };
+      return { success: false as const, error: "Unauthorized" };
     }
 
     // Verify management permission
@@ -47,14 +48,14 @@ export async function getPendingJoinRequestsAction(tenantId: string) {
     );
 
     if (!isManager) {
-      return { success: false, error: "Insufficient permissions" };
+      return { success: false as const, error: "Insufficient permissions" };
     }
 
     const pendingMembers = await tenantFunctions.getTenantMembers(tenantId, "pending");
-    return { success: true, requests: pendingMembers };
+    return { success: true as const, requests: pendingMembers };
   } catch (error) {
     console.error("getPendingJoinRequestsAction error:", error);
-    return { success: false, error: "Failed to fetch pending requests" };
+    return { success: false as const, error: "Failed to fetch pending requests" };
   }
 }
 
@@ -69,13 +70,13 @@ export async function updateJoinRequestAction(
   try {
     const user = await getCurrentUserAction();
     if (!user) {
-      return { success: false, error: "Unauthorized" };
+      return { success: false as const, error: "Unauthorized" };
     }
 
     // Verify the member exists and the current user manages that tenant
     const member = await tenantFunctions.findTenantMemberById(memberId);
     if (!member) {
-      return { success: false, error: "Member request not found" };
+      return { success: false as const, error: "Member request not found" };
     }
 
     const memberships = await tenantFunctions.getTenantMembersByUser(user.id);
@@ -84,20 +85,20 @@ export async function updateJoinRequestAction(
     );
 
     if (!isManager) {
-      return { success: false, error: "Insufficient permissions" };
+      return { success: false as const, error: "Insufficient permissions" };
     }
     
     const result = await tenantFunctions.updateTenantMember(memberId, { status, role });
 
     if (!result) {
-      return { success: false, error: "Failed to update request" };
+      return { success: false as const, error: "Failed to update request" };
     }
 
     revalidatePath("/community-management");
-    return { success: true, member: result };
+    return { success: true as const, member: result };
   } catch (error) {
     console.error("updateJoinRequestAction error:", error);
-    return { success: false, error: "An unexpected error occurred" };
+    return { success: false as const, error: "An unexpected error occurred" };
   }
 }
 
@@ -108,13 +109,13 @@ export async function deleteJoinRequestAction(memberId: string) {
   try {
     const user = await getCurrentUserAction();
     if (!user) {
-      return { success: false, error: "Unauthorized" };
+      return { success: false as const, error: "Unauthorized" };
     }
 
     // Verify authorization
     const member = await tenantFunctions.findTenantMemberById(memberId);
     if (!member) {
-      return { success: false, error: "Member request not found" };
+      return { success: false as const, error: "Member request not found" };
     }
 
     const memberships = await tenantFunctions.getTenantMembersByUser(user.id);
@@ -123,18 +124,113 @@ export async function deleteJoinRequestAction(memberId: string) {
     );
 
     if (!isManager) {
-      return { success: false, error: "Insufficient permissions" };
+      return { success: false as const, error: "Insufficient permissions" };
     }
 
     const success = await tenantFunctions.removeTenantMember(memberId);
     if (!success) {
-      return { success: false, error: "Failed to delete request" };
+      return { success: false as const, error: "Failed to delete request" };
     }
 
     revalidatePath("/community-management");
-    return { success: true };
+    return { success: true as const };
   } catch (error) {
     console.error("deleteJoinRequestAction error:", error);
-    return { success: false, error: "An unexpected error occurred" };
+    return { success: false as const, error: "An unexpected error occurred" };
+  }
+}
+
+/**
+ * Fetches members of a tenant with pagination, filtering, and sorting.
+ */
+export async function getTenantMembersPaginatedAction(params: {
+  tenantId: string;
+  pageIndex: number;
+  pageSize: number;
+  query?: string;
+  sort?: { id: string; desc: boolean };
+}) {
+  try {
+    const user = await getCurrentUserAction();
+    if (!user) return { success: false as const, error: "Unauthorized" };
+
+    // Verify management permission
+    const memberships = await tenantFunctions.getTenantMembersByUser(user.id);
+    const isManager = memberships.some(
+      m => m.tenantId === params.tenantId && (m.role === "owner" || m.role === "admin") && m.status === "active"
+    );
+
+    if (!isManager) {
+      return { success: false as const, error: "Insufficient permissions" };
+    }
+
+    const result = await tenantFunctions.getPaginatedTenantMembers(params);
+    return { success: true as const, ...result };
+  } catch (error) {
+    console.error("getTenantMembersPaginatedAction error:", error);
+    return { success: false as const, error: "Failed to fetch members" };
+  }
+}
+
+/**
+ * Removes a member from a tenant.
+ */
+export async function removeMemberFromTenantAction(memberId: string) {
+  try {
+    const user = await getCurrentUserAction();
+    if (!user) return { success: false as const, error: "Unauthorized" };
+
+    const member = await tenantFunctions.findTenantMemberById(memberId);
+    if (!member) return { success: false as const, error: "Member not found" };
+
+    // Verify management permission for this tenant
+    const memberships = await tenantFunctions.getTenantMembersByUser(user.id);
+    const isManager = memberships.some(
+      m => m.tenantId === member.tenantId && (m.role === "owner" || m.role === "admin") && m.status === "active"
+    );
+
+    if (!isManager) {
+      return { success: false as const, error: "Insufficient permissions" };
+    }
+
+    // Prevent removing yourself if you are the only owner (business logic check could be added here)
+
+    const success = await tenantFunctions.removeTenantMember(memberId);
+    if (!success) return { success: false as const, error: "Failed to remove member" };
+
+    revalidatePath("/community-management");
+    return { success: true as const };
+  } catch (error) {
+    console.error("removeMemberFromTenantAction error:", error);
+    return { success: false as const, error: "An unexpected error occurred" };
+  }
+}
+
+/**
+ * Fetches analytics for a specific community.
+ */
+export async function getCommunityAnalyticsAction(tenantId: string) {
+  try {
+    const user = await getCurrentUserAction();
+    if (!user) return { success: false as const, error: "Unauthorized" };
+
+    const { totalUsers, totalAdmins } = await userFunctions.getAdminAnalytics(tenantId);
+    
+    // Also get pending requests count
+    const { count: pendingRequests } = await (await import("@/lib/database/clients")).getSupabaseClient().then(supabase => 
+      supabase.from("tenant_members").select("id", { count: "exact" }).eq("tenant_id", tenantId).eq("status", "pending").range(0, 0)
+    );
+
+    return { 
+      success: true as const, 
+      stats: {
+        totalMembers: totalUsers,
+        activeAdmins: totalAdmins,
+        pendingRequests: pendingRequests || 0
+      }
+    };
+  } catch (error) {
+    console.error("getCommunityAnalyticsAction error:", error);
+    return { success: false as const, error: "Failed to fetch analytics" };
   }
 }

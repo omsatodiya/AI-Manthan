@@ -75,19 +75,24 @@ export function DataTable<TData, TValue>({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-4 p-4 pb-0">
+        <div className="flex flex-1 items-center gap-2 min-w-[200px]">
           <Input
             placeholder={searchPlaceholder}
             onChange={(event) => onFilterChange(event.target.value)}
-            className="max-w-sm"
+            className="max-w-sm bg-background/50 border-border/50 rounded-xl"
           />
           {toolbarExtra}
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {children}
           <Button
             variant="outline"
             size="icon"
             onClick={onRefresh}
             disabled={isLoading}
+            className="rounded-xl border-border/50 hover:bg-secondary/50"
           >
             <span className="sr-only">Refresh</span>
             {isLoading ? (
@@ -97,7 +102,6 @@ export function DataTable<TData, TValue>({
             )}
           </Button>
         </div>
-        {children}
       </div>
       <div className="rounded-md border">
         <Table>
@@ -147,26 +151,33 @@ export function DataTable<TData, TValue>({
           </TableBody>
         </Table>
       </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(pageIndex - 1)}
-          disabled={pageIndex === 0}
-        >
-          Previous
-        </Button>
-        <span className="text-sm text-muted-foreground">
-          Page {pageIndex + 1} of {pageCount > 0 ? pageCount : 1}
-        </span>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(pageIndex + 1)}
-          disabled={pageIndex + 1 >= pageCount}
-        >
-          Next
-        </Button>
+      <div className="flex items-center justify-end space-x-2 p-4 pt-0">
+        <div className="flex-1 text-sm text-muted-foreground hidden sm:block">
+          {table.getFilteredRowModel().rows.length} records total
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(pageIndex - 1)}
+            disabled={pageIndex === 0}
+            className="rounded-xl border-border/50"
+          >
+            Previous
+          </Button>
+          <div className="bg-secondary/50 px-3 py-1 rounded-lg text-xs font-medium">
+            {pageIndex + 1} / {pageCount > 0 ? pageCount : 1}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(pageIndex + 1)}
+            disabled={pageIndex + 1 >= pageCount}
+            className="rounded-xl border-border/50"
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

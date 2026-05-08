@@ -369,11 +369,68 @@ export const tenantFunctions = {
       .eq("is_public", true)
       .order("name", { ascending: true });
     if (error) console.error(error);
-    return (data || []).map((t: Tenant) => ({
+    return (data || []).map((t: Record<string, unknown>) => ({
       ...t,
-      isPublic: t.isPublic,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
-    } as Tenant));
+      isPublic: t.is_public,
+      createdAt: t.created_at,
+      updatedAt: t.updated_at,
+    } as unknown as Tenant));
+  },
+
+  async getPaginatedTenantMembers({
+    tenantId,
+    pageIndex,
+    pageSize,
+    query,
+    sort,
+  }: {
+    tenantId: string;
+    pageIndex: number;
+    pageSize: number;
+    query?: string;
+    sort?: { id: string; desc: boolean };
+  }) {
+    const supabase = await getSupabaseClient();
+    
+    let queryBuilder = supabase
+      .from("tenant_members")
+      .select(`
+        *,
+        user:users!inner(*),
+        tenant:tenants(*)
+      `, { count: "exact" })
+      .eq("tenant_id", tenantId);
+
+    if (query) {
+      queryBuilder = queryBuilder.or(
+        `full_name.ilike.%${query}%,email.ilike.%${query}%`,
+        { foreignTable: "users" }
+      );
+    }
+
+    if (sort) {
+      let sortKey = sort.id;
+      if (sortKey === "joinedAt") sortKey = "created_at";
+      if (["role", "status", "created_at"].includes(sortKey)) {
+        queryBuilder = queryBuilder.order(sortKey, { ascending: !sort.desc });
+      }
+    } else {
+      queryBuilder = queryBuilder.order("created_at", { ascending: false });
+    }
+
+    const { data, error, count } = await queryBuilder.range(
+      pageIndex * pageSize,
+      (pageIndex + 1) * pageSize - 1
+    );
+
+    if (error) console.error(error);
+
+    const members = ((data as RawTenantMemberRow[] | null) ?? []).map(rowToTenantMember);
+
+    return {
+      members,
+      totalCount: count ?? 0,
+      pageCount: count ? Math.ceil(count / pageSize) : 0,
+    };
   }
 };
