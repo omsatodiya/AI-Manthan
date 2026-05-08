@@ -41,7 +41,7 @@ export function Hero() {
             {HERO_CONTENT.description}
           </motion.p>
 
-          {showGuestCtas && (
+          {showGuestCtas ? (
             <motion.div
               className="flex flex-col sm:flex-row gap-4 mb-16 w-full justify-center"
               initial={{ opacity: 0, y: 20 }}
@@ -62,6 +62,30 @@ export function Hero() {
                 asChild>
                 <Link href={HERO_CONTENT.ctas.secondary.href}>
                   {HERO_CONTENT.ctas.secondary.label}
+                </Link>
+              </Button>
+            </motion.div>
+          ) : (
+            <motion.div
+              className="flex flex-col sm:flex-row gap-4 mb-16 w-full justify-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.3 }}>
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-chart-2 text-primary-foreground text-base py-6 px-10 font-sans font-bold rounded-md shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                asChild>
+                <Link href="/join-community">
+                  Join a community
+                </Link>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-primary/20 text-primary hover:bg-primary/5 text-base py-6 px-10 font-sans font-bold rounded-md transition-all"
+                asChild>
+                <Link href="/dashboard">
+                  My Dashboard
                 </Link>
               </Button>
             </motion.div>

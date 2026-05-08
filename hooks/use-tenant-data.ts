@@ -55,13 +55,13 @@ export function useTenantData(): UseTenantDataReturn {
           joinedAt: member.created_at,
           tenant: member.tenants && member.tenants.length > 0
             ? {
-                id: member.tenants[0].id,
-                name: member.tenants[0].name,
-                slug: member.tenants[0].slug,
-                isPublic: member.tenants[0].is_public,
-                createdAt: member.tenants[0].created_at,
-                updatedAt: member.tenants[0].created_at,
-              }
+              id: member.tenants[0].id,
+              name: member.tenants[0].name,
+              slug: member.tenants[0].slug,
+              isPublic: member.tenants[0].is_public,
+              createdAt: member.tenants[0].created_at,
+              updatedAt: member.tenants[0].created_at,
+            }
             : null,
         })
       );
@@ -70,8 +70,7 @@ export function useTenantData(): UseTenantDataReturn {
     } catch (err) {
       console.error("Unexpected error:", err);
       setError(
-        `Unexpected error: ${
-          err instanceof Error ? err.message : "Unknown error"
+        `Unexpected error: ${err instanceof Error ? err.message : "Unknown error"
         }`
       );
     } finally {

@@ -161,11 +161,11 @@ export const tenantFunctions = {
       `
       )
       .eq("tenant_id", tenantId);
-    
+
     if (status) {
       query = query.eq("status", status);
     }
-      
+
     const { data, error } = await query;
     if (error) console.error(error);
     return ((data as RawTenantMemberRow[] | null) ?? []).map(rowToTenantMember);
@@ -359,5 +359,21 @@ export const tenantFunctions = {
       .eq("id", id);
     if (error) console.error(error);
     return !error;
+  },
+
+  async getPublicTenants(): Promise<Tenant[]> {
+    const supabase = await getSupabaseClient();
+    const { data, error } = await supabase
+      .from("tenants")
+      .select("*")
+      .eq("is_public", true)
+      .order("name", { ascending: true });
+    if (error) console.error(error);
+    return (data || []).map((t: Tenant) => ({
+      ...t,
+      isPublic: t.isPublic,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    } as Tenant));
   }
 };
