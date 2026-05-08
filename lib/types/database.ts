@@ -58,7 +58,12 @@ export interface DatabaseAdapter {
     applicantId: string,
     data: CreateTenantApplicationData
   ): Promise<TenantApplication | null>;
-  getTenantApplications(status?: import("./tenant-application").ApplicationStatus): Promise<TenantApplication[]>;
+  getTenantApplications(params?: {
+    status?: import("./tenant-application").ApplicationStatus;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<{ applications: TenantApplication[]; totalCount: number }>;
   getMyTenantApplications(applicantId: string): Promise<TenantApplication[]>;
   updateTenantApplication(
     id: string,

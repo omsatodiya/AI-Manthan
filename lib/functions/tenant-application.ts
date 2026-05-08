@@ -1,10 +1,11 @@
 import { getSupabaseAdminClient } from "../database/clients";
-import { 
-  TenantApplication, 
-  CreateTenantApplicationData, 
+import {
+  TenantApplication,
+  CreateTenantApplicationData,
   ReviewTenantApplicationData,
-  ApplicationStatus 
+  ApplicationStatus
 } from "../types/tenant-application";
+import { tenantFunctions } from "./tenant";
 
 export const tenantApplicationFunctions = {
   async createTenantApplication(
@@ -16,7 +17,7 @@ export const tenantApplicationFunctions = {
       .from("tenant_applications")
       .insert({
         applicant_id: applicantId,
-        company_name: data.orgName, 
+        company_name: data.orgName,
         requested_slug: data.requestedSlug,
         company_description: data.description,
         status: "pending",
@@ -26,7 +27,7 @@ export const tenantApplicationFunctions = {
 
     if (error) console.error(error);
     if (!result) return null;
-    
+
     return {
       id: result.id as string,
       applicantId: result.applicant_id as string,
@@ -42,21 +43,35 @@ export const tenantApplicationFunctions = {
     };
   },
 
-  async getTenantApplications(status?: ApplicationStatus): Promise<TenantApplication[]> {
+  async getTenantApplications(params?: {
+    status?: ApplicationStatus;
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<{ applications: TenantApplication[]; totalCount: number }> {
     const supabase = await getSupabaseAdminClient();
-    let query = supabase.from("tenant_applications").select("*");
-    
-    if (status) {
-      query = query.eq("status", status);
+    const page = params?.page || 1;
+    const limit = params?.limit || 10;
+    const offset = (page - 1) * limit;
+
+    let query = supabase.from("tenant_applications").select("*", { count: "exact" });
+
+    if (params?.status) {
+      query = query.eq("status", params.status);
     }
-    
+
+    if (params?.search) {
+      query = query.or(`company_name.ilike.%${params.search}%,requested_slug.ilike.%${params.search}%`);
+    }
+
     query = query.order("created_at", { ascending: false });
+    query = query.range(offset, offset + limit - 1);
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) console.error(error);
-    if (!data) return [];
+    if (!data) return { applications: [], totalCount: 0 };
 
-    return data.map((result: Record<string, unknown>) => ({
+    const applications = data.map((result: Record<string, unknown>) => ({
       id: result.id as string,
       applicantId: result.applicant_id as string,
       orgName: result.company_name as string,
@@ -69,6 +84,8 @@ export const tenantApplicationFunctions = {
       createdAt: result.created_at as string,
       updatedAt: result.updated_at as string,
     }));
+
+    return { applications, totalCount: count || 0 };
   },
 
   async getMyTenantApplications(applicantId: string): Promise<TenantApplication[]> {
@@ -110,6 +127,84 @@ export const tenantApplicationFunctions = {
       reviewed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
+
+    const { data: result, error } = await supabase
+      .from("tenant_applications")
+      .update(updatePayload)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) console.error(error);
+    if (!result) return null;
+
+    // Handle automated provisioning if approved
+    if (data.status === "approved") {
+      try {
+        const newTenant = await tenantFunctions.createTenant({
+          name: result.company_name,
+          slug: result.requested_slug,
+          description: result.company_description,
+          settings: {},
+        });
+
+        if (newTenant) {
+          await tenantFunctions.addTenantMember({
+            userId: result.applicant_id,
+            tenantId: newTenant.id,
+            role: "owner",
+            status: "active",
+            permissions: ["*"], // Full permissions for owner
+          });
+          console.log(`Successfully provisioned tenant: ${newTenant.name} (${newTenant.id})`);
+        }
+      } catch (provisionError) {
+        console.error("Failed to provision tenant upon approval:", provisionError);
+        // We still return the updated application, but log the error
+      }
+    }
+
+    return {
+      id: result.id as string,
+      applicantId: result.applicant_id as string,
+      orgName: result.company_name as string,
+      requestedSlug: result.requested_slug as string,
+      description: result.company_description as string | null,
+      status: result.status as ApplicationStatus,
+      reviewedBy: result.reviewed_by as string | null,
+      reviewedAt: result.reviewed_at as string | null,
+      rejectionNote: result.rejection_note as string | null,
+      createdAt: result.created_at as string,
+      updatedAt: result.updated_at as string,
+    };
+  },
+
+  async deleteTenantApplication(id: string): Promise<boolean> {
+    const supabase = await getSupabaseAdminClient();
+    const { error } = await supabase
+      .from("tenant_applications")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("deleteTenantApplication error:", error);
+      return false;
+    }
+    return true;
+  },
+
+  async updateTenantApplicationDetails(
+    id: string,
+    data: { orgName?: string; requestedSlug?: string; description?: string }
+  ): Promise<TenantApplication | null> {
+    const supabase = await getSupabaseAdminClient();
+    const updatePayload: Record<string, string | null> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (data.orgName) updatePayload.company_name = data.orgName;
+    if (data.requestedSlug) updatePayload.requested_slug = data.requestedSlug;
+    if (data.description !== undefined) updatePayload.company_description = data.description;
 
     const { data: result, error } = await supabase
       .from("tenant_applications")

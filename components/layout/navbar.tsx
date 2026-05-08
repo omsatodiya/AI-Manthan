@@ -26,6 +26,7 @@ import {
   invalidateCurrentUserCache,
 } from "@/lib/auth-client-cache";
 import { SessionUser } from "@/lib/types";
+import { isSuperAdmin } from "@/lib/super-admin";
 
 export function Navbar() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = false; // Roles are handled via tenant membership now; global admin logic to be updated
+  const isAdmin = useMemo(() => isSuperAdmin(user), [user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -205,6 +206,15 @@ export function Navbar() {
                   </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem asChild>
+                      <Link href="/tenant-applications" className="cursor-pointer">
+                        <Shield className="mr-2 h-4 w-4" />
+                        Tenant Applications
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {/* Global Admin Link (preserved for future use) */}
+                  {false && (
+                    <DropdownMenuItem asChild>
                       <Link href="/admin" className="cursor-pointer">
                         <Shield className="mr-2 h-4 w-4" />
                         Admin Panel
@@ -316,11 +326,11 @@ export function Navbar() {
                               variant="outline"
                               className="w-full">
                               <Link
-                                href="/admin"
+                                href="/tenant-applications"
                                 className="flex items-center justify-center gap-2"
                                 onClick={() => setIsOpen(false)}>
                                 <Shield className="h-4 w-4" />
-                                Admin Panel
+                                Tenant Applications
                               </Link>
                             </Button>
                           )}
