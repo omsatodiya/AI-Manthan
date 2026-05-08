@@ -18,7 +18,6 @@ import { useCommunityManagement } from "@/components/community/community-managem
 import { DataTable } from "@/components/custom/data-table";
 import { getRequestColumns } from "./columns";
 import { EditMemberDialog } from "@/components/community/edit-member-dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Check } from "lucide-react";
 
@@ -45,8 +44,8 @@ export default function JoinRequestsPage() {
       } else {
         toast.error(result.error || "Failed to load requests");
       }
-    } catch (_error) {
-      console.error("fetchRequests error:", _error);
+    } catch {
+      console.error("fetchRequests error");
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +69,7 @@ export default function JoinRequestsPage() {
       } else {
         toast.error(result.error || "Failed to accept request");
       }
-    } catch (_error) {
+    } catch {
       toast.error("An unexpected error occurred");
     } finally {
       setIsProcessing(false);
@@ -87,7 +86,7 @@ export default function JoinRequestsPage() {
       } else {
         toast.error(result.error || "Failed to reject request");
       }
-    } catch (_error) {
+    } catch {
       toast.error("An unexpected error occurred");
     }
   }, [handleRefresh]);
@@ -102,7 +101,7 @@ export default function JoinRequestsPage() {
       } else {
         toast.error(result.error || "Failed to delete request");
       }
-    } catch (_error) {
+    } catch {
       toast.error("An unexpected error occurred");
     }
   }, [handleRefresh]);

@@ -24,6 +24,8 @@ import {
   LucideIcon,
   Users,
   BarChart3,
+  Building2,
+  LayoutGrid
 } from "lucide-react";
 
 import { logoutAction } from "@/app/actions/auth";
@@ -80,8 +82,18 @@ interface NavLink {
 const navLinks: NavLink[] = [
   {
     href: "/user/info",
-    label: "Change User Information",
+    label: "Account Information",
     icon: Settings,
+  },
+  {
+    href: "/community-applications",
+    label: "Community Applications",
+    icon: Building2,
+  },
+  {
+    href: "/organization-requests",
+    label: "Organization Requests",
+    icon: LayoutGrid,
   },
   {
     href: "/admin",
@@ -174,37 +186,6 @@ export default function UserPage() {
     }
   };
 
-  // const generateEmbedding = async () => {
-  //   if (!user) return;
-
-  //   setIsGeneratingEmbedding(true);
-
-  //   try {
-  //     const response = await fetch("/api/users/generate-embedding", {
-  //       method: "POST",
-  //     });
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(errorData.error || "Failed to generate embedding");
-  //     }
-
-  //     const result = await response.json();
-
-  //     if (result.success) {
-  //       toast.success(
-  //         `Embedding generated using ${result.embeddingSource} method!`
-  //       );
-  //     } else {
-  //       throw new Error("Failed to generate embedding");
-  //     }
-  //   } catch (error) {
-  //     toast.error("Failed to generate embedding. Please try again.");
-  //   } finally {
-  //     setIsGeneratingEmbedding(false);
-  //   }
-  // };
-
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -280,7 +261,6 @@ export default function UserPage() {
                     <Mail className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">{user.email}</span>
                   </div>
-                  {/* Role display removed as it is now tenant-scoped */}
                 </div>
                 <Form {...form}>
                   <form

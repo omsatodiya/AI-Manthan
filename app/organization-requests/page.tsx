@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { 
   Building2, 
   Clock, 
@@ -9,9 +9,7 @@ import {
   XCircle, 
   ArrowRight,
   Sparkles,
-  LayoutGrid,
-  ExternalLink,
-  ShieldCheck
+  LayoutGrid
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -23,44 +21,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getMyJoinRequestsAction } from "@/app/actions/tenant-member";
-import { TenantMember } from "@/lib/types/tenant";
+import { getMyApplicationsAction } from "@/app/actions/tenant-application";
+import { TenantApplication } from "@/lib/types/tenant-application";
 import { format } from "date-fns";
-import { toast } from "sonner";
 
-export default function CommunityApplicationsPage() {
-  const [requests, setRequests] = useState<TenantMember[]>([]);
+export default function OrganizationRequestsPage() {
+  const [applications, setApplications] = useState<TenantApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchRequests = useCallback(async () => {
-    setIsLoading(true);
-    const result = await getMyJoinRequestsAction();
-    if (result.success && result.requests) {
-      setRequests(result.requests);
-    } else if (!result.success) {
-      toast.error(result.error || "Failed to load requests");
-    }
-    setIsLoading(false);
-  }, []);
-
   useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+    const fetchApplications = async () => {
+      const result = await getMyApplicationsAction();
+      if (result.success && result.applications) {
+        setApplications(result.applications);
+      }
+      setIsLoading(false);
+    };
+
+    fetchApplications();
+  }, []);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "active":
+      case "approved":
         return (
           <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/20 border-green-200/50 flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" />
-            Joined
+            Approved
           </Badge>
         );
       case "rejected":
         return (
           <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/20 border-red-200/50 flex items-center gap-1">
             <XCircle className="h-3 w-3" />
-            Declined
+            Rejected
           </Badge>
         );
       default:
@@ -83,18 +77,18 @@ export default function CommunityApplicationsPage() {
             className="flex flex-col gap-4 items-center text-center"
           >
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-primary text-xs font-bold uppercase tracking-wider mb-4 font-sans">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-primary text-xs font-bold uppercase tracking-wider mb-4 font-sans border border-primary/10">
                 <LayoutGrid className="h-3 w-3" />
-                Network Dashboard
+                Network Expansion
               </div>
               <h1 className="text-4xl sm:text-5xl md:text-6xl tracking-tight text-foreground mb-6">
-                <span className="font-serif font-medium">Community</span>
+                <span className="font-serif font-medium">Organization</span>
                 <span className="block font-sans font-bold text-primary dark:text-foreground mt-1 md:mt-2">
-                  Applications
+                  Requests
                 </span>
               </h1>
               <p className="text-lg text-foreground/80 max-w-2xl mt-4 leading-relaxed mx-auto font-sans">
-                Monitor the status of your requests to join the ConnectIQ ecosystem.
+                Track your applications to create and lead a new community node in the network.
               </p>
             </div>
           </motion.div>
@@ -106,16 +100,16 @@ export default function CommunityApplicationsPage() {
                   <div key={i} className="h-48 rounded-2xl bg-card border border-border/70 animate-pulse" />
                 ))}
               </div>
-            ) : requests.length > 0 ? (
+            ) : applications.length > 0 ? (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5 }}
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
-                {requests.map((req, index) => (
+                {applications.map((app, index) => (
                   <motion.div
-                    key={req.id}
+                    key={app.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
@@ -125,11 +119,11 @@ export default function CommunityApplicationsPage() {
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <CardTitle className="text-xl font-serif font-medium group-hover:text-primary transition-colors">
-                              {req.tenant?.name || "Unknown Community"}
+                              {app.orgName}
                             </CardTitle>
                             <CardDescription className="font-mono text-xs flex items-center gap-1.5">
                               <span className="text-primary/70">iq.app/</span>
-                              {req.tenant?.slug || "..."}
+                              {app.requestedSlug}
                             </CardDescription>
                           </div>
                           <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
@@ -139,28 +133,16 @@ export default function CommunityApplicationsPage() {
                       </CardHeader>
                       <CardContent className="pt-6 flex-1 flex flex-col justify-between">
                         <div className="space-y-4">
-                          <div className="flex items-center gap-4 text-sm text-foreground/70 font-sans">
-                            <div className="flex items-center gap-1.5">
-                              <ShieldCheck className="h-4 w-4 text-primary/60" />
-                              <span className="capitalize">{req.role}</span>
-                            </div>
-                            <div className="h-1 w-1 rounded-full bg-border" />
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-4 w-4 text-primary/60" />
-                              {format(new Date(req.joinedAt), "MMM d, yyyy")}
-                            </div>
-                          </div>
-
+                          <p className="text-sm text-foreground/70 font-sans line-clamp-3 leading-relaxed">
+                            {app.description || "No description provided."}
+                          </p>
+                          
                           <div className="flex items-center justify-between pt-2">
-                            {getStatusBadge(req.status)}
-                            {req.status === "active" && (
-                              <Button variant="ghost" size="sm" asChild className="text-primary font-bold hover:bg-primary/5">
-                                <Link href={`/community?tenantId=${req.tenantId}`} className="flex items-center gap-1.5">
-                                  Visit Community
-                                  <ExternalLink className="h-3 w-3" />
-                                </Link>
-                              </Button>
-                            )}
+                            <div className="text-[10px] text-foreground/50 font-sans flex items-center gap-1.5 uppercase tracking-wider font-bold">
+                              <Clock className="h-3 w-3" />
+                              {format(new Date(app.createdAt), "MMM d, yyyy")}
+                            </div>
+                            {getStatusBadge(app.status)}
                           </div>
                         </div>
                       </CardContent>
@@ -172,18 +154,18 @@ export default function CommunityApplicationsPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center py-20 px-4"
+                className="flex flex-col items-center justify-center py-20 px-4 bg-card/30 backdrop-blur-sm rounded-3xl border border-dashed border-border/60"
               >
                 <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center text-primary mb-6">
                   <Sparkles className="h-10 w-10" />
                 </div>
-                <h3 className="text-2xl font-serif font-medium mb-2">No applications yet</h3>
+                <h3 className="text-2xl font-serif font-medium mb-2 text-center">Start your journey</h3>
                 <p className="text-foreground/70 text-center max-w-sm mb-8 font-sans">
-                  Explore and apply to join communities in the network.
+                  You haven&apos;t requested any organizations yet. Ready to lead your own community?
                 </p>
-                <Button asChild className="bg-primary hover:bg-chart-2 text-primary-foreground font-sans font-semibold h-12 px-8">
-                  <Link href="/join-community" className="flex items-center gap-2">
-                    Browse Communities
+                <Button asChild className="bg-primary hover:bg-chart-2 text-primary-foreground font-sans font-semibold h-12 px-8 rounded-xl shadow-lg shadow-primary/20">
+                  <Link href="/apply-community" className="flex items-center gap-2">
+                    Create Application
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>

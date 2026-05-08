@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, ArrowRight, User as UserIcon, LogOut, Settings, Shield, Building2 } from "lucide-react";
+import { Menu, ArrowRight, User as UserIcon, LogOut, Settings, Shield, Building2, LayoutGrid } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -214,6 +214,12 @@ export function Navbar() {
                       Community Applications
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/organization-requests" className="cursor-pointer">
+                      <LayoutGrid className="mr-2 h-4 w-4" />
+                      Organization Requests
+                    </Link>
+                  </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link href="/tenant-applications" className="cursor-pointer">
@@ -336,6 +342,15 @@ export function Navbar() {
                               onClick={() => setIsOpen(false)}>
                               <Building2 className="h-4 w-4" />
                               Community Applications
+                            </Link>
+                          </Button>
+                          <Button asChild variant="outline" className="w-full">
+                            <Link
+                              href="/organization-requests"
+                              className="flex items-center justify-center gap-2"
+                              onClick={() => setIsOpen(false)}>
+                              <LayoutGrid className="h-4 w-4" />
+                              Organization Requests
                             </Link>
                           </Button>
                           {isAdmin && (

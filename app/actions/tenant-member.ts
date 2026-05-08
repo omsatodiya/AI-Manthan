@@ -234,3 +234,27 @@ export async function getCommunityAnalyticsAction(tenantId: string) {
     return { success: false as const, error: "Failed to fetch analytics" };
   }
 }
+
+/**
+ * Fetches all join requests and memberships for the current user.
+ */
+export async function getMyJoinRequestsAction() {
+  try {
+    const user = await getCurrentUserAction();
+    if (!user) {
+      return { success: false as const, error: "Unauthorized" };
+    }
+
+    const requests = await tenantFunctions.getTenantMembersByUser(user.id);
+    
+    // Sort by joinedAt desc
+    const sortedRequests = [...requests].sort((a, b) => 
+      new Date(b.joinedAt).getTime() - new Date(a.joinedAt).getTime()
+    );
+
+    return { success: true as const, requests: sortedRequests };
+  } catch (error) {
+    console.error("getMyJoinRequestsAction error:", error);
+    return { success: false as const, error: "Failed to fetch your community applications" };
+  }
+}
