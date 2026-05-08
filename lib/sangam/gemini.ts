@@ -6,21 +6,21 @@ import type {
 } from '@/lib/types/sangam';
 
 export class GeminiService {
-  private client: OpenAI;
+  private client: OpenAI | null = null;
   private config: SangamConfig;
   private model: string;
 
   constructor(config?: Partial<SangamConfig>) {
     const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      throw new Error('GROQ_API_KEY environment variable is not set');
+    this.model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    
+    if (apiKey) {
+      this.client = new OpenAI({
+        apiKey,
+        baseURL: 'https://api.groq.com/openai/v1',
+      });
     }
 
-    this.client = new OpenAI({
-      apiKey,
-      baseURL: 'https://api.groq.com/openai/v1',
-    });
-    this.model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
     this.config = {
       maxResults: 10,
       similarityThreshold: 0.5,
@@ -32,6 +32,11 @@ export class GeminiService {
 
   async generateResponse(context: SangamContext): Promise<string> {
     const prompt = this.buildPrompt(context);
+    
+    if (!this.client) {
+      throw new Error('GROQ_API_KEY is not configured. AI responses are unavailable.');
+    }
+
     try {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
@@ -204,7 +209,7 @@ Structure your summary with clear headings and bullet points. Be comprehensive b
   async validateConfiguration(): Promise<{ valid: boolean; error?: string }> {
     try {
       const apiKey = process.env.GROQ_API_KEY;
-      if (!apiKey) {
+      if (!apiKey || !this.client) {
         return { valid: false, error: 'GROQ_API_KEY environment variable is not set' };
       }
 

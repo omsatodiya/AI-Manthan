@@ -4,11 +4,11 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import type { 
-  ChatEmbedding, 
-  EmbeddingMatch, 
-  UnembeddedMessage, 
-  EmbeddingStats 
+import type {
+  ChatEmbedding,
+  EmbeddingMatch,
+  UnembeddedMessage,
+  EmbeddingStats
 } from '@/lib/types/sangam';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,12 +77,12 @@ export class SangamSupabaseClient {
       attachment:
         data.attachment_id || data.attachment_url || data.attachment_name
           ? {
-              id: data.attachment_id || data.attachment_url || data.id,
-              fileName: data.attachment_name || 'Attachment',
-              fileType: data.attachment_type || 'application/octet-stream',
-              fileSize: data.attachment_size || 0,
-              fileUrl: data.attachment_url || ''
-            }
+            id: data.attachment_id || data.attachment_url || data.id,
+            fileName: data.attachment_name || 'Attachment',
+            fileType: data.attachment_type || 'application/octet-stream',
+            fileSize: data.attachment_size || 0,
+            fileUrl: data.attachment_url || ''
+          }
           : null
     };
   }
@@ -91,7 +91,7 @@ export class SangamSupabaseClient {
    * Get unembedded messages for a tenant
    */
   async getUnembeddedMessages(
-    tenantId: string, 
+    tenantId: string,
     batchSize: number = 100
   ): Promise<UnembeddedMessage[]> {
     try {
@@ -165,21 +165,21 @@ export class SangamSupabaseClient {
         return;
       }
 
-       const insertData = embeddings.map(embedding => {
-         const processedEmbedding = Array.isArray(embedding.embedding) ? embedding.embedding : JSON.parse(embedding.embedding);
-         return {
-           tenant_id: embedding.tenantId,
-           chat_id: embedding.chatId,
-           content: embedding.content,
-           embedding: processedEmbedding,
-           has_attachment: embedding.hasAttachment || false,
-           attachment_file_name: embedding.attachmentFileName || null,
-           attachment_file_type: embedding.attachmentFileType || null,
-           content_type: embedding.contentType || 'message',
-           chunk_index: embedding.chunkIndex || 0,
-           chunk_total: embedding.chunkTotal || 1
-         };
-       });
+      const insertData = embeddings.map(embedding => {
+        const processedEmbedding = Array.isArray(embedding.embedding) ? embedding.embedding : JSON.parse(embedding.embedding);
+        return {
+          tenant_id: embedding.tenantId,
+          chat_id: embedding.chatId,
+          content: embedding.content,
+          embedding: processedEmbedding,
+          has_attachment: embedding.hasAttachment || false,
+          attachment_file_name: embedding.attachmentFileName || null,
+          attachment_file_type: embedding.attachmentFileType || null,
+          content_type: embedding.contentType || 'message',
+          chunk_index: embedding.chunkIndex || 0,
+          chunk_total: embedding.chunkTotal || 1
+        };
+      });
 
       const { error } = await supabase
         .from('chat_embeddings')
@@ -227,7 +227,7 @@ export class SangamSupabaseClient {
           console.error('Error performing similarity search:', error);
           throw new Error(`Failed to perform similarity search: ${error.message}`);
         }
-        
+
         return data || [];
       }
 
