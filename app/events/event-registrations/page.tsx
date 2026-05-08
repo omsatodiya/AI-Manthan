@@ -25,12 +25,12 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { getCurrentUserAction } from "@/app/actions/auth";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 import { toast } from "sonner";
 
 export default function EventRegistrationPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [userTenantId, setUserTenantId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState({
@@ -56,16 +56,19 @@ export default function EventRegistrationPage() {
           process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
         );
 
-        const { data: userData, error } = await supabase
-          .from("users")
+        // Fetch tenant_id from tenant_members instead of users table
+        const { data: memberData, error: memberError } = await supabase
+          .from("tenant_members")
           .select("tenant_id")
-          .eq("id", user.id)
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .limit(1)
           .single();
 
-        if (error) {
-          console.error("Error fetching user tenant:", error);
+        if (memberError) {
+          console.error("Error fetching user tenant member:", memberError);
         } else {
-          setUserTenantId(userData?.tenant_id || null);
+          setUserTenantId(memberData?.tenant_id || null);
         }
       }
     } catch (error) {

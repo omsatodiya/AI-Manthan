@@ -25,16 +25,16 @@ import {
   getCurrentUserCached,
   invalidateCurrentUserCache,
 } from "@/lib/auth-client-cache";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const isAdmin = user?.role === "admin";
+  const isAdmin = false; // Roles are handled via tenant membership now; global admin logic to be updated
 
   useEffect(() => {
     const handleScroll = () => {
@@ -178,13 +178,13 @@ export function Navbar() {
                         : "border-primary/20 text-primary hover:border-primary/40 hover:bg-primary/5"
                     }`}>
                     <UserIcon className="h-4 w-4 mr-2" />
-                    {user.name}
+                    {user.fullName}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{user.name}</p>
+                      <p className="font-medium">{user.fullName}</p>
                       <p className="w-[200px] truncate text-sm text-muted-foreground">
                         {user.email}
                       </p>
@@ -281,7 +281,7 @@ export function Navbar() {
                       ) : user ? (
                         <div className="mt-6 space-y-3">
                           <div className="p-3 bg-gray-50 rounded-lg border">
-                            <p className="font-medium text-sm">{user.name}</p>
+                            <p className="font-medium text-sm">{user.fullName}</p>
                             <p className="text-xs text-gray-500 truncate">
                               {user.email}
                             </p>

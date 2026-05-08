@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   Download,
   FileArchive,
@@ -115,9 +116,11 @@ export const FileAttachment = ({ attachment, isOwnMessage }: FileAttachmentProps
   if (isImageFile(attachment.fileType)) {
     return (
       <div className="relative group">
-        <img
+        <Image
           src={attachment.fileUrl}
           alt={attachment.fileName}
+          width={800}
+          height={800}
           className="rounded-lg max-w-[300px] h-auto cursor-pointer"
           onClick={handleOpen}
         />

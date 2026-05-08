@@ -1,10 +1,10 @@
 "use server";
 
 import { cookies } from "next/headers";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types/user";
 import { getSessionUser } from "@/lib/auth/session";
 
-export async function getCurrentUserAction(): Promise<AuthUser | null> {
+export async function getCurrentUserAction(): Promise<SessionUser | null> {
   return getSessionUser();
 }
 

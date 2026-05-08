@@ -31,12 +31,13 @@ export default function OpportunityApplicationForm({ announcement }: Opportunity
     setIsSubmitting(true);
     try {
       const result = await createAnnouncementOpportunityAction(
+        announcement.tenantId,
         announcement.title,
         announcement.description || "",
         announcement.link || "",
-        responses
+        responses,
       );
-      
+
       if (result.success) {
         toast.success("Application submitted successfully!");
         setIsOpen(false);
@@ -75,7 +76,7 @@ export default function OpportunityApplicationForm({ announcement }: Opportunity
             </div>
           );
         }
-        
+
         if (question.id === "expectedOutcome") {
           return (
             <div className="space-y-2">
@@ -148,7 +149,7 @@ export default function OpportunityApplicationForm({ announcement }: Opportunity
             Please fill out the application form for: <strong>{announcement.title}</strong>
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {announcementQuestions.map((question) => (
             <div key={question.id} className="space-y-3">
@@ -163,7 +164,7 @@ export default function OpportunityApplicationForm({ announcement }: Opportunity
               })}
             </div>
           ))}
-          
+
           <div className="flex gap-4 pt-4">
             <Button
               onClick={handleSubmit}

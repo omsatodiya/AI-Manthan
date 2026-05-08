@@ -18,7 +18,7 @@ import {
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { getUserInfoAction, saveUserInfoAction } from "@/app/actions/user-info";
 import { useTenant } from "@/contexts/tenant-context";
-import { AuthUser, UserInfo } from "@/lib/types";
+import { SessionUser, UserInfo } from "@/lib/types";
 import { questions, getTotalQuestions } from "@/constants/user/questions";
 
 import { Button } from "@/components/ui/button";
@@ -36,7 +36,7 @@ import { QuestionRenderer } from "@/components/user/question-renderer";
 export default function UserInfoPage() {
   const router = useRouter();
   const { tenantId } = useTenant();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [, setUserInfo] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);

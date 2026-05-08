@@ -165,7 +165,7 @@ function TemplateEditorById({ id }: { id: string }) {
       const response = await fetch("/api/generate-document", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId: template.id, userInput: values }),
+        body: JSON.stringify({ templateId: template.id, userInput: values, tenantId }),
       });
 
       if (!response.ok) {

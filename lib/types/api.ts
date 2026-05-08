@@ -5,19 +5,16 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   message: string;
-  role: string;
 }
 
 export interface SignupRequest {
   fullName: string;
   email: string;
   password: string;
-  role?: "admin" | "user";
 }
 
 export interface SignupResponse {
   message: string;
-  role: string;
 }
 
 export interface ForgotPasswordRequest {

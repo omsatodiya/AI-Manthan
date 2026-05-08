@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSupabaseClient } from "@/lib/database/clients";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 interface Conversation {
   id: string;
@@ -38,7 +38,7 @@ interface Conversation {
 }
 
 interface ConversationListProps {
-  currentUser: AuthUser;
+  currentUser: SessionUser;
 }
 
 export function ConversationList({ currentUser }: ConversationListProps) {

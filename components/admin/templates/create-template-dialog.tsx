@@ -31,6 +31,7 @@ import { createTemplateAction } from "@/app/actions/templates";
 import { TEMPLATE_CATEGORIES, isTemplateCategoryId } from "@/constants/templates/categories";
 import type { Template, TemplateCategoryId } from "@/constants/templates";
 import { normalizeLineBreaks, populateTemplate } from "@/lib/template-populate";
+import { useTenant } from "@/contexts/tenant-context";
 
 function categoryFromJson(value: unknown): TemplateCategoryId {
   return typeof value === "string" && isTemplateCategoryId(value)
@@ -72,6 +73,7 @@ export function CreateTemplateDialog({
   const [jsonError, setJsonError] = useState("");
   const [fieldsJsonInput, setFieldsJsonInput] = useState("");
   const [fieldsJsonError, setFieldsJsonError] = useState("");
+  const { tenantId } = useTenant();
   
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
@@ -261,9 +263,13 @@ export function CreateTemplateDialog({
   };
 
    const onSubmit = async (data: FormData) => {
+     if (!tenantId) {
+       toast.error("No active tenant selected.");
+       return;
+     }
      setIsSubmitting(true);
      try {
-       const result = await createTemplateAction({
+       const result = await createTemplateAction(tenantId, {
          title: data.title,
          description: data.description,
          category: data.category,

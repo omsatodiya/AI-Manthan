@@ -9,6 +9,7 @@ interface RawTenantMember {
   user_id: string;
   tenant_id: string;
   role: "owner" | "member";
+  status: "pending" | "active" | "rejected";
   created_at: string;
   tenants: {
     id: string;
@@ -49,6 +50,7 @@ export function useTenantData(): UseTenantDataReturn {
           userId: member.user_id,
           tenantId: member.tenant_id,
           role: member.role,
+          status: member.status,
           joinedAt: member.created_at,
           tenant: member.tenants && member.tenants.length > 0
             ? {

@@ -1,13 +1,12 @@
 import { User } from "./user";
 import { UserInfo } from "./user-info";
 import { Tenant, TenantMember, TenantInvitation } from "./tenant";
+import { TenantApplication, CreateTenantApplicationData, ReviewTenantApplicationData } from "./tenant-application";
 import { Announcement, CreateAnnouncementData, UpdateAnnouncementData } from "./announcement";
 import { AnnouncementOpportunity, CreateAnnouncementOpportunityData } from "./announcement-opportunity";
 
 export interface DatabaseAdapter {
   findUserByEmail(email: string): Promise<User | null>;
-  findUserByEmailInTenant(email: string, tenantId: string): Promise<User | null>;
-  setUserTenantId(userId: string, tenantId: string | null): Promise<boolean>;
   findUserById(id: string): Promise<User | null>;
   createUser(
     user: Omit<User, "otp" | "otpExpires" | "createdAt" | "updatedAt">
@@ -44,16 +43,28 @@ export interface DatabaseAdapter {
   updateTenant(id: string, data: Partial<Tenant>): Promise<Tenant | null>;
   deleteTenant(id: string): Promise<boolean>;
 
-  getTenantMembers(tenantId: string): Promise<TenantMember[]>;
+  getTenantMembers(tenantId: string, status?: import("./tenant").MemberStatus): Promise<TenantMember[]>;
   getTenantMembersByUser(userId: string): Promise<TenantMember[]>;
   addTenantMember(
-    member: Omit<TenantMember, "id" | "joinedAt">
+    member: Omit<TenantMember, "id" | "joinedAt" | "user" | "tenant">
   ): Promise<TenantMember | null>;
   updateTenantMember(
     id: string,
-    data: Partial<TenantMember>
+    data: Partial<Omit<TenantMember, "user" | "tenant">>
   ): Promise<TenantMember | null>;
   removeTenantMember(id: string): Promise<boolean>;
+
+  createTenantApplication(
+    applicantId: string,
+    data: CreateTenantApplicationData
+  ): Promise<TenantApplication | null>;
+  getTenantApplications(status?: import("./tenant-application").ApplicationStatus): Promise<TenantApplication[]>;
+  getMyTenantApplications(applicantId: string): Promise<TenantApplication[]>;
+  updateTenantApplication(
+    id: string,
+    data: ReviewTenantApplicationData,
+    reviewedBy: string
+  ): Promise<TenantApplication | null>;
 
   createTenantInvitation(
     invitation: Omit<TenantInvitation, "id" | "createdAt">

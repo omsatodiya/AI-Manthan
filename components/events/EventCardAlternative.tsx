@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
 import Image from "next/image";
 import { getCurrentUserAction } from "@/app/actions/auth";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -44,7 +44,7 @@ function formatTime(dateString: string) {
 }
 
 export default function EventCardAlternative({ event, onEventUpdate }: EventCardProps) {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -204,7 +204,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
 
   const getButtonClass = () => {
     const baseClass = "px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95";
-    
+
     if (isLoading) {
       return `${baseClass} bg-gray-400 text-white cursor-not-allowed`;
     }
@@ -234,7 +234,7 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
             />
           </div>
         )}
-        
+
         <div className="p-8 flex-1 flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between mb-4">
@@ -247,11 +247,11 @@ export default function EventCardAlternative({ event, onEventUpdate }: EventCard
                 </span>
               )}
             </div>
-            
+
             <p className="text-gray-600 mb-6 line-clamp-3">
               {event.description}
             </p>
-            
+
             <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-4">
               <span className="inline-flex items-center px-3 py-2 bg-blue-50 text-blue-700 rounded-lg">
                 📅 {formatDate(event.start_at)}

@@ -48,6 +48,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTenant } from "@/contexts/tenant-context";
 
 export default function AdminAnnouncementsPage() {
   const router = useRouter();
@@ -58,12 +59,14 @@ export default function AdminAnnouncementsPage() {
     useState<Announcement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isNavigating, startTransition] = useTransition();
+  const { tenantId } = useTenant();
 
   useEffect(() => {
     let cancelled = false;
+    if (!tenantId) return;
     (async () => {
       try {
-        const result = await getAnnouncementsListCached();
+        const result = await getAnnouncementsListCached(tenantId);
         if (cancelled) return;
         if (result.success) {
           setAnnouncements((result.data || []).map((announcement) => ({
@@ -86,12 +89,13 @@ export default function AdminAnnouncementsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [tenantId]);
 
   const handleDelete = async (id: string) => {
+    if (!tenantId) return;
     setDeletingId(id);
     try {
-      const result = await deleteAnnouncementAction(id);
+      const result = await deleteAnnouncementAction(tenantId, id);
       if (result.success) {
         toast.success("Announcement deleted successfully!");
         invalidateAdminAnnouncementsCache();

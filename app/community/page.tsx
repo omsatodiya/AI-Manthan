@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { RealtimeChat } from "@/components/community/realtime-chat";
 import { SangamChat } from "@/components/community/sangam-chat";
 import { getCurrentUserAction } from "@/app/actions/auth";
+
 import {
   Users,
   Trophy,
@@ -18,93 +19,92 @@ const CommunityPage = async () => {
 
   return (
     <div className="h-[calc(100vh-5rem)] w-full overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-    <div className="h-full w-full bg-background">
-      {/* Main Content */}
-      <div className="flex h-full">
-        {/* Sidebar */}
-        <div className="w-80 bg-card/60 backdrop-blur-sm border-r border-border shadow-sm flex flex-col">
-          <div className="p-6 flex-1 overflow-y-auto">
-            <div className="space-y-6">
-              {/* Active Members */}
-              <div>
-                <h3 className="text-sm font-semibold font-sans text-foreground mb-3 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Active Members
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-primary-foreground">
-                        {currentUser.name.charAt(0).toUpperCase()}
-                      </span>
+      <div className="h-full w-full bg-background">
+        {/* Main Content */}
+        <div className="flex h-full">
+          {/* Sidebar */}
+          <div className="w-80 bg-card/60 backdrop-blur-sm border-r border-border shadow-sm flex flex-col">
+            <div className="p-6 flex-1 overflow-y-auto">
+              <div className="space-y-6">
+                {/* Active Members */}
+                <div>
+                  <h3 className="text-sm font-semibold font-sans text-foreground mb-3 flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Active Members
+                  </h3>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
+                      <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <span className="text-xs font-bold text-primary-foreground">
+                          {currentUser.fullName.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium font-sans text-foreground">
+                          {currentUser.fullName}
+                        </p>
+                        <p className="text-xs font-sans text-muted-foreground">
+                          You
+                        </p>
+                      </div>
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium font-sans text-foreground">
-                        {currentUser.name}
-                      </p>
-                      <p className="text-xs font-sans text-muted-foreground">
-                        You
-                      </p>
-                    </div>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                   </div>
                 </div>
-              </div>
 
-              {/* Quick Links - Moved above AI Assistant */}
-              <div>
-                <h3 className="text-sm font-semibold font-sans text-foreground mb-3">
-                  Quick Links
-                </h3>
-                <div className="space-y-2">
-                  <Link
-                    href="/leaderboard"
-                    className="w-full flex items-center gap-3 p-3 text-left rounded-lg bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all group"
-                  >
-                    <Trophy className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">Leaderboard</p>
-                      <p className="text-xs text-muted-foreground">See top contributors</p>
-                    </div>
-                  </Link>
+                {/* Quick Links - Moved above AI Assistant */}
+                <div>
+                  <h3 className="text-sm font-semibold font-sans text-foreground mb-3">
+                    Quick Links
+                  </h3>
+                  <div className="space-y-2">
+                    <Link
+                      href="/leaderboard"
+                      className="w-full flex items-center gap-3 p-3 text-left rounded-lg bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 hover:border-amber-500/40 transition-all group"
+                    >
+                      <Trophy className="h-5 w-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">Leaderboard</p>
+                        <p className="text-xs text-muted-foreground">See top contributors</p>
+                      </div>
+                    </Link>
+                  </div>
                 </div>
-              </div>
 
-              {/* Sangam AI Assistant */}
-              <div>
-                <h3 className="text-sm font-semibold font-sans text-foreground mb-3">
-                  AI Assistant
-                </h3>
-                <div className="space-y-2">
-                  <SangamChat tenantId={currentUser.tenantId ?? undefined} />
+                {/* Sangam AI Assistant */}
+                <div>
+                  <h3 className="text-sm font-semibold font-sans text-foreground mb-3">
+                    AI Assistant
+                  </h3>
+                  <div className="space-y-2">
+                    <SangamChat tenantId={undefined} />
+                  </div>
                 </div>
-              </div>
 
-              {/* Chat Info */}
-              <div className="p-4 bg-muted rounded-lg border border-border">
-                <h4 className="text-sm font-semibold font-sans text-foreground mb-2">
-                  Chat Info
-                </h4>
-                <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                  Welcome to the community chat! Share ideas, ask questions, and
-                  collaborate with your team members. Use Sangam AI to get
-                  insights from your conversations.
-                </p>
+                {/* Chat Info */}
+                <div className="p-4 bg-muted rounded-lg border border-border">
+                  <h4 className="text-sm font-semibold font-sans text-foreground mb-2">
+                    Chat Info
+                  </h4>
+                  <p className="text-xs font-sans text-muted-foreground leading-relaxed">
+                    Welcome to the community chat! Share ideas, ask questions, and
+                    collaborate with your team members. Use Sangam AI to get
+                    insights from your conversations.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          <RealtimeChat
-            userId={currentUser.id}
-            username={currentUser.name}
-            tenantId={currentUser.tenantId ?? undefined}
-          />
+          {/* Chat Area */}
+          <div className="flex-1 flex flex-col">
+            <RealtimeChat
+              userId={currentUser.id}
+              username={currentUser.fullName}
+            />
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 };

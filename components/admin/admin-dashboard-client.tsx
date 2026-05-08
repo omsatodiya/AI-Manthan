@@ -1,20 +1,50 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, UserCheck, Megaphone, FileText } from "lucide-react";
+import { ArrowLeft, Users, UserCheck, Megaphone, FileText, Loader2 } from "lucide-react";
 import { AdminAnalytics } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { useTenant } from "@/contexts/tenant-context";
+import { getAdminAnalyticsAction } from "@/app/actions/admin";
 
-type Props = {
-  initialAnalytics: AdminAnalytics;
-};
-
-export function AdminDashboardClient({ initialAnalytics }: Props) {
+export function AdminDashboardClient() {
   const router = useRouter();
-  const analytics = initialAnalytics;
+  const { tenantId, isLoading: tenantLoading } = useTenant();
+  const [analytics, setAnalytics] = useState<AdminAnalytics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    
+    const fetchAnalytics = async () => {
+      if (tenantLoading) return;
+      
+      try {
+        setIsLoading(true);
+        // If there's no active tenant, we pass undefined or the current active tenant
+        const result = await getAdminAnalyticsAction(tenantId ?? undefined);
+        if (!cancelled) {
+          setAnalytics(result);
+        }
+      } catch (error) {
+        console.error("Error fetching analytics:", error);
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchAnalytics();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tenantId, tenantLoading]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -36,11 +66,16 @@ export function AdminDashboardClient({ initialAnalytics }: Props) {
           <h1 className="text-3xl font-bold font-serif">Admin Dashboard</h1>
         </div>
 
-        <motion.div
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible">
+        {isLoading || !analytics ? (
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          </div>
+        ) : (
+          <motion.div
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible">
           <motion.div variants={itemVariants}>
             <Card className="dark:bg-card/60 dark:border-border">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -72,6 +107,7 @@ export function AdminDashboardClient({ initialAnalytics }: Props) {
             </Card>
           </motion.div>
         </motion.div>
+        )}
 
         <div className="mt-12">
           <h2 className="text-2xl font-semibold font-serif mb-4">Management</h2>

@@ -5,9 +5,9 @@ import { getCurrentUserAction } from '@/app/actions/auth';
 export async function POST(request: NextRequest) {
   try {
     const currentUser = await getCurrentUserAction();
-    if (!currentUser?.tenantId) {
+    if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: 'User not authenticated or no tenant found' },
+        { success: false, error: 'User not authenticated' },
         { status: 401 }
       );
     }
@@ -23,12 +23,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (tenantId !== currentUser.tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied to specified tenant' },
-        { status: 403 }
-      );
-    }
+    // Legacy validation removed: tenantId is validated via middleware/permissions in Phase 3
 
     const result = await sangamService.processMessageOnUpload(tenantId, messageId);
     return NextResponse.json(

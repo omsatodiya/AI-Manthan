@@ -10,11 +10,11 @@ import type { SangamQueryRequest, SangamQueryResponse } from '@/lib/types/sangam
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user for authentication and tenant validation
+    // Get current user for authentication
     const currentUser = await getCurrentUserAction();
-    if (!currentUser?.tenantId) {
+    if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: 'User not authenticated or no tenant found' },
+        { success: false, error: 'User not authenticated' },
         { status: 401 }
       );
     }
@@ -22,14 +22,6 @@ export async function POST(request: NextRequest) {
     // Parse request body
     const body: SangamQueryRequest = await request.json();
     const { tenantId, question, maxResults, similarityThreshold } = body;
-
-    // Validate tenant access
-    if (tenantId !== currentUser.tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied to specified tenant' },
-        { status: 403 }
-      );
-    }
 
     // Validate inputs
     if (!tenantId || !question?.trim()) {
@@ -65,11 +57,11 @@ export async function POST(request: NextRequest) {
 // Special endpoint for generating summaries
 export async function PUT(request: NextRequest) {
   try {
-    // Get current user for authentication and tenant validation
+    // Get current user for authentication
     const currentUser = await getCurrentUserAction();
-    if (!currentUser?.tenantId) {
+    if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: 'User not authenticated or no tenant found' },
+        { success: false, error: 'User not authenticated' },
         { status: 401 }
       );
     }
@@ -77,14 +69,6 @@ export async function PUT(request: NextRequest) {
     // Parse request body
     const body = await request.json();
     const { tenantId, timeRange, maxResults, infoType } = body;
-
-    // Validate tenant access
-    if (tenantId !== currentUser.tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied to specified tenant' },
-        { status: 403 }
-      );
-    }
 
     // Validate inputs
     if (!tenantId) {

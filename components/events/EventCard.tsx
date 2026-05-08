@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { createClient } from "@supabase/supabase-js";
 import { getCurrentUserAction } from "@/app/actions/auth";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 interface Event {
   id: string;
@@ -46,7 +46,7 @@ function formatTime(dateString: string) {
 }
 
 export default function EventCard({ event, onEventUpdate }: EventCardProps) {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -376,13 +376,12 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                 <div
                   className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-300"
                   style={{
-                    width: `${
-                      event.capacity
-                        ? ((event.capacity - remainingCapacity) /
-                            event.capacity) *
-                          100
-                        : 0
-                    }%`,
+                    width: `${event.capacity
+                      ? ((event.capacity - remainingCapacity) /
+                        event.capacity) *
+                      100
+                      : 0
+                      }%`,
                   }}
                 ></div>
               </div>
@@ -441,11 +440,10 @@ export default function EventCard({ event, onEventUpdate }: EventCardProps) {
                   onClick={
                     isRegistered ? confirmWithdrawal : confirmRegistration
                   }
-                  className={`px-6 py-2 rounded-lg transition-all ${
-                    isRegistered
-                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      : "bg-primary text-primary-foreground hover:bg-primary/90"
-                  }`}
+                  className={`px-6 py-2 rounded-lg transition-all ${isRegistered
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                    }`}
                 >
                   {isRegistered ? "Yes, Withdraw" : "Yes, Register"}
                 </button>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChatComponent } from "@/components/chat/ChatComponent";
 import { getSupabaseClient } from "@/lib/database/clients";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 interface Conversation {
   id: string;
@@ -30,7 +30,7 @@ interface Conversation {
 
 interface ChatPageClientProps {
   conversationId: string;
-  currentUser: AuthUser;
+  currentUser: SessionUser;
 }
 
 export default function ChatPageClient({

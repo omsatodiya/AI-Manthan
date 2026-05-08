@@ -6,10 +6,10 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ConversationList } from "@/components/chat/ConversationList";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 interface ChatPageClientProps {
-  currentUser: AuthUser;
+  currentUser: SessionUser;
 }
 
 export default function ChatPageClient({ currentUser }: ChatPageClientProps) {

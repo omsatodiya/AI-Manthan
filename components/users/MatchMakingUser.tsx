@@ -15,7 +15,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getCurrentUserAction } from "@/app/actions/auth";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -60,7 +60,7 @@ export function MatchMakingUser({ match }: MatchMakingUserProps = {}) {
   const [isLoading, setIsLoading] = useState(!match);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [connectingUsers, setConnectingUsers] = useState<Set<string>>(
     new Set()
   );

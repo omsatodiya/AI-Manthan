@@ -62,6 +62,7 @@ export async function getTenantMembersAction() {
         user_id,
         tenant_id,
         role,
+        status,
         created_at,
         tenants (
           id,

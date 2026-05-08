@@ -1,4 +1,4 @@
-export type { User, AuthUser } from "./user";
+export type { User, AuthUser, SessionUser, TenantSessionUser } from "./user";
 
 export type { UserInfo } from "./user-info";
 

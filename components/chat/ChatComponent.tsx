@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getSupabaseClient } from "@/lib/database/clients";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 import { useMessagePagination } from "@/hooks/use-message-pagination";
 
 interface Message {
@@ -49,7 +49,7 @@ interface ChatComponentProps {
     fullName: string;
     email: string;
   };
-  currentUser: AuthUser;
+  currentUser: SessionUser;
 }
 
 export function ChatComponent({
@@ -116,7 +116,7 @@ export function ChatComponent({
         senderId: currentUser.id,
         sender: {
           id: currentUser.id,
-          fullName: currentUser.name,
+          fullName: currentUser.fullName,
           email: currentUser.email,
         },
         content: content.trim(),

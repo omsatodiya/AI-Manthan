@@ -1,10 +1,10 @@
+import { TenantRole, MemberStatus } from "./tenant";
+
 export interface User {
   id: string;
   fullName: string;
   email: string;
   passwordHash: string;
-  role: "admin" | "user";
-  tenantId?: string | null;
   otp?: string | null;
   otpExpires?: number | null;
   createdAt: string;
@@ -18,3 +18,20 @@ export interface AuthUser {
   role: "admin" | "user";
   tenantId?: string | null;
 }
+
+// Global User (Lobby)
+export interface SessionUser {
+  id: string;
+  fullName: string;
+  email: string;
+}
+
+// Tenant User (Tenant Dashboard)
+export interface TenantSessionUser extends SessionUser {
+  tenantId: string;
+  tenantName: string;
+  role: TenantRole;  // from tenant_members
+  status: MemberStatus;  // from tenant_members
+  permissions?: string[] | null;
+}
+

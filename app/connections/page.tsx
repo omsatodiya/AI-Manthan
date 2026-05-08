@@ -31,7 +31,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { getSupabaseClient } from "@/lib/database/clients";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -56,7 +56,7 @@ interface Connection {
 
 export default function ConnectionsPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<SessionUser | null>(null);
   const [incomingRequests, setIncomingRequests] = useState<Connection[]>([]);
   const [sentRequests, setSentRequests] = useState<Connection[]>([]);
   const [isLoading, setIsLoading] = useState(true);

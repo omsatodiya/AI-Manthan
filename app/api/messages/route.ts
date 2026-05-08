@@ -274,7 +274,7 @@ export async function POST(request: NextRequest) {
       senderId: message.sender_id,
       sender: {
         id: sender?.id || currentUser.id,
-        fullName: senderFullName || currentUser.name,
+        fullName: senderFullName || currentUser.fullName,
         email: sender?.email || currentUser.email,
       },
       content: message.content,

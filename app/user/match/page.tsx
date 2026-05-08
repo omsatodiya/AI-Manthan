@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { getCurrentUserAction } from "@/app/actions/auth";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -50,7 +50,7 @@ interface MatchResponse {
 
 export default function UserMatchPage() {
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [matches, setMatches] = useState<UserMatch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);

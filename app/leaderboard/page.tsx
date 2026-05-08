@@ -12,8 +12,8 @@ const LeaderboardPage = async () => {
     redirect('/login')
   }
 
-  // Fetch leaderboard data server-side
-  const leaderboard = await getLeaderboardAction(currentUser.tenantId ?? null, 50)
+  // Fetch leaderboard data server-side (tenant scoping can be added via query params if needed)
+  const leaderboard = await getLeaderboardAction(null, 50)
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 pt-20">

@@ -8,18 +8,23 @@ import { ExternalLink, Loader2, Calendar } from "lucide-react";
 import { getAnnouncementsAction } from "@/app/actions/announcement";
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
+import { useTenant } from "@/contexts/tenant-context";
 
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+  const { tenantId } = useTenant();
 
-  const fetchAnnouncements = async () => {
+  useEffect(() => {
+    if (tenantId) {
+      fetchAnnouncements(tenantId);
+    }
+  }, [tenantId]);
+
+  const fetchAnnouncements = async (id: string) => {
     try {
-      const result = await getAnnouncementsAction();
+      const result = await getAnnouncementsAction(id);
       if (result.success) {
         setAnnouncements(result.data?.map(item => ({
           ...item,

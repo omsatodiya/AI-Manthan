@@ -7,15 +7,16 @@ import { CreateAnnouncementOpportunityData } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 export async function createAnnouncementAction(
+  tenantId: string,
   data: CreateAnnouncementData & { isOpportunity?: boolean; response?: Record<string, unknown> }
 ) {
   try {
     const user = await getCurrentUserAction();
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
@@ -27,7 +28,7 @@ export async function createAnnouncementAction(
         title: data.title,
         description: data.description,
         link: data.link,
-        tenantId: user.tenantId,
+        tenantId,
         userId: user.id,
         response: data.response,
       };
@@ -50,7 +51,7 @@ export async function createAnnouncementAction(
           description: data.description,
           link: data.link,
         },
-        user.tenantId,
+        tenantId,
         user.id
       );
 
@@ -69,14 +70,14 @@ export async function createAnnouncementAction(
   }
 }
 
-export async function getAnnouncementsAction() {
+export async function getAnnouncementsAction(tenantId: string) {
   try {
     const user = await getCurrentUserAction();
     if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
@@ -84,8 +85,8 @@ export async function getAnnouncementsAction() {
     
     // Fetch both regular announcements and opportunities
     const [announcements, opportunities] = await Promise.all([
-      db.getAnnouncements(user.tenantId),
-      db.getAnnouncementOpportunities(user.tenantId)
+      db.getAnnouncements(tenantId),
+      db.getAnnouncementOpportunities(tenantId)
     ]);
 
     // Combine and sort by creation date
@@ -105,25 +106,29 @@ export async function getAnnouncementsAction() {
 }
 
 export async function updateAnnouncementAction(
+  tenantId: string,
   id: string,
   data: UpdateAnnouncementData
 ) {
   try {
     const user = await getCurrentUserAction();
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
     const db = await getDb();
-    const announcement = await db.updateAnnouncement(id, data, user.tenantId);
+    const announcement = await db.updateAnnouncement(id, data, tenantId);
 
     if (!announcement) {
       return { success: false, error: "Failed to update announcement" };
     }
+
+    revalidatePath("/admin/announcements");
+    revalidatePath("/announcements");
 
     return { success: true, data: announcement };
   } catch (error) {
@@ -132,23 +137,26 @@ export async function updateAnnouncementAction(
   }
 }
 
-export async function deleteAnnouncementAction(id: string) {
+export async function deleteAnnouncementAction(tenantId: string, id: string) {
   try {
     const user = await getCurrentUserAction();
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
     const db = await getDb();
-    const success = await db.deleteAnnouncement(id, user.tenantId);
+    const success = await db.deleteAnnouncement(id, tenantId);
 
     if (!success) {
       return { success: false, error: "Failed to delete announcement" };
     }
+
+    revalidatePath("/admin/announcements");
+    revalidatePath("/announcements");
 
     return { success: true };
   } catch (error) {

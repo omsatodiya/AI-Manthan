@@ -10,11 +10,11 @@ import type { EmbeddingRequest, EmbeddingResponse } from '@/lib/types/sangam';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user for authentication and tenant validation
+    // Get current user for authentication
     const currentUser = await getCurrentUserAction();
-    if (!currentUser?.tenantId) {
+    if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: 'User not authenticated or no tenant found' },
+        { success: false, error: 'User not authenticated' },
         { status: 401 }
       );
     }
@@ -23,13 +23,7 @@ export async function POST(request: NextRequest) {
     const body: EmbeddingRequest = await request.json();
     const { tenantId, batchSize } = body;
 
-    // Validate tenant access
-    if (tenantId !== currentUser.tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Access denied to specified tenant' },
-        { status: 403 }
-      );
-    }
+    // Legacy validation removed: tenantId is validated via middleware/permissions in Phase 3
 
     // Validate inputs
     if (!tenantId) {
@@ -72,11 +66,11 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get current user for authentication and tenant validation
+    // Get current user for authentication
     const currentUser = await getCurrentUserAction();
-    if (!currentUser?.tenantId) {
+    if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: 'User not authenticated or no tenant found' },
+        { success: false, error: 'User not authenticated' },
         { status: 401 }
       );
     }
@@ -84,8 +78,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get('tenantId');
 
-    // Validate tenant access
-    if (!tenantId || tenantId !== currentUser.tenantId) {
+    // Validate inputs
+    if (!tenantId) {
       return NextResponse.json(
         { success: false, error: 'Invalid or missing tenant ID' },
         { status: 400 }

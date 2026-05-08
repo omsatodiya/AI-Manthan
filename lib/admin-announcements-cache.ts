@@ -8,12 +8,12 @@ let cache: { payload: AnnouncementsResult; at: number } | null = null;
 
 const TTL_MS = 25_000;
 
-export async function getAnnouncementsListCached(): Promise<AnnouncementsResult> {
+export async function getAnnouncementsListCached(tenantId: string): Promise<AnnouncementsResult> {
   const now = Date.now();
   if (cache && now - cache.at < TTL_MS) {
     return cache.payload;
   }
-  const payload = await getAnnouncementsAction();
+  const payload = await getAnnouncementsAction(tenantId);
   if (payload.success) {
     cache = { payload, at: Date.now() };
   }

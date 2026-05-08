@@ -32,7 +32,7 @@ import {
   invalidateCurrentUserCache,
 } from "@/lib/auth-client-cache";
 import { updateUserNameAction, deleteUserAction } from "@/app/actions/user";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,7 +93,7 @@ const navLinks: NavLink[] = [
 export default function UserPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -108,7 +108,7 @@ export default function UserPage() {
         const currentUser = await getCurrentUserCached();
         if (currentUser) {
           setUser(currentUser);
-          form.reset({ fullName: currentUser.name });
+          form.reset({ fullName: currentUser.fullName });
         }
       } catch {
       } finally {
@@ -142,12 +142,12 @@ export default function UserPage() {
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || values.fullName === user.name) return;
+    if (!user || values.fullName === user.fullName) return;
     setIsSubmitting(true);
     const result = await updateUserNameAction(values.fullName);
     if (result.success) {
       toast.success(result.message);
-      setUser((prev) => (prev ? { ...prev, name: values.fullName } : null));
+      setUser((prev) => (prev ? { ...prev, fullName: values.fullName } : null));
     } else {
       toast.error(result.message);
     }
@@ -214,7 +214,7 @@ export default function UserPage() {
   }
 
   const accessibleLinks = navLinks.filter(
-    (link) => !link.roles || link.roles.includes(user.role)
+    (link) => !link.roles // Roles are handled via tenant membership now, global links show for all authenticated users
   );
 
   const cardVariants = {
@@ -260,10 +260,7 @@ export default function UserPage() {
                     <Mail className="h-5 w-5 text-muted-foreground" />
                     <span className="font-medium">{user.email}</span>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Shield className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium capitalize">{user.role}</span>
-                  </div>
+                  {/* Role display removed as it is now tenant-scoped */}
                 </div>
                 <Form {...form}>
                   <form
@@ -290,7 +287,7 @@ export default function UserPage() {
                                 size="icon"
                                 disabled={
                                   isSubmitting ||
-                                  form.getValues().fullName === user.name
+                                  form.getValues().fullName === user.fullName
                                 }
                               >
                                 {isSubmitting ? (

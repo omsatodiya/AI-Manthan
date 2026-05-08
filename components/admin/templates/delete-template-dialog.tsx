@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteTemplateAction } from "@/app/actions/templates";
 import { Template } from "@/constants/templates";
+import { useTenant } from "@/contexts/tenant-context";
 
 interface DeleteTemplateDialogProps {
   template: Template | null;
@@ -24,6 +25,7 @@ interface DeleteTemplateDialogProps {
 
 export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange }: DeleteTemplateDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const { tenantId } = useTenant();
   
   const open = template !== null ? true : false;
   const setOpen = (newOpen: boolean) => {
@@ -33,11 +35,11 @@ export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange
   };
 
   const handleDelete = async () => {
-    if (!template) return;
+    if (!template || !tenantId) return;
     
     setIsDeleting(true);
     try {
-      const result = await deleteTemplateAction(template.id);
+      const result = await deleteTemplateAction(tenantId, template.id);
 
       if (result.success) {
         toast.success("Template deleted successfully");

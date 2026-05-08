@@ -12,6 +12,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { createAnnouncementAction } from "@/app/actions/announcement";
 import QuestionRenderer from "@/components/announcements/question-renderer";
 import { toast } from "sonner";
+import { useTenant } from "@/contexts/tenant-context";
 
 export default function CreateAnnouncementPage() {
   const router = useRouter();
@@ -24,12 +25,18 @@ export default function CreateAnnouncementPage() {
     response: {},
   });
 
+  const { tenantId } = useTenant();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) {
+      toast.error("No active tenant selected.");
+      return;
+    }
     setIsLoading(true);
 
     try {
-      const result = await createAnnouncementAction(formData);
+      const result = await createAnnouncementAction(tenantId, formData);
       
       if (result.success) {
         toast.success("Announcement created successfully!");

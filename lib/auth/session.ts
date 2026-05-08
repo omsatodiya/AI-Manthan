@@ -1,11 +1,11 @@
 import { cookies } from "next/headers";
 import { jwtVerify, JWTPayload } from "jose";
 import { getDb } from "@/lib/database";
-import { AuthUser } from "@/lib/types";
+import { SessionUser } from "@/lib/types/user";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-export async function getSessionUser(): Promise<AuthUser | null> {
+export async function getSessionUser(): Promise<SessionUser | null> {
   const db = await getDb();
   const cookieStore = await cookies();
   const token = cookieStore.get("auth_token")?.value;
@@ -23,12 +23,9 @@ export async function getSessionUser(): Promise<AuthUser | null> {
     interface AuthJWTPayload extends JWTPayload {
       userId?: string;
       email?: string;
-      role?: string;
-      tenantId?: string | null;
     }
     const authPayload = payload as AuthJWTPayload;
     const userId = authPayload.userId as string;
-    const tokenTenantId = authPayload.tenantId;
 
     if (!userId) return null;
 
@@ -41,10 +38,8 @@ export async function getSessionUser(): Promise<AuthUser | null> {
 
     return {
       id: user.id,
-      name: user.fullName,
+      fullName: user.fullName,
       email: user.email,
-      role: user.role,
-      tenantId: tokenTenantId ?? null,
     };
   } catch (error) {
     console.error("Authentication error in session:", error);

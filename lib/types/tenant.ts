@@ -12,7 +12,8 @@ export interface TenantMember {
   id: string;
   userId: string;
   tenantId: string;
-  role: "owner" | "member";
+  role: TenantRole;
+  status: MemberStatus;
   permissions?: string[] | null;
   joinedAt: string;
   user?: import("./user").User | null;
@@ -30,3 +31,14 @@ export interface TenantInvitation {
   acceptedAt?: string | null;
   createdAt: string;
 }
+
+/*
+Add TenantRole union type ("owner" | "admin" | "employee" | "member").
+Add MemberStatus union type ("pending" | "active" | "rejected").
+Update TenantMember to use the new TenantRole and include status.
+*/
+
+export type TenantRole = "owner" | "admin" | "employee" | "member";
+
+export type MemberStatus = "pending" | "active" | "rejected";
+

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { getCurrentUserCached } from "@/lib/auth-client-cache";
 
 interface TenantContextType {
   tenantId: string | null;
@@ -26,16 +25,9 @@ export function TenantProvider({ children }: TenantProviderProps) {
 
         if (savedTenantId) {
           setTenantIdState(savedTenantId);
-          setIsLoading(false);
-          return;
         }
-
-        const currentUser = await getCurrentUserCached();
-
-        if (currentUser?.tenantId) {
-          setTenantIdState(currentUser.tenantId);
-          localStorage.setItem("selectedTenantId", currentUser.tenantId);
-        }
+        // In Phase 1 we removed tenantId from the global session.
+        // We now rely solely on localStorage or subdomain/middleware injection.
       } catch (error) {
         console.error("Error initializing tenant:", error);
       } finally {

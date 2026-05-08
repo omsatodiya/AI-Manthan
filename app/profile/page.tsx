@@ -22,8 +22,8 @@ const ProfilePage = async () => {
           <h2 className="text-2xl font-bold">Community Activity</h2>
           <CoinsBadgesSection
             userId={currentUser.id}
-            userName={currentUser.name}
-            tenantId={currentUser.tenantId ?? null}
+            userName={currentUser.fullName}
+            tenantId={null}
           />
         </div>
       </div>

@@ -83,7 +83,7 @@ const normalizeLineBreaks = (text: string) => {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { templateId, userInput } = body;
+    const { templateId, userInput, tenantId } = body;
 
     if (!templateId || !userInput) {
       return NextResponse.json(
@@ -91,18 +91,25 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
-
-    // Get current user to determine tenant
-    const currentUser = await getCurrentUserAction();
-    if (!currentUser?.tenantId) {
+    
+    if (!tenantId) {
       return NextResponse.json(
-        { error: "User not authenticated or no tenant found" },
+        { error: "Tenant ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Get current user to determine authentication
+    const currentUser = await getCurrentUserAction();
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: "User not authenticated" },
         { status: 401 }
       );
     }
 
     // Fetch template from database
-    const template = await getTemplateById(currentUser.tenantId, templateId);
+    const template = await getTemplateById(tenantId, templateId);
     if (!template) {
       return NextResponse.json(
         { error: "Template not found" },

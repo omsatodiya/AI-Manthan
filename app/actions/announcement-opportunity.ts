@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { CreateAnnouncementOpportunityData } from "@/lib/types";
 
 export async function createAnnouncementOpportunityAction(
+  tenantId: string,
   title: string,
   description: string,
   link: string,
@@ -17,7 +18,7 @@ export async function createAnnouncementOpportunityAction(
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
@@ -26,7 +27,7 @@ export async function createAnnouncementOpportunityAction(
       title,
       description,
       link,
-      tenantId: user.tenantId,
+      tenantId,
       userId: user.id,
       response: responses,
     });
@@ -35,6 +36,9 @@ export async function createAnnouncementOpportunityAction(
       return { success: false, error: "Failed to create opportunity application" };
     }
 
+    revalidatePath("/admin/announcements");
+    revalidatePath("/announcements");
+
     return { success: true, data: opportunity };
   } catch (error) {
     console.error("Error creating announcement opportunity:", error);
@@ -42,21 +46,20 @@ export async function createAnnouncementOpportunityAction(
   }
 }
 
-export async function getUserAnnouncementOpportunityAction(announcementId: string) {
+export async function getUserAnnouncementOpportunityAction(tenantId: string, announcementId: string) {
   try {
     const user = await getCurrentUserAction();
     if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
     const db = await getDb();
-    const opportunities = await db.getUserAnnouncementOpportunities(user.id, user.tenantId);
+    const opportunities = await db.getUserAnnouncementOpportunities(user.id, tenantId);
     
-    // Find the specific opportunity by announcementId (which is now the title)
     const opportunity = opportunities.find(opp => opp.id === announcementId);
 
     return { success: true, data: opportunity || null };
@@ -66,11 +69,15 @@ export async function getUserAnnouncementOpportunityAction(announcementId: strin
   }
 }
 
-export async function getAnnouncementOpportunitiesAction(announcementId: string) {
+export async function getAnnouncementOpportunitiesAction(tenantId: string, announcementId: string) {
   try {
     const user = await getCurrentUserAction();
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return { success: false, error: "Unauthorized" };
+    }
+
+    if (!tenantId) {
+      return { success: false, error: "No tenant selected" };
     }
 
     const db = await getDb();
@@ -83,19 +90,26 @@ export async function getAnnouncementOpportunitiesAction(announcementId: string)
   }
 }
 
-export async function deleteAnnouncementOpportunityAction(id: string) {
+export async function deleteAnnouncementOpportunityAction(tenantId: string, id: string) {
   try {
     const user = await getCurrentUserAction();
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
+    if (!tenantId) {
+      return { success: false, error: "No tenant selected" };
+    }
+
     const db = await getDb();
-    const success = await db.deleteAnnouncementOpportunity(id, user.tenantId!);
+    const success = await db.deleteAnnouncementOpportunity(id, tenantId);
 
     if (!success) {
       return { success: false, error: "Failed to delete opportunity application" };
     }
+
+    revalidatePath("/admin/announcements");
+    revalidatePath("/announcements");
 
     return { success: true };
   } catch (error) {
@@ -105,21 +119,22 @@ export async function deleteAnnouncementOpportunityAction(id: string) {
 }
 
 export async function updateAnnouncementOpportunityAction(
+  tenantId: string,
   id: string,
   data: Partial<CreateAnnouncementOpportunityData>
 ) {
   try {
     const user = await getCurrentUserAction();
-    if (!user || user.role !== "admin") {
+    if (!user) {
       return { success: false, error: "Unauthorized" };
     }
 
-    if (!user.tenantId) {
+    if (!tenantId) {
       return { success: false, error: "No tenant selected" };
     }
 
     const db = await getDb();
-    const updated = await db.updateAnnouncementOpportunity(id, data, user.tenantId);
+    const updated = await db.updateAnnouncementOpportunity(id, data, tenantId);
 
     if (!updated) {
       return { success: false, error: "Failed to update opportunity announcement" };

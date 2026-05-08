@@ -98,10 +98,10 @@ export default function AdminTemplatesPage() {
   }, [allTemplates, filter, pageSize, categoryFilter]);
 
   useEffect(() => {
-    if (tenantLoading) return;
+    if (!tenantId || tenantLoading) return;
     let cancelled = false;
     setIsLoading(true);
-    getTemplatesAction(tenantId ?? undefined).then((result) => {
+    getTemplatesAction(tenantId).then((result) => {
       if (cancelled) return;
       if (result.success && result.data) {
         setAllTemplates(result.data);

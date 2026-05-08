@@ -16,6 +16,7 @@ import {
 import { Announcement } from "@/lib/types";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { useTenant } from "@/contexts/tenant-context";
 import QuestionRenderer from "@/components/announcements/question-renderer";
 import {
   deleteAnnouncementOpportunityAction,
@@ -40,8 +41,14 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
       ?.response ?? {}) as Record<string, unknown>,
   });
 
+  const { tenantId } = useTenant();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!tenantId) {
+      toast.error("No active tenant selected.");
+      return;
+    }
     setIsSaving(true);
 
     try {
@@ -51,14 +58,14 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
 
       if (formData.isOpportunity === initialIsOpportunity) {
         if (formData.isOpportunity) {
-          result = await updateAnnouncementOpportunityAction(announcementId, {
+          result = await updateAnnouncementOpportunityAction(tenantId, announcementId, {
             title: formData.title,
             description: formData.description,
             link: formData.link,
             response: formData.response,
           });
         } else {
-          result = await updateAnnouncementAction(announcementId, {
+          result = await updateAnnouncementAction(tenantId, announcementId, {
             title: formData.title,
             description: formData.description,
             link: formData.link,
@@ -67,7 +74,7 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
       } else {
         // Type toggled: migrate between tables.
         if (formData.isOpportunity) {
-          const created = await createAnnouncementAction({
+          const created = await createAnnouncementAction(tenantId, {
             title: formData.title,
             description: formData.description,
             link: formData.link,
@@ -75,16 +82,16 @@ export default function EditAnnouncementForm({ announcement, announcementId }: E
             response: formData.response,
           });
           if (!created.success) result = created;
-          else result = await deleteAnnouncementAction(announcementId);
+          else result = await deleteAnnouncementAction(tenantId, announcementId);
         } else {
-          const created = await createAnnouncementAction({
+          const created = await createAnnouncementAction(tenantId, {
             title: formData.title,
             description: formData.description,
             link: formData.link,
             isOpportunity: false,
           });
           if (!created.success) result = created;
-          else result = await deleteAnnouncementOpportunityAction(announcementId);
+          else result = await deleteAnnouncementOpportunityAction(tenantId, announcementId);
         }
       }
       

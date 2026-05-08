@@ -1,5 +1,5 @@
 import { getSupabaseClient } from "../database/clients";
-import { Tenant, TenantMember, TenantInvitation } from "../types/tenant";
+import { Tenant, TenantMember, TenantInvitation, MemberStatus } from "../types/tenant";
 
 export const tenantFunctions = {
   async findTenantById(id: string): Promise<Tenant | null> {
@@ -30,7 +30,12 @@ export const tenantFunctions = {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("tenants")
-      .insert(tenant)
+      .insert({
+        name: tenant.name,
+        slug: tenant.slug,
+        description: tenant.description,
+        settings: tenant.settings,
+      })
       .select()
       .single();
     if (error) console.error(error);
@@ -42,9 +47,15 @@ export const tenantFunctions = {
     data: Partial<Tenant>
   ): Promise<Tenant | null> {
     const supabase = await getSupabaseClient();
+    const updatePayload: Record<string, unknown> = {};
+    if (data.name !== undefined) updatePayload.name = data.name;
+    if (data.slug !== undefined) updatePayload.slug = data.slug;
+    if (data.description !== undefined) updatePayload.description = data.description;
+    if (data.settings !== undefined) updatePayload.settings = data.settings;
+
     const { data: result, error } = await supabase
       .from("tenants")
-      .update(data)
+      .update(updatePayload)
       .eq("id", id)
       .select()
       .single();
@@ -59,9 +70,9 @@ export const tenantFunctions = {
     return !error;
   },
 
-  async getTenantMembers(tenantId: string): Promise<TenantMember[]> {
+  async getTenantMembers(tenantId: string, status?: MemberStatus): Promise<TenantMember[]> {
     const supabase = await getSupabaseClient();
-    const { data, error } = await supabase
+    let query = supabase
       .from("tenant_members")
       .select(
         `
@@ -71,6 +82,12 @@ export const tenantFunctions = {
       `
       )
       .eq("tenant_id", tenantId);
+    
+    if (status) {
+      query = query.eq("status", status);
+    }
+      
+    const { data, error } = await query;
     if (error) console.error(error);
     return (data as TenantMember[]) ?? [];
   },
@@ -92,7 +109,7 @@ export const tenantFunctions = {
   },
 
   async addTenantMember(
-    member: Omit<TenantMember, "id" | "joinedAt">
+    member: Omit<TenantMember, "id" | "joinedAt" | "user" | "tenant">
   ): Promise<TenantMember | null> {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
@@ -101,6 +118,7 @@ export const tenantFunctions = {
         user_id: member.userId,
         tenant_id: member.tenantId,
         role: member.role,
+        status: member.status,
         permissions: member.permissions,
       })
       .select(
@@ -117,12 +135,19 @@ export const tenantFunctions = {
 
   async updateTenantMember(
     id: string,
-    data: Partial<TenantMember>
+    data: Partial<Omit<TenantMember, "user" | "tenant">>
   ): Promise<TenantMember | null> {
     const supabase = await getSupabaseClient();
+    const updatePayload: Record<string, unknown> = {};
+    if (data.role !== undefined) updatePayload.role = data.role;
+    if (data.status !== undefined) updatePayload.status = data.status;
+    if (data.permissions !== undefined) updatePayload.permissions = data.permissions;
+    if (data.userId !== undefined) updatePayload.user_id = data.userId;
+    if (data.tenantId !== undefined) updatePayload.tenant_id = data.tenantId;
+
     const { data: result, error } = await supabase
       .from("tenant_members")
-      .update(data)
+      .update(updatePayload)
       .eq("id", id)
       .select(
         `
@@ -152,7 +177,15 @@ export const tenantFunctions = {
     const supabase = await getSupabaseClient();
     const { data, error } = await supabase
       .from("tenant_invitations")
-      .insert(invitation)
+      .insert({
+        tenant_id: invitation.tenantId,
+        email: invitation.email,
+        role: invitation.role,
+        invited_by: invitation.invitedBy,
+        token: invitation.token,
+        expires_at: invitation.expiresAt,
+        accepted_at: invitation.acceptedAt,
+      })
       .select()
       .single();
     if (error) console.error(error);
@@ -187,6 +220,7 @@ export const tenantFunctions = {
       userId,
       tenantId: invitation.tenantId,
       role: invitation.role,
+      status: "active",
       permissions: [],
     });
 
@@ -208,5 +242,5 @@ export const tenantFunctions = {
       .eq("id", id);
     if (error) console.error(error);
     return !error;
-  },
+  }
 };

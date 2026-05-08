@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
 
     console.log("🔵 /api/users/match: User authenticated", {
       userId: currentUser.id,
-      userEmail: currentUser.email
+      userEmail: currentUser.email,
     });
 
     const db = await getDb();
@@ -28,28 +28,7 @@ export async function GET(request: NextRequest) {
     console.log("🔵 /api/users/match: Query parameters", {
       matchThreshold,
       matchCount,
-      tenantId
-    });
-
-    // Get the current user's data from users table
-    console.log("🔵 /api/users/match: Fetching current user data from users table");
-    const currentUserData = await db.findUserById(currentUser.id);
-
-    if (!currentUserData) {
-      console.error("🔴 /api/users/match: Current user not found in users table");
-      return NextResponse.json(
-        { 
-          error: "User not found.",
-          code: "USER_NOT_FOUND"
-        },
-        { status: 404 }
-      );
-    }
-
-    console.log("🔵 /api/users/match: Current user data found", {
-      userId: currentUserData.id,
-      userEmail: currentUserData.email,
-      userTenantId: currentUserData.tenantId
+      tenantId,
     });
 
     // Get the current user's info, including their embedding
@@ -59,9 +38,9 @@ export async function GET(request: NextRequest) {
     if (!currentUserInfo) {
       console.error("🔴 /api/users/match: No user profile found");
       return NextResponse.json(
-        { 
+        {
           error: "User profile not found. Please complete your profile first.",
-          code: "PROFILE_NOT_FOUND"
+          code: "PROFILE_NOT_FOUND",
         },
         { status: 404 }
       );
@@ -70,19 +49,14 @@ export async function GET(request: NextRequest) {
     if (!currentUserInfo.embedding) {
       console.error("🔴 /api/users/match: No embedding found for user profile");
       return NextResponse.json(
-        { 
-          error: "User profile incomplete. Please save your profile information to generate an embedding for matching. If you recently saved your profile, the embedding generation might be in progress.",
-          code: "EMBEDDING_NOT_FOUND"
+        {
+          error:
+            "User profile incomplete. Please save your profile information to generate an embedding for matching. If you recently saved your profile, the embedding generation might be in progress.",
+          code: "EMBEDDING_NOT_FOUND",
         },
         { status: 404 }
       );
     }
-
-    console.log("🔵 /api/users/match: Current user info found", {
-      hasEmbedding: !!currentUserInfo.embedding,
-      embeddingLength: currentUserInfo.embedding.length,
-      userTenantId: currentUserData.tenantId
-    });
 
     // Call the database function to find matches
     console.log("🔵 /api/users/match: Finding user matches");
@@ -92,43 +66,48 @@ export async function GET(request: NextRequest) {
       {
         threshold: matchThreshold,
         limit: matchCount,
-        tenantId: tenantId
+        tenantId: tenantId,
       }
     );
 
     console.log("🔵 /api/users/match: Matches found", {
       matchCount: matches.length,
-      matches: matches.map(m => ({
+      matches: matches.map((m) => ({
         userId: m.userId,
         similarity: m.similarity,
-        hasUserDetails: !!m.user
-      }))
+        hasUserDetails: !!m.user,
+      })),
     });
 
-    // Filter matches by tenant_id - only show users from the same tenant
-    const filteredMatches = matches.filter(match => {
-      const userTenantId = match.user?.tenantId;
-      const currentUserTenantId = currentUserData.tenantId;
-      
-      console.log("🔵 /api/users/match: Checking tenant match", {
-        userId: match.userId,
-        userTenantId,
-        currentUserTenantId,
-        isMatch: userTenantId === currentUserTenantId
+    let filteredMatches = matches;
+
+    // If a tenantId is provided, filter matches to only include active members of that tenant.
+    // We look this up in tenant_members (source of truth for tenant scoping)
+    // since the User type no longer carries a tenantId field.
+    if (tenantId) {
+      const { getSupabaseServerClient } = await import("@/lib/database/clients");
+      const supabase = getSupabaseServerClient();
+
+      const { data: tenantMemberRows } = await supabase
+        .from("tenant_members")
+        .select("user_id")
+        .eq("tenant_id", tenantId)
+        .eq("status", "active");
+
+      const tenantMemberIds = new Set(
+        (tenantMemberRows ?? []).map((r: { user_id: string }) => r.user_id)
+      );
+
+      filteredMatches = matches.filter((match) =>
+        tenantMemberIds.has(match.userId)
+      );
+
+      console.log("🔵 /api/users/match: Filtered matches by tenant membership", {
+        originalCount: matches.length,
+        filteredCount: filteredMatches.length,
+        tenantId,
       });
-      
-      return userTenantId === currentUserTenantId;
-    });
-
-    console.log("🔵 /api/users/match: Filtered matches by tenant", {
-      originalCount: matches.length,
-      filteredCount: filteredMatches.length,
-      filteredMatches: filteredMatches.map(m => ({
-        userId: m.userId,
-        similarity: m.similarity,
-        userTenantId: m.user?.tenantId
-      }))
-    });
+    }
 
     return NextResponse.json({
       success: true,
@@ -137,10 +116,9 @@ export async function GET(request: NextRequest) {
         threshold: matchThreshold,
         count: filteredMatches.length,
         requestedCount: matchCount,
-        originalCount: matches.length
-      }
+        originalCount: matches.length,
+      },
     });
-
   } catch (error) {
     console.error("🔴 /api/users/match: Error in matching process", error);
     return NextResponse.json(

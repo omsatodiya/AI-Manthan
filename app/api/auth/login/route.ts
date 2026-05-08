@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { SignJWT } from "jose";
 import { getDb } from "@/lib/database";
-import { LoginRequest, LoginResponse } from "@/lib/types";
-import { headers } from "next/headers";
+import { LoginRequest } from "@/lib/types";
+import { LoginResponse } from "@/lib/types/api";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -21,26 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const hdrs = await headers();
-    const host = hdrs.get("host") || "";
-    const parts = host.split(":")[0].split(".");
-    const subdomain = parts.length > 2 ? parts[0].toLowerCase() : null;
-    let tenantId: string | null = null;
-    const tenant = subdomain
-      ? await (await getDb()).findTenantBySlug(subdomain)
-      : null;
-    tenantId = tenant?.id || null;
-    if (!tenantId) {
-      const devTenant = process.env.TENANT?.toLowerCase();
-      if (devTenant) {
-        const devTenantRow = await (await getDb()).findTenantBySlug(devTenant);
-        tenantId = devTenantRow?.id || null;
-      }
-    }
-
-    const user = tenantId
-      ? await (await getDb()).findUserByEmailInTenant(email, tenantId)
-      : await db.findUserByEmail(email);
+    const user = await db.findUserByEmail(email);
     if (!user) {
       return NextResponse.json(
         { message: "Invalid credentials" },
@@ -58,11 +39,11 @@ export async function POST(request: Request) {
 
     if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
     const secret = new TextEncoder().encode(JWT_SECRET);
+
+    // Thin global session token
     const token = await new SignJWT({
       userId: user.id,
       email: user.email,
-      role: user.role,
-      tenantId: tenantId || null,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("1d")
@@ -70,8 +51,8 @@ export async function POST(request: Request) {
 
     const responseData: LoginResponse = {
       message: "Login successful",
-      role: user.role,
     };
+
     const response = NextResponse.json(responseData, { status: 200 });
     response.cookies.set("auth_token", token, {
       httpOnly: true,
