@@ -49,7 +49,7 @@ function removeUndefinedFields<T extends object>(
 ): Partial<T> {
   return Object.fromEntries(
     Object.entries(obj).filter(
-      ([_, value]) => value !== undefined
+      ([, value]) => value !== undefined
     )
   ) as Partial<T>;
 }

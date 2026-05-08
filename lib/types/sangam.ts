@@ -12,11 +12,11 @@ export interface ChatEmbedding {
   createdAt: string;
   updatedAt: string;
   hasAttachment?: boolean;
-  attachmentFileName?: string;
-  attachmentFileType?: string;
-  contentType?: 'message' | 'document' | 'mixed';
-  chunkIndex?: number;
-  chunkTotal?: number;
+  attachmentFileName?: string | null;
+  attachmentFileType?: string | null;
+  contentType?: 'message' | 'document' | 'mixed' | null;
+  chunkIndex?: number | null;
+  chunkTotal?: number | null;
 }
 
 export interface EmbeddingMatch {
@@ -26,11 +26,11 @@ export interface EmbeddingMatch {
   similarity: number;
   createdAt: string;
   hasAttachment?: boolean;
-  attachmentFileName?: string;
-  attachmentFileType?: string;
-  contentType?: string;
-  chunkIndex?: number;
-  chunkTotal?: number;
+  attachmentFileName?: string | null;
+  attachmentFileType?: string | null;
+  contentType?: 'message' | 'document' | 'mixed' | null;
+  chunkIndex?: number | null;
+  chunkTotal?: number | null;
 }
 
 export interface UnembeddedMessage {
