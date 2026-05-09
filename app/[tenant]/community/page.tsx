@@ -16,11 +16,20 @@ interface CommunityPageProps {
   }>;
 }
 
-const CommunityPage = async () => {
+import { getDb } from "@/lib/database";
+
+const CommunityPage = async ({ params }: CommunityPageProps) => {
+  const { tenant: tenantSlug } = await params;
   const currentUser = await getCurrentUserAction();
+  const db = await getDb();
+  const tenant = await db.findTenantBySlug(tenantSlug);
 
   if (!currentUser) {
     redirect("/login");
+  }
+
+  if (!tenant) {
+    redirect("/");
   }
 
   return (
@@ -83,7 +92,8 @@ const CommunityPage = async () => {
                     AI Assistant
                   </h3>
                   <div className="space-y-2">
-                    <SangamChat tenantId={undefined} />
+                    {/* Component now auto-detects tenantId from URL context */}
+                    <SangamChat />
                   </div>
                 </div>
 
@@ -93,7 +103,7 @@ const CommunityPage = async () => {
                     Chat Info
                   </h4>
                   <p className="text-xs font-sans text-muted-foreground leading-relaxed">
-                    Welcome to the community chat! Share ideas, ask questions, and
+                    Welcome to the {tenantSlug} community chat! Share ideas, ask questions, and
                     collaborate with your team members. Use Sangam AI to get
                     insights from your conversations.
                   </p>
@@ -107,6 +117,7 @@ const CommunityPage = async () => {
             <RealtimeChat
               userId={currentUser.id}
               username={currentUser.fullName}
+              tenantId={tenant.id}
             />
           </div>
         </div>

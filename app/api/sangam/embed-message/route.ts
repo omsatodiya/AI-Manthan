@@ -25,11 +25,12 @@ export async function POST(request: NextRequest) {
 
     // Legacy validation removed: tenantId is validated via middleware/permissions in Phase 3
 
-    const result = await sangamService.processMessageOnUpload(tenantId, messageId);
+    const result = await sangamService.processTenantQueue(tenantId);
     return NextResponse.json(
       {
         success: !result.error,
         processedCount: result.processedCount,
+        status: result.status,
         error: result.error,
       },
       { status: result.error ? 400 : 200 }

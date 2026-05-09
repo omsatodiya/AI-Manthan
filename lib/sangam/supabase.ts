@@ -305,7 +305,7 @@ export class SangamSupabaseClient {
         `)
         .eq("tenant_id", tenantId)
         .or(
-          "content.not.is.null,attachment_id.not.is.null"
+          "content.not.is.null,attachment_id.not.is.null,attachment_url.not.is.null,attachment_name.not.is.null"
         )
         .order("created_at", {
           ascending: true,
@@ -339,21 +339,13 @@ export class SangamSupabaseClient {
 
           createdAt: row.created_at,
 
-          attachment: row.attachment_id
+          attachment: row.attachment_id || row.attachment_url || row.attachment_name
             ? {
-              id: row.attachment_id,
-
-              fileName:
-                row.attachment_name || "",
-
-              fileType:
-                row.attachment_type || "",
-
-              fileSize:
-                row.attachment_size || 0,
-
-              fileUrl:
-                row.attachment_url || "",
+              id: row.attachment_id || row.id,
+              fileName: row.attachment_name || "Attachment",
+              fileType: row.attachment_type || "application/octet-stream",
+              fileSize: row.attachment_size || 0,
+              fileUrl: row.attachment_url || "",
             }
             : null,
         })

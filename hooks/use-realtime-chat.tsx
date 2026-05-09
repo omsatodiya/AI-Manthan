@@ -25,11 +25,16 @@ const EVENT_ADD_REACTION_TYPE = "add-reaction";
 const EVENT_REMOVE_REACTION_TYPE = "remove-reaction";
 const GLOBAL_CHANNEL_NAME = "global-chat";
 
+import { useTenant } from "@/contexts/tenant-context";
+
 export function useRealtimeChat({
   userId,
   username,
-  tenantId,
+  tenantId: propTenantId,
 }: UseRealtimeChatProps) {
+  const { tenantId: contextTenantId } = useTenant();
+  const tenantId = propTenantId !== undefined ? propTenantId : contextTenantId;
+
   const supabase = useMemo(
     () =>
       createBrowserClient(
@@ -236,6 +241,14 @@ export function useRealtimeChat({
           event: EVENT_MESSAGE_TYPE,
           payload: message,
         });
+
+        if (message && tenantId) {
+          fetch("/api/sangam/embed-message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tenantId, messageId: message.id }),
+          }).catch(() => undefined);
+        }
 
         if (message) {
           setMessages((current) => [...current, message]);

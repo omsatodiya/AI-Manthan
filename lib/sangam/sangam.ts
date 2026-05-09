@@ -44,31 +44,56 @@ export class SangamService {
         };
       }
 
-      const queryEmbedding = await embeddingService.generateQueryEmbedding(
-        question
-      );
-      const relevantMessages = await sangamSupabase.matchMessages(
-        queryEmbedding,
-        tenantId,
-        maxResults || this.config.maxResults,
-        similarityThreshold || 0.3
-      );
+      // 1. Query Expansion (Advanced RAG)
+      // We generate search variations to ensure better semantic coverage
+      const queries = await geminiService.expandQuery(question);
+      console.log(`[SangamService] Expanded query into ${queries.length} variations:`, queries);
 
-      console.log(`Found ${relevantMessages.length} relevant messages`);
+      // 2. Multi-Vector Search
+      // We fetch relevant snippets for all query variations
+      const allMatches: EmbeddingMatch[] = [];
+      const fetchLimit = maxResults || this.config.maxResults;
+      
+      await Promise.all(queries.map(async (q) => {
+        try {
+          const queryEmbedding = await embeddingService.generateQueryEmbedding(q);
+          const matches = await sangamSupabase.matchMessages(
+            queryEmbedding,
+            tenantId,
+            fetchLimit,
+            similarityThreshold || 0.3
+          );
+          allMatches.push(...matches);
+        } catch (err) {
+          console.error(`Search failed for variation "${q}":`, err);
+        }
+      }));
 
-      if (relevantMessages.length === 0) {
+      // 3. Re-ranking and De-duplication
+      // We merge matches from all variations and pick the best ones
+      const uniqueMatches = allMatches
+        .filter((match, index, self) => 
+          index === self.findIndex((m) => m.chatId === match.chatId)
+        )
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, fetchLimit * 2); // Keep a larger set for context
+
+      console.log(`[SangamService] Found ${uniqueMatches.length} unique relevant snippets after expansion`);
+
+      if (uniqueMatches.length === 0) {
         return {
           success: true,
           answer:
-            "I don't have enough relevant context to answer your question. There may not be enough conversations in your community yet, or the question might be about topics that haven't been discussed recently.",
+            "I don't have enough relevant context to answer your question. There may not be enough conversations or documents in your community yet, or the question might be about topics that haven't been discussed recently.",
           sources: [],
           processingTime: Date.now() - startTime,
         };
       }
 
+      // 4. Generation with Citation Enforcement
       const answer = await geminiService.answerQuestion(
         question,
-        relevantMessages
+        uniqueMatches
       );
 
       const processingTime = Date.now() - startTime;
@@ -76,7 +101,10 @@ export class SangamService {
       return {
         success: true,
         answer,
-        sources: [],
+        sources: uniqueMatches.map(m => ({
+          ...m,
+          content: m.content.substring(0, 150) + '...'
+        })),
         processingTime,
       };
     } catch (error) {
@@ -152,6 +180,7 @@ export class SangamService {
     const startTime = Date.now();
 
     try {
+
       if (!tenantId || !query.trim()) {
         return {
           success: false,
@@ -159,36 +188,57 @@ export class SangamService {
         };
       }
 
-      const queryEmbedding = await embeddingService.generateQueryEmbedding(
-        query
-      );
+      // 1. Targeted Expansion for Documents
+      const expandedQuery = `document containing: ${query}`;
+      const queries = await geminiService.expandQuery(expandedQuery);
+      
+      const allMatches: EmbeddingMatch[] = [];
+      const fetchLimit = maxResults || 10;
 
-      const relevantMessages = await sangamSupabase.matchMessages(
-        queryEmbedding,
-        tenantId,
-        maxResults,
-        0.3,
-        ["document", "mixed"]
-      );
+      await Promise.all(queries.map(async (q) => {
+        try {
+          const queryEmbedding = await embeddingService.generateQueryEmbedding(q);
+          const matches = await sangamSupabase.matchMessages(
+            queryEmbedding,
+            tenantId,
+            fetchLimit,
+            0.3,
+            ["document", "mixed"]
+          );
+          allMatches.push(...matches);
+        } catch (err) {
+          console.error(`Doc search failed for "${q}":`, err);
+        }
+      }));
 
-      if (relevantMessages.length === 0) {
+      const uniqueMatches = allMatches
+        .filter((match, index, self) => 
+          index === self.findIndex((m) => m.chatId === match.chatId)
+        )
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, fetchLimit);
+
+      if (uniqueMatches.length === 0) {
         return {
           success: true,
-          answer: "No relevant documents found for your query.",
+          answer: "No relevant documents or shared files found for your query.",
           sources: [],
           processingTime: Date.now() - startTime,
         };
       }
 
       const answer = await geminiService.answerQuestion(
-        `Find and summarize documents related to: ${query}`,
-        relevantMessages
+        `Provide a detailed summary and answer based on the following documents related to: ${query}`,
+        uniqueMatches
       );
 
       return {
         success: true,
         answer,
-        sources: [],
+        sources: uniqueMatches.map(m => ({
+          ...m,
+          content: m.content.substring(0, 150) + '...'
+        })),
         processingTime: Date.now() - startTime,
       };
     } catch (error) {
@@ -394,6 +444,10 @@ export class SangamService {
 
   async processMessageOnUpload(tenantId: string, messageId: string) {
     return await embeddingService.processMessageOnUpload(tenantId, messageId);
+  }
+
+  async processTenantQueue(tenantId: string) {
+    return await embeddingService.processTenantQueue(tenantId);
   }
 
   /**

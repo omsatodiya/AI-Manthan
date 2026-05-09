@@ -123,22 +123,15 @@ COMMUNICATION STYLE:
 - Acknowledge when information is incomplete
 - Use markdown formatting for better readability
 
-RESPONSE GUIDELINES:
-- Base your answers strictly on the provided context
-- If context is insufficient, clearly state what information is missing
-- Highlight important dates, decisions, and action items
-- Maintain confidentiality and professionalism
-- Avoid speculation beyond the provided context
-- Format your responses using markdown for better structure:
-  * Use **bold** for emphasis on important information
-  * Use *italics* for dates, names, or specific terms
-  * Use bullet points (-) for lists
-  * Use numbered lists (1.) for sequential items
-  * Use \`code blocks\` for technical terms or file names
-  * Use > blockquotes for important quotes or decisions
-  * Use ## headers for major sections when appropriate
+RESPONSE GUIDELINES & HALLUCINATION GUARDRAILS:
+1. **Source Fidelity**: Base your answers STRICTLY on the provided context. If the context doesn't contain enough information, say so clearly.
+2. **Missing Document Content**: If the context mentions a document (e.g., "[Source: Document.pdf]") but the *Content* field is empty or only contains metadata, do NOT speculate about what might be inside the document. Instead, state: "I see that '[filename]' was shared, but its full content is not available in my current context to answer your specific question."
+3. **Date Accuracy**: If a date in the context is listed as "invalid" or seems clearly wrong, do not use it. Refer to the relative timing (e.g., "recently" or "in a previous message") instead.
+4. **No Speculation**: Never invent decisions, dates, or action items not explicitly stated in the context.
+5. **Formatting**: Use markdown for better structure:
+6. **Citations**: Whenever you use information from the context, you MUST cite the source using brackets, e.g., "The deadline is June 5th [Source: project_plan.pdf]". If multiple sources agree, cite them all.
 
-Remember: You are helping teams stay organized and informed about their collaborative work.`;
+Remember: You are helping teams stay organized and informed about their collaborative work. Integrity of information and traceability (via citations) are your highest priorities.`;
   }
 
   async generateSummary(
@@ -232,6 +225,112 @@ Structure your summary with clear headings and bullet points. Be comprehensive b
       model: this.model,
       maxTokens: 131072
     };
+  }
+
+  /**
+   * Refine noisy or fragmented text using Groq
+   */
+  async refineExtractedText(text: string, fileName: string): Promise<string> {
+    if (!this.client || !text.trim()) return text;
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a document processing assistant. Your task is to take noisy, fragmented, or poorly formatted text extracted from a PDF/document named "${fileName}" and reconstruct it into a coherent, well-structured version. 
+            
+            RULES:
+            - Preserve all factual information and numbers exactly.
+            - Fix broken words and merge fragmented lines.
+            - Re-structure lists, FAQs, and tables into readable markdown.
+            - Remove repetitive headers/footers if they are obvious noise.
+            - If the text is already coherent, return it as is.
+            - Do NOT add external information.
+            - Output ONLY the refined text.`
+          },
+          { role: 'user', content: text.substring(0, 8000) } // Limit to first 8k chars for refinement
+        ],
+      });
+
+      return completion.choices[0]?.message?.content?.trim() || text;
+    } catch (error) {
+      console.error('Error refining text with Groq:', error);
+      return text;
+    }
+  }
+
+  /**
+   * Extract text from image using Groq Vision
+   */
+  async extractTextFromImage(base64Image: string, mimeType: string): Promise<string> {
+    if (!this.client) return '';
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: 'llama-3.2-11b-vision-preview',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Please perform high-accuracy OCR on this image. Extract all text exactly as it appears, preserving the structure of lists, tables, and paragraphs. Output ONLY the extracted text in markdown format.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Image}`
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 1024
+      });
+
+      return completion.choices[0]?.message?.content?.trim() || '';
+    } catch (error) {
+      console.error('Error extracting text from image with Groq Vision:', error);
+      return 'Image content could not be extracted via OCR.';
+    }
+  }
+  /**
+   * Expand a user query into multiple search variations using Groq
+   */
+  async expandQuery(query: string): Promise<string[]> {
+    if (!this.client || query.length < 10) return [query];
+
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.3,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a search expert. Your task is to expand a user's question into 3 concise search queries that will help find the most relevant information in a vector database. 
+            
+            Guidelines:
+            - Create variations that use synonyms.
+            - If the question mentions specific entities or documents, include them.
+            - Keep each variation under 10 words.
+            - Output ONLY a comma-separated list of the 3 queries.`
+          },
+          { role: 'user', content: `Expand this query: "${query}"` }
+        ],
+      });
+
+      const expanded = completion.choices[0]?.message?.content?.trim() || query;
+      const variations = expanded.split(',').map(s => s.trim()).filter(s => s.length > 0);
+      
+      // Ensure the original query is always included
+      return Array.from(new Set([query, ...variations])).slice(0, 4);
+    } catch (error) {
+      console.error('Error expanding query with Groq:', error);
+      return [query];
+    }
   }
 }
 

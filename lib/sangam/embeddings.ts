@@ -21,6 +21,9 @@ type ProcessedSegment = {
 
 export class EmbeddingService {
   private config: EmbeddingConfig;
+  private lastProcessedTimes = new Map<string, number>();
+  private pendingProcesses = new Set<string>();
+  private readonly COOLDOWN_MS = 10000; // 10 seconds
 
   constructor(config?: Partial<EmbeddingConfig>) {
     this.config = {
@@ -50,11 +53,18 @@ export class EmbeddingService {
       if (msg.attachment) {
         try {
           const extractedContent = await documentExtractor.extractContent(msg.attachment);
-          if (extractedContent) {
+          
+          // Validation: Ensure the extracted content is actually useful
+          if (extractedContent && documentExtractor.isContentUseful(extractedContent)) {
             const chunks = this.chunkDocument(extractedContent.text);
             
             chunks.forEach((chunk, index) => {
-              const chunkContent = `Document: ${msg.attachment?.fileName || 'Unknown'}\nType: ${extractedContent.metadata.fileType}\nChunk ${index + 1}/${chunks.length}\nContent: ${chunk}`;
+              // Advanced RAG: Add contextual headers to every chunk
+              const chunkContent = `[Source: ${msg.attachment?.fileName || 'Unknown'}]
+[Type: ${extractedContent.metadata.fileType}]
+[Segment: ${index + 1}/${chunks.length}]
+[Content]: ${chunk}`;
+              
               allTexts.push(chunkContent);
               allChunkInfo.push({ chunkIndex: index, chunkTotal: chunks.length });
               segments.push({
@@ -65,8 +75,9 @@ export class EmbeddingService {
               });
             });
             
-            if (content) {
-              const messageContent = `Message: ${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`;
+            if (content && content.length > 10) {
+              const messageContent = `[Context: Accompanying Message for ${msg.attachment?.fileName}]
+[User Message]: ${content}`;
               allTexts.push(messageContent);
               allChunkInfo.push({ chunkIndex: chunks.length, chunkTotal: chunks.length + 1 });
               segments.push({
@@ -77,9 +88,11 @@ export class EmbeddingService {
               });
             }
           } else {
-            const fallbackContent = content 
-              ? `${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`
-              : `Document: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'})`;
+            // Fallback for metadata-only when content is too small or extraction failed
+            const fallbackContent = content && content.length > 5
+              ? `[Message]: ${content}\n\n[Note: User shared a file named "${msg.attachment?.fileName || 'Unknown'}"]`
+              : `[System]: User shared a file named "${msg.attachment?.fileName || 'Unknown'}" but no extractable text was found.`;
+            
             allTexts.push(fallbackContent);
             allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
             segments.push({
@@ -91,9 +104,7 @@ export class EmbeddingService {
           }
         } catch (error) {
           console.error(`Error processing attachment ${msg.attachment?.fileName || 'Unknown'}:`, error);
-          const fallbackContent = content 
-            ? `${content}\n\nDocument: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'}) - Processing failed`
-            : `Document: ${msg.attachment?.fileName || 'Unknown'} (${msg.attachment?.fileType || 'Unknown'}) - Processing failed`;
+          const fallbackContent = `[Message]: ${content || '(No message)'}\n\n[Error]: Could not process attachment "${msg.attachment?.fileName || 'Unknown'}"`;
           allTexts.push(fallbackContent);
           allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
           segments.push({
@@ -103,8 +114,8 @@ export class EmbeddingService {
             chunkTotal: 1
           });
         }
-      } else {
-        allTexts.push(content);
+      } else if (content && content.length > 3) { // Only embed meaningful messages
+        allTexts.push(`[Message]: ${content}`);
         allChunkInfo.push({ chunkIndex: 0, chunkTotal: 1 });
         segments.push({
           messageId: msg.id,
@@ -133,8 +144,8 @@ export class EmbeddingService {
    * Chunk large documents into smaller pieces for better embedding
    */
   private chunkDocument(text: string): string[] {
-    const maxChunkSize = 4000; // Characters per chunk
-    const overlap = 200; // Overlap between chunks
+    const maxChunkSize = 2000; // Reduced for better semantic focus
+    const overlap = 400; // Increased overlap for better continuity
     
     if (text.length <= maxChunkSize) {
       return [text];
@@ -146,30 +157,32 @@ export class EmbeddingService {
     while (start < text.length) {
       let end = start + maxChunkSize;
       
-      // Try to break at a sentence or paragraph boundary
+      // Try to break at a natural boundary
       if (end < text.length) {
-        const lastPeriod = text.lastIndexOf('.', end);
-        const lastNewline = text.lastIndexOf('\n', end);
-        const lastSpace = text.lastIndexOf(' ', end);
+        // Look for paragraph breaks first
+        const lastDoubleNewline = text.lastIndexOf('\n\n', end);
+        // Then look for sentence breaks
+        const lastSentenceBreak = text.lastIndexOf('. ', end);
+        // Then look for list items
+        const lastListItem = text.lastIndexOf('\n-', end);
         
-        // Prefer sentence breaks, then paragraph breaks, then word breaks
-        if (lastPeriod > start + maxChunkSize * 0.7) {
-          end = lastPeriod + 1;
-        } else if (lastNewline > start + maxChunkSize * 0.7) {
-          end = lastNewline + 1;
-        } else if (lastSpace > start + maxChunkSize * 0.7) {
-          end = lastSpace + 1;
+        if (lastDoubleNewline > start + maxChunkSize * 0.5) {
+          end = lastDoubleNewline + 2;
+        } else if (lastSentenceBreak > start + maxChunkSize * 0.7) {
+          end = lastSentenceBreak + 2;
+        } else if (lastListItem > start + maxChunkSize * 0.7) {
+          end = lastListItem + 1;
         }
       }
       
       const chunk = text.slice(start, end).trim();
-      if (chunk.length > 0) {
+      if (chunk.length > 50) { // Only keep chunks with substantive content
         chunks.push(chunk);
       }
       
       // Move start position with overlap
       start = end - overlap;
-      if (start >= text.length) break;
+      if (start >= text.length - 100) break; // Don't create tiny trailing chunks
     }
     
     return chunks;
@@ -396,6 +409,52 @@ export class EmbeddingService {
       return {
         processedCount: 0,
         error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+
+  /**
+   * Smart processor that handles tenant-specific embedding queues with cooldowns
+   */
+  async processTenantQueue(tenantId: string): Promise<{ processedCount: number; status: 'processed' | 'throttled' | 'queued', error?: string }> {
+    const now = Date.now();
+    const lastRun = this.lastProcessedTimes.get(tenantId) || 0;
+    
+    // 1. If already processing this tenant, just signal that work is pending
+    if (this.pendingProcesses.has(tenantId)) {
+      return { processedCount: 0, status: 'queued' };
+    }
+
+    // 2. Check cooldown
+    if (now - lastRun < this.COOLDOWN_MS) {
+      // Schedule a background run for after the cooldown
+      const waitTime = this.COOLDOWN_MS - (now - lastRun);
+      
+      this.pendingProcesses.add(tenantId);
+      
+      setTimeout(async () => {
+        try {
+          console.log(`[EmbeddingService] Running deferred process for tenant ${tenantId}`);
+          await this.processUnembeddedMessages(tenantId);
+          this.lastProcessedTimes.set(tenantId, Date.now());
+        } finally {
+          this.pendingProcesses.delete(tenantId);
+        }
+      }, waitTime);
+
+      return { processedCount: 0, status: 'throttled' };
+    }
+
+    // 3. Process immediately
+    try {
+      this.lastProcessedTimes.set(tenantId, now);
+      const result = await this.processUnembeddedMessages(tenantId);
+      return { ...result, status: 'processed' };
+    } catch (error) {
+      return { 
+        processedCount: 0, 
+        status: 'processed',
+        error: error instanceof Error ? error.message : 'Unknown error' 
       };
     }
   }

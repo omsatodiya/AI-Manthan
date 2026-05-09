@@ -28,11 +28,17 @@ interface SangamResponse {
   processingTime?: number;
 }
 
+import { useTenant } from '@/contexts/tenant-context';
+
 interface SangamChatProps {
+  // Prop is now optional as we prefer context
   tenantId?: string;
 }
 
-export function SangamChat({ tenantId }: SangamChatProps) {
+export function SangamChat({ tenantId: propTenantId }: SangamChatProps) {
+  const { tenantId: contextTenantId } = useTenant();
+  const tenantId = propTenantId || contextTenantId;
+  
   const [question, setQuestion] = useState('');
   const [response, setResponse] = useState<SangamResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -42,6 +48,7 @@ export function SangamChat({ tenantId }: SangamChatProps) {
     embeddedMessages: number;
     unembeddedMessages: number;
   } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleAskQuestion = async () => {
     if (!question.trim() || !tenantId) return;
@@ -129,18 +136,26 @@ export function SangamChat({ tenantId }: SangamChatProps) {
     setIsExpanded(false);
   };
 
-  // Load embedding stats on mount
+  // Load embedding stats on mount and poll
   React.useEffect(() => {
-    if (tenantId) {
-      fetch(`/api/sangam/embed?tenantId=${tenantId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setEmbeddingStats(data.stats);
-          }
-        })
-        .catch(console.error);
-    }
+    if (!tenantId) return;
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`/api/sangam/embed?tenantId=${tenantId}`);
+        const data = await res.json();
+        if (data.success) {
+          setEmbeddingStats(data.stats);
+        }
+      } catch (error) {
+        console.error('Error fetching embedding stats:', error);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 20000); // Poll every 20 seconds
+    
+    return () => clearInterval(interval);
   }, [tenantId]);
 
   if (!tenantId) {
@@ -157,41 +172,64 @@ export function SangamChat({ tenantId }: SangamChatProps) {
     <div className="space-y-3">
       {/* Embedding Status */}
       {embeddingStats && embeddingStats.unembeddedMessages > 0 && (
-        <div className="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-          <p className="text-xs font-sans text-yellow-700 dark:text-yellow-300 mb-2">
-            {embeddingStats.unembeddedMessages} messages need processing for better AI responses
-          </p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={async () => {
-              try {
-                const res = await fetch('/api/sangam/embed', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ tenantId, batchSize: 50 })
-                });
-                const data = await res.json();
-                if (data.success) {
-                  toast.success(`Processed ${data.processedCount} messages`);
-                  // Refresh stats
-                  const statsRes = await fetch(`/api/sangam/embed?tenantId=${tenantId}`);
-                  const statsData = await statsRes.json();
-                  if (statsData.success) {
-                    setEmbeddingStats(statsData.stats);
+        <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 shadow-sm animate-in fade-in slide-in-from-top-2">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/40">
+                <Brain className="h-3 w-3 text-amber-600 dark:text-amber-400" />
+              </div>
+              <span className="text-[11px] font-semibold text-amber-900 dark:text-amber-200 uppercase tracking-wider">
+                Indexing Pending
+              </span>
+            </div>
+            
+            <p className="text-[10px] leading-tight text-amber-700 dark:text-amber-400 mb-3">
+              Sangam has <strong>{embeddingStats.unembeddedMessages} items</strong> (chats & files) waiting to be indexed for retrieval.
+            </p>
+
+            <Button
+              size="sm"
+              variant="default"
+              disabled={isProcessing}
+              onClick={async () => {
+                setIsProcessing(true);
+                try {
+                  const res = await fetch('/api/sangam/embed', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tenantId, batchSize: 50 })
+                  });
+                  const data = await res.json();
+                  if (data.success) {
+                    toast.success(`Indexed ${data.processedCount} messages and files!`);
+                    // Refresh stats
+                    const statsRes = await fetch(`/api/sangam/embed?tenantId=${tenantId}`);
+                    const statsData = await statsRes.json();
+                    if (statsData.success) {
+                      setEmbeddingStats(statsData.stats);
+                    }
+                  } else {
+                    toast.error(data.error || 'Failed to process content');
                   }
-                } else {
-                  toast.error(data.error || 'Failed to process messages');
+                } catch {
+                  toast.error('Failed to process content');
+                } finally {
+                  setIsProcessing(false);
                 }
-              } catch {
-                toast.error('Failed to process messages');
-              }
-            }}
-            className="w-full text-xs h-6"
-          >
-            Process Messages
-          </Button>
-        </div>
+              }}
+              className="w-full text-[10px] h-7 bg-amber-600 hover:bg-amber-700 text-white border-none shadow-sm font-medium"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  Indexing Knowledge...
+                </>
+              ) : (
+                'Index New Content Now'
+              )}
+            </Button>
+          </CardContent>
+        </Card>
       )}
 
       {/* Compact Input */}

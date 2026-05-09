@@ -4,6 +4,7 @@
  */
 
 import type { MessageAttachment } from '@/lib/types/chat';
+import { geminiService } from './gemini';
 
 export interface ExtractedContent {
   text: string;
@@ -36,10 +37,19 @@ export class DocumentExtractor {
       }
 
       const arrayBuffer = await response.arrayBuffer();
-      const text = await this.extractTextFromBuffer(arrayBuffer, fileType);
+      let text = await this.extractTextFromBuffer(arrayBuffer, fileType);
 
       if (!text || text.trim().length === 0) {
         return null;
+      }
+
+      // Normalize text (handle common encoding issues)
+      text = this.normalizeText(text);
+
+      // Smart Refinement: If text is fragmented or noisy, use Groq to restructure it
+      if (this.shouldRefineText(text)) {
+        console.log(`[DocumentExtractor] Fragmented text detected for ${fileName}, refining with Groq...`);
+        text = await geminiService.refineExtractedText(text, fileName);
       }
 
       return {
@@ -128,17 +138,26 @@ export class DocumentExtractor {
    */
   private async extractTextFromPDF(buffer: ArrayBuffer): Promise<string> {
     try {
+      console.log('[DocumentExtractor] Attempting PDF extraction with pdf-parse...');
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse = require('pdf-parse/lib/pdf-parse.js');
-      const nodeBuffer = Buffer.from(buffer);
+      
+      // Ensure we are using a clean Node.js Buffer from the ArrayBuffer
+      const nodeBuffer = Buffer.from(new Uint8Array(buffer));
+      
       const result = await pdfParse(nodeBuffer);
       const text = typeof result?.text === 'string' ? result.text.trim() : '';
-      if (text.length > 0) {
+      
+      if (text.length > 10) {
+        console.log(`[DocumentExtractor] Successfully extracted ${text.length} chars from PDF`);
         return text;
       }
+      
+      console.warn('[DocumentExtractor] pdf-parse returned empty or very short text');
       return 'PDF document uploaded (no extractable text found)';
     } catch (error) {
-      console.error('Error extracting PDF text:', error);
+      console.error('[DocumentExtractor] Error extracting PDF text:', error);
+      // Return a specific error string that we can filter later
       return 'PDF document uploaded (text extraction failed)';
     }
   }
@@ -148,16 +167,58 @@ export class DocumentExtractor {
    */
   private async extractTextFromImage(buffer: ArrayBuffer, fileType: string): Promise<string> {
     try {
-      console.log(`Extracting text from image (${fileType}) using OCR...`);
+      console.log(`[DocumentExtractor] Extracting text from image (${fileType}) using Groq Vision OCR...`);
       
-      // For now, return a placeholder since Tesseract.js has issues with Next.js SSR
-      // TODO: Implement proper OCR solution or use alternative approach
-      console.log('Image OCR temporarily disabled due to Next.js compatibility issues');
-      return 'Image document content (OCR temporarily disabled - contains text that could be extracted)';
+      const nodeBuffer = Buffer.from(buffer);
+      const base64Image = nodeBuffer.toString('base64');
+      
+      const extractedText = await geminiService.extractTextFromImage(base64Image, fileType);
+      
+      if (extractedText) {
+        return extractedText;
+      }
+      
+      return 'Image document content (OCR failed to extract readable text)';
     } catch (error) {
-      console.error('Error extracting image text with OCR:', error);
+      console.error('Error extracting image text with Groq Vision:', error);
       return 'Image document content (OCR extraction failed)';
     }
+  }
+
+  /**
+   * Normalize extracted text to fix common encoding and whitespace issues
+   */
+  private normalizeText(text: string): string {
+    return text
+      .replace(/\r\n/g, '\n') // Normalize line endings
+      .replace(/\t/g, ' ') // Replace tabs with spaces
+      .replace(/[^\x20-\x7E\n]/g, (char) => {
+        // Basic mapping for common non-ASCII characters if needed
+        const charCode = char.charCodeAt(0);
+        if (charCode === 8211 || charCode === 8212) return '-'; // En/Em dash
+        if (charCode === 8216 || charCode === 8217) return "'"; // Smart quotes
+        if (charCode === 8220 || charCode === 8221) return '"'; // Smart double quotes
+        return char;
+      })
+      .replace(/ +/g, ' ') // Collapse multiple spaces
+      .replace(/\n\n+/g, '\n\n') // Collapse multiple newlines
+      .trim();
+  }
+
+  /**
+   * Determine if the text is fragmented enough to warrant Groq refinement
+   */
+  private shouldRefineText(text: string): boolean {
+    if (text.length < 100) return false;
+
+    // Check for high density of line breaks relative to text length (indicates fragmentation)
+    const lineCount = text.split('\n').length;
+    const fragmentationRatio = lineCount / (text.length / 50); // Average 50 chars per line
+    
+    // Check for common FAQ/List patterns that might be broken
+    const hasBrokenLists = /[•\-\d]\s*\n\s*[A-Z]/.test(text);
+    
+    return fragmentationRatio > 1.5 || hasBrokenLists || text.includes('');
   }
 
   /**
@@ -240,6 +301,11 @@ Content: ${text}`;
   isContentUseful(extractedContent: ExtractedContent): boolean {
     const { text } = extractedContent;
     
+    // Filter out our internal "failure" strings
+    if (text.includes('(no extractable text found)') || text.includes('(text extraction failed)')) {
+      return false;
+    }
+
     // For OCR content, be more lenient since OCR might have some errors
     if (text.length < 20) return false; // Lower threshold for OCR
     
