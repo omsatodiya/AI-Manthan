@@ -1,4 +1,5 @@
 import { requireSuperAdmin } from "@/lib/super-admin";
+import { GlobalZoneGuard } from "@/components/auth/global-zone-guard";
 import { tenantApplicationFunctions } from "@/lib/functions/tenant-application";
 import {
   ShieldCheck,
@@ -107,7 +108,9 @@ export default async function TenantApplicationsPage({
   };
 
   return (
-    <div className="relative min-h-screen pb-20 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3] dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220]">
+    <>
+      <GlobalZoneGuard />
+      <div className="relative min-h-screen pb-20 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3] dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220]">
       <div className="container mx-auto max-w-7xl pt-24 px-4 sm:px-6 relative z-10">
         <div className="flex flex-col gap-10">
           <div className="flex flex-col gap-4 items-center text-center">
@@ -294,5 +297,6 @@ export default async function TenantApplicationsPage({
         </div>
       </div>
     </div>
-  );
+  </>
+);
 }

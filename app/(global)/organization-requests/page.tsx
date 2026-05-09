@@ -1,5 +1,6 @@
 "use client";
 
+import { GlobalZoneGuard } from "@/components/auth/global-zone-guard";
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { 
@@ -68,7 +69,9 @@ export default function OrganizationRequestsPage() {
   };
 
   return (
-    <div className="relative min-h-screen pb-20 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3] dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220]">
+    <>
+      <GlobalZoneGuard />
+      <div className="relative min-h-screen pb-20 bg-gradient-to-br from-[#f6f7fb] via-[#f2f7f4] to-[#fef7f3] dark:from-[#0b0e14] dark:via-[#111827] dark:to-[#0b1220]">
       <div className="container mx-auto max-w-5xl pt-24 px-4 sm:px-6 relative z-10">
         <div className="flex flex-col gap-10">
           <motion.div 
@@ -173,7 +176,8 @@ export default function OrganizationRequestsPage() {
             )}
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

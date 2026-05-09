@@ -37,7 +37,20 @@ export function Navbar() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCommunityAdmin, setIsCommunityAdmin] = useState(false);
+  const [isSubdomain, setIsSubdomain] = useState(false);
   const isAdmin = useMemo(() => isSuperAdmin(user), [user]);
+
+  useEffect(() => {
+    const hostname = window.location.hostname;
+    const parts = hostname.split('.');
+    const isLocal = hostname.endsWith('.localhost');
+    
+    if (isLocal) {
+      setIsSubdomain(parts.length > 1);
+    } else {
+      setIsSubdomain(parts.length > 2 && parts[0] !== 'www');
+    }
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -101,18 +114,29 @@ export function Navbar() {
     }
   };
 
-  const navItems = useMemo(
-    () =>
-      NAVBAR.links.map((link) => {
+  const navItems = useMemo(() => {
+    const globalLinks = ["/"];
+    const tenantLinks = ["/announcements", "/templates", "/community", "/connections", "/chat"];
+
+    return NAVBAR.links
+      .filter((link) => {
+        if (isSubdomain) {
+          // In workspace: Show community features + Home (which is workspace home)
+          return tenantLinks.includes(link.href) || link.href === "/";
+        } else {
+          // In lobby: Show global platform features
+          return globalLinks.includes(link.href);
+        }
+      })
+      .map((link) => {
         const Icon = link.icon;
         return {
           href: link.href,
           label: link.label,
           icon: <Icon className="h-4 w-4" />,
         };
-      }),
-    []
-  );
+      });
+  }, [isSubdomain]);
 
   useEffect(() => {
     const onWindowFocus = () => {
@@ -208,27 +232,31 @@ export function Navbar() {
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/community-applications" className="cursor-pointer">
-                      <Building2 className="mr-2 h-4 w-4" />
-                      Community Applications
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/organization-requests" className="cursor-pointer">
-                      <LayoutGrid className="mr-2 h-4 w-4" />
-                      Organization Requests
-                    </Link>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/tenant-applications" className="cursor-pointer">
-                        <Shield className="mr-2 h-4 w-4" />
-                        Tenant Applications
-                      </Link>
-                    </DropdownMenuItem>
+                  {!isSubdomain && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/community-applications" className="cursor-pointer">
+                          <Building2 className="mr-2 h-4 w-4" />
+                          Community Applications
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/organization-requests" className="cursor-pointer">
+                          <LayoutGrid className="mr-2 h-4 w-4" />
+                          Organization Requests
+                        </Link>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/tenant-applications" className="cursor-pointer">
+                            <Shield className="mr-2 h-4 w-4" />
+                            Tenant Applications
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                    </>
                   )}
-                  {isCommunityAdmin && (
+                  {isSubdomain && isCommunityAdmin && (
                     <DropdownMenuItem asChild>
                       <Link href="/community-management" className="cursor-pointer">
                         <Building2 className="mr-2 h-4 w-4" />

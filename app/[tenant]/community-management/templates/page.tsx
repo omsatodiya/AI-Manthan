@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { SortingState } from "@tanstack/react-table";
 import {
   FileText,
@@ -43,7 +42,7 @@ import { motion } from "framer-motion";
 type CategoryFilter = "all" | TemplateCategoryId;
 
 export default function CommunityTemplatesPage() {
-  const router = useRouter();
+
   const { selectedTenantId, isLoading: contextLoading } = useCommunityManagement();
   const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -216,7 +215,7 @@ export default function CommunityTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
@@ -225,7 +224,7 @@ export default function CommunityTemplatesPage() {
           <h2 className="text-2xl font-serif font-medium">Template Management</h2>
           <p className="text-sm text-muted-foreground">Create and manage standardized document templates for your community.</p>
         </div>
-        <Button 
+        <Button
           onClick={() => setPickCategoryOpen(true)}
           className="rounded-xl shadow-lg shadow-primary/20 gap-2"
         >
@@ -267,7 +266,7 @@ export default function CommunityTemplatesPage() {
                     className={cn(
                       "rounded-xl",
                       categoryFilter !== "all" &&
-                        "border-primary text-primary"
+                      "border-primary text-primary"
                     )}
                   >
                     <ListFilter className="h-4 w-4" />

@@ -1,123 +1,83 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { jwtVerify } from "jose";
 
-const JWT_SECRET = process.env.JWT_SECRET;
+/**
+ * Extracts the subdomain from the host header.
+ * Supports:
+ * - sub.domain.com -> sub
+ * - sub.localhost:3000 -> sub
+ * - domain.com -> null
+ * - localhost:3000 -> null
+ */
+function getSubdomain(host: string | null): string | null {
+  if (!host) return null;
+  
+  // Remove port
+  const hostname = host.split(":")[0].toLowerCase();
+  const parts = hostname.split(".");
 
-function hasSubdomain(host: string | null): boolean {
-  if (!host) return false;
-  const withoutPort = host.split(":")[0];
-  const parts = withoutPort.split(".");
-  if (parts.length <= 2) return false;
-  const first = parts[0].toLowerCase();
-  return first !== "www";
+  // Localhost handling (e.g., genius.localhost)
+  if (hostname.endsWith(".localhost")) {
+    return parts.length > 1 ? parts[0] : null;
+  }
+
+  // Standard domain handling (e.g., genius.connectiq.com)
+  // Assuming a 2-part root domain (connectiq.com)
+  if (parts.length > 2) {
+    const subdomain = parts[0];
+    if (subdomain !== "www") {
+      return subdomain;
+    }
+  }
+
+  return null;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const token = request.cookies.get("auth_token")?.value;
   const host = request.headers.get("host");
-  const onTenantSubdomain = hasSubdomain(host);
+  const subdomain = getSubdomain(host);
 
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.next();
-  }
-
-  const isHomePage = pathname === "/";
-  const isAuthPath =
-    pathname === "/login" ||
-    pathname === "/signup" ||
-    pathname === "/forgot-password" ||
-    pathname === "/reset-password" ||
-    pathname.startsWith("/api/auth/");
-
-  const isPublicUserPath =
-    pathname.startsWith("/community") ||
-    pathname.startsWith("/connections") ||
-    pathname.startsWith("/events") ||
-    pathname.startsWith("/templates") ||
-    pathname.startsWith("/user") ||
-    pathname === "/announcements" ||
-    pathname.startsWith("/chat");
-
-  const isAdminOnlyPath =
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/announcements/create-announcement") ||
-    pathname.startsWith("/announcements/edit-announcement") ||
-    pathname === "/events/event-registrations";
-
-  if (!onTenantSubdomain && process.env.NODE_ENV === "production") {
-    if (!isHomePage) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-    return NextResponse.next();
-  }
-
+  // 1. Skip rewrites for internal Next.js paths, API routes, and static assets
   if (
-    (pathname === "/login" || pathname === "/signup") &&
-    token &&
-    JWT_SECRET
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api") ||
+    pathname.includes(".") // Covers favicon.ico, images, etc.
   ) {
-    try {
-      const secret = new TextEncoder().encode(JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-      const userRole = payload.role as "admin" | "user";
-      const dest = userRole === "admin" ? "/admin" : "/user";
-      return NextResponse.redirect(new URL(dest, request.url));
-    } catch {
-    }
-  }
-
-  if (isAuthPath) {
     return NextResponse.next();
   }
 
-  if (isHomePage) {
+  // 2. Silent Rewrite Logic
+  const isGlobalPath = [
+    "/login",
+    "/signup",
+    "/lobby",
+    "/unauthorized",
+    "/community-applications",
+    "/tenant-applications",
+    "/organization-requests"
+  ].some(path => pathname.startsWith(path));
+
+  if (!subdomain || isGlobalPath) {
+    // Root domain or Global path -> No rewrite needed. 
+    // Next.js automatically matches routes in the (global) group.
     return NextResponse.next();
+  } else {
+    // Tenant subdomain -> Route to the specific community workspace
+    // This will match the app/[tenant]/... file structure
+    return NextResponse.rewrite(new URL(`/${subdomain}${pathname}`, request.url));
   }
-
-  if (isPublicUserPath || isAdminOnlyPath) {
-    if (!token) {
-      return NextResponse.redirect(new URL("/login", request.url));
-    }
-
-    try {
-      if (!JWT_SECRET) throw new Error("JWT_SECRET missing");
-      const secret = new TextEncoder().encode(JWT_SECRET);
-      const { payload } = await jwtVerify(token, secret);
-      const userRole = payload.role as "admin" | "user";
-
-      if (isAdminOnlyPath && userRole !== "admin") {
-        return NextResponse.redirect(new URL("/user", request.url));
-      }
-
-      return NextResponse.next();
-    } catch (err) {
-      console.error("Middleware JWT Error:", err);
-      const response = NextResponse.redirect(new URL("/login", request.url));
-      response.cookies.delete("auth_token");
-      return response;
-    }
-  }
-
-  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/user/:path*",
-    "/community/:path*",
-    "/connections/:path*",
-    "/events/:path*",
-    "/templates/:path*",
-    "/announcements/:path*",
-    "/chat/:path*",
-    "/login",
-    "/signup",
-    "/forgot-password",
-    "/reset-password",
-    "/api/auth/:path*",
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 };

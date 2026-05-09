@@ -10,7 +10,13 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-const CommunityPage = async () => {
+interface CommunityPageProps {
+  params: Promise<{
+    tenant: string;
+  }>;
+}
+
+const CommunityPage = async ({ params }: CommunityPageProps) => {
   const currentUser = await getCurrentUserAction();
 
   if (!currentUser) {
