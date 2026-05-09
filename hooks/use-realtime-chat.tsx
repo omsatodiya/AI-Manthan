@@ -386,14 +386,14 @@ export function useRealtimeChat({
       if (!channel || !isConnected) return;
 
       try {
-        await chatService.addReaction(messageId, userId, reactionType);
+        await chatService.addReaction(messageId, userId, username, reactionType, tenantId);
 
         const payload: AddReactionPayload = {
           messageId,
           userId,
           userName: username,
           reactionType,
-          tenantId,
+          tenantId: tenantId || null,
         };
 
         await channel.send({

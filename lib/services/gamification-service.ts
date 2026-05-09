@@ -1,5 +1,10 @@
 import { createClient as createBrowserClient } from '@supabase/supabase-js'
 import type { UserStats, Badge, UserBadge, UserProfile, BadgeRequirementType, BadgeTier } from '@/lib/types/gamification'
+import { getSupabaseAdminClient } from '@/lib/database/clients'
+import { tenantFunctions } from '@/lib/functions/tenant'
+
+const isUuid = (val: string | null | undefined): boolean => 
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val || "");
 
 export class GamificationService {
   private supabase: ReturnType<typeof createBrowserClient>
@@ -167,55 +172,141 @@ export class GamificationService {
   /**
    * Get leaderboard (top users by coins)
    */
-  async getLeaderboard(tenantId?: string | null, limit: number = 10): Promise<UserProfile[]> {
+  async getLeaderboard(tenantId?: string | null, limit: number = 50): Promise<UserProfile[]> {
     try {
-      let query = this.supabase
-        .from('user_stats')
-        .select(`
-          *,
-          users!user_stats_user_id_fkey (
-            id,
-            fullName
-          )
-        `)
-        .order('coins', { ascending: false })
-        .limit(limit)
-
-      if (tenantId) {
-        query = query.eq('tenant_id', tenantId)
-      } else {
-        query = query.is('tenant_id', null)
+      const adminClient = getSupabaseAdminClient()
+      
+      // Resolve tenantId if it's a slug
+      let resolvedTenantId = tenantId
+      if (tenantId && !isUuid(tenantId)) {
+        const tenant = await tenantFunctions.findTenantBySlug(tenantId)
+        resolvedTenantId = tenant?.id || null
+        
+        // If we were looking for a specific tenant but couldn't find it, return empty
+        if (!resolvedTenantId && tenantId !== 'global') {
+          return []
+        }
       }
 
-      const { data, error } = await query
+      // 1. Fetch all messages to build a message-to-author map
+      let messageQuery = adminClient
+        .from('chat_messages')
+        .select('id, user_id')
 
-      if (error) throw error
+      if (resolvedTenantId) {
+        messageQuery = messageQuery.eq('tenant_id', resolvedTenantId)
+      } else {
+        messageQuery = messageQuery.is('tenant_id', null)
+      }
 
-      const profiles = await Promise.all(
-        data.map(async (row: Record<string, unknown>, index: number) => {
-          const badges = await this.getUserBadges(row.user_id as string, tenantId)
-          
-          return {
-            userId: row.user_id as string,
-            userName: (row.users as Record<string, unknown>)?.fullName as string || 'Unknown User',
-            stats: {
-              id: row.id as string,
-              userId: row.user_id as string,
-              tenantId: row.tenant_id as string,
-              totalReactionsReceived: row.total_reactions_received as number,
-              totalReactionsGiven: row.total_reactions_given as number,
-              totalMessages: row.total_messages as number,
-              coins: row.coins as number,
-              createdAt: row.created_at as string,
-              updatedAt: row.updated_at as string,
-            },
-            badges,
-            rank: index + 1,
-          }
-        })
-      )
+      const { data: allMessages, error: mError } = await messageQuery
+      if (mError) throw mError
 
-      return profiles
+      const messageToAuthorMap = new Map<string, string>()
+      const userStatsMap = new Map<string, { reactionsReceived: number, reactionsGiven: number, messages: number }>()
+
+      allMessages?.forEach(m => {
+        messageToAuthorMap.set(m.id, m.user_id)
+        const stats = userStatsMap.get(m.user_id) || { reactionsReceived: 0, reactionsGiven: 0, messages: 0 }
+        stats.messages++
+        userStatsMap.set(m.user_id, stats)
+      })
+
+      // 2. Fetch all reactions (we will filter them by message author in the next step)
+      const { data: reactionsData, error: rError } = await adminClient
+        .from('chat_reactions')
+        .select('user_id, message_id')
+      
+      if (rError) throw rError
+
+      // 3. Aggregate data per user
+      reactionsData?.forEach(r => {
+        // Increment reactions given by the reactor
+        const reactorStats = userStatsMap.get(r.user_id) || { reactionsReceived: 0, reactionsGiven: 0, messages: 0 }
+        reactorStats.reactionsGiven++
+        userStatsMap.set(r.user_id, reactorStats)
+
+        // Increment reactions received by the message author
+        const authorId = messageToAuthorMap.get(r.message_id)
+        
+        // ONLY count if the reactor is NOT the author of the message (prevent self-reaction points)
+        if (authorId && authorId !== r.user_id) {
+          const authorStats = userStatsMap.get(authorId) || { reactionsReceived: 0, reactionsGiven: 0, messages: 0 }
+          authorStats.reactionsReceived++
+          userStatsMap.set(authorId, authorStats)
+        }
+      })
+
+      const userIds = Array.from(userStatsMap.keys())
+      if (userIds.length === 0) return []
+
+      // 4. Fetch user details
+      interface DBUserRow {
+        id: string;
+        full_name?: string | null;
+        fullName?: string | null;
+      }
+
+      let finalUsers: DBUserRow[] = []
+      const { data: users, error: uError } = await adminClient
+        .from('users')
+        .select('id, full_name, fullName')
+        .in('id', userIds)
+      
+      if (uError) {
+        const { data: usersFallback, error: uErrorFallback } = await adminClient
+          .from('users')
+          .select('id, full_name')
+          .in('id', userIds)
+        if (uErrorFallback) throw uErrorFallback
+        finalUsers = (usersFallback || []) as DBUserRow[]
+      } else {
+        finalUsers = (users || []) as DBUserRow[]
+      }
+
+      // 5. Build profiles
+      const profiles: UserProfile[] = finalUsers.map(user => {
+        const stats = userStatsMap.get(user.id) || { reactionsReceived: 0, reactionsGiven: 0, messages: 0 }
+        
+        // Calculate coins: 5 per reaction RECEIVED, 10 per message SENT
+        const coins = (stats.reactionsReceived * 5) + (stats.messages * 10)
+        
+        // Helper to resolve full name
+        const displayName = user.full_name || user.fullName || 'Unknown User';
+
+        return {
+          userId: user.id,
+          userName: displayName,
+          stats: {
+            id: '',
+            userId: user.id,
+            tenantId: resolvedTenantId || null,
+            totalReactionsReceived: stats.reactionsReceived,
+            totalReactionsGiven: stats.reactionsGiven,
+            totalMessages: stats.messages,
+            coins: coins,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          badges: [], 
+          rank: 0,
+        }
+      })
+
+      // 6. Sort by number of reactions RECEIVED (as requested) descending, then by coins
+      profiles.sort((a, b) => {
+        if (b.stats.totalReactionsReceived !== a.stats.totalReactionsReceived) {
+          return b.stats.totalReactionsReceived - a.stats.totalReactionsReceived
+        }
+        return b.stats.coins - a.stats.coins
+      })
+
+      // 7. Assign ranks
+      profiles.forEach((p, i) => {
+        p.rank = i + 1
+      })
+
+      return profiles.slice(0, limit)
     } catch (error) {
       console.error('Error fetching leaderboard:', error)
       throw error

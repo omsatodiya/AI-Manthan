@@ -9,6 +9,9 @@ import type {
 } from "@/lib/types/chat";
 import { isMessageEdited } from "@/lib/utils/chat-utils";
 
+const isUuid = (val: string | null | undefined): boolean => 
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(val || "");
+
 // Type definitions for Supabase responses
 interface SupabaseMessageData {
   id: string;
@@ -42,11 +45,7 @@ interface SupabaseReactionData {
   };
 }
 
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value
-  );
-}
+
 
 function getStoragePathFromPublicUrl(url: string, bucket: string): string | null {
   if (!url) return null;
@@ -608,32 +607,21 @@ export class ChatService {
     username: string,
     tenantId?: string | null
   ): Promise<ChatMessageWithUser> {
+    const validTenantId = tenantId && isUuid(tenantId) ? tenantId : null;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (this.supabase as any)
       .from("chat_messages")
       .insert({
         user_id: userId,
         content,
-        tenant_id: tenantId || null,
+        tenant_id: validTenantId,
       })
-      .select(
-        `
-        id,
-        content,
-        created_at,
-        updated_at,
-        user_id,
-        tenant_id,
-        users (
-          id,
-          full_name
-        )
-      `
-      )
+      .select()
       .single();
 
     if (error) {
-      console.error("Failed to insert message:", error);
+      console.error("CRITICAL DB ERROR (Message Insert):", JSON.stringify(error, null, 2));
       throw error;
     }
     const messageData = data as SupabaseMessageData;
@@ -641,10 +629,10 @@ export class ChatService {
       id: messageData.id,
       content: messageData.content,
       user: {
-        id: messageData.user_id,
-        name: messageData.users?.full_name ?? messageData.users?.fullName ?? username,
+        id: userId,
+        name: username,
       },
-      createdAt: messageData.created_at,
+      createdAt: messageData.created_at || new Date().toISOString(),
       updatedAt: messageData.updated_at,
       isEdited: false,
     };
@@ -850,9 +838,17 @@ export const chatService = {
   async addReaction(
     messageId: string,
     userId: string,
-    reactionType: ReactionType
+    userName: string,
+    reactionType: ReactionType,
+    tenantId?: string | null
   ): Promise<{ reaction: Reaction; replacedReactionType?: ReactionType }> {
-    return this.instance.addReaction(messageId, userId, "", reactionType);
+    return this.instance.addReaction(
+      messageId,
+      userId,
+      userName,
+      reactionType,
+      tenantId
+    );
   },
 
   async removeReaction(
