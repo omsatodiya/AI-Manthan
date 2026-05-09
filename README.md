@@ -1,24 +1,71 @@
 # ConnectIQ - AI-Powered Business Community Platform
 
-ConnectIQ is a next-generation business community platform that combines **Multi-Tenant Workspace Isolation**, **Real-Time Collaboration**, and **Hybrid RAG AI** to help organizations communicate more effectively and preserve their institutional knowledge.
+ConnectIQ is an ultra-high-performance business community platform that solves the problem of **Institutional Amnesia** and **Community Data Fragmentation**. It combines **Subdomain-based Multi-Tenancy**, **Real-Time Collaboration**, and a **Hybrid RAG AI engine** powered by Groq to turn community chat logs and documents into a living, searchable knowledge base.
 
 ## 🚀 The Problem We Solved
-Most business communication platforms suffer from "Platform Noise" and "Institutional Amnesia." Information gets lost in chat history, and organizations struggle to manage multiple separate groups securely.
-**ConnectIQ solves this by:**
-- Providing **Isolated Community Hubs** for every organization.
-- Implementing **Sangam AI**, which "remembers" every chat and file shared.
-- Creating a **Popularity-based Leaderboard** to incentivize high-quality contributions.
 
-## 🛠️ Tech Stack
-| Category | Technology | Usage |
+In the era of rapid digital communication, organizations are drowning in data but starving for information. Traditional platforms like Slack, Discord, or generic chat apps suffer from two critical flaws that hinder long-term growth and productivity:
+
+### 1. Institutional Amnesia (The "Scrolling Death")
+Valuable decisions, complex technical solutions, and strategic insights are often shared in the flow of daily chat. However, as soon as the conversation scrolls off-screen, that knowledge is effectively lost. New team members spend hundreds of hours asking the same questions, and veteran contributors waste time repeating themselves. The "community memory" is fragmented and inaccessible.
+
+### 2. Community Data Fragmentation & Security Risks
+Managing multiple projects or organizations usually results in a chaotic mix of data. Without true isolation, sensitive information can easily leak between different workgroups. Furthermore, as data grows, the ability to search across multiple communities while maintaining strict privacy becomes a technical nightmare.
+
+---
+
+### How ConnectIQ Solves This:
+
+- **🧠 Sangam AI (Hybrid RAG Engine)**: We don't just store messages; we understand them. Every interaction and document is embedded into a high-dimensional vector space. Using our **Hybrid Retrieval-Augmented Generation**, users can query their community brain using natural language. It’s like having an expert who has read every message ever sent and every file ever uploaded, ready to summarize or recall information in milliseconds.
+  
+- **🏰 Vaulted Isolation (Multi-Tenancy)**: We implemented a strict **Subdomain-level isolation** model. Using PostgreSQL Row-Level Security (RLS) and dynamic routing, we ensure that every community exists in its own "digital vault." Organization A's AI memory is physically and logically separated from Organization B's, providing bank-grade privacy with a single, unified platform experience.
+
+- **🏆 Popularity-Based Gamification**: Most platforms reward "noise" (how many messages you send). ConnectIQ rewards **Impact**. Our leaderboard ranks users based on **Reactions Received** from others. This incentivizes high-quality, helpful contributions and naturally filters out community spam, ensuring that the most valuable members are the most visible.
+
+---
+
+## 🏗️ Architecture Overview
+
+ConnectIQ is built on a **Modern Cloud-Native Stack** designed for scalability, real-time collaboration, and AI-driven insights.
+
+```mermaid
+graph TD
+    Client[Next.js Client]
+    Server[Next.js Server Actions / API]
+    Auth[Supabase Auth]
+    DB[(Supabase PostgreSQL + pgvector)]
+    Storage[Supabase Storage]
+    AI[Groq / OpenAI API]
+    Realtime[Supabase Realtime]
+
+    Client <--> Server
+    Client <--> Realtime
+    Server <--> Auth
+    Server <--> DB
+    Server <--> Storage
+    Server <--> AI
+    DB <--> AI
+```
+
+## 🛠️ Tech Stack & Implementation
+| Category | Technology | Usage & Rationale |
 | :--- | :--- | :--- |
-| **Framework** | Next.js 15.5.2 | Core application architecture and routing. |
-| **Styling** | Tailwind CSS 4 | Responsive, premium UI design. |
-| **Database** | Supabase (PostgreSQL) | Primary data storage and pgvector support. |
-| **Real-time** | Supabase Realtime | Instant chat and reaction synchronization. |
-| **AI (LLM)** | Gemini 2.5 Flash | Document generation and community Q&A. |
-| **AI (Embeddings)**| OpenAI text-embedding-3 | Semantic search for Hybrid RAG. |
-| **Auth** | Supabase Auth | Secure, multi-tenant aware authentication. |
+| **LLM Provider** | **Groq API** | High-speed inference using **llama-3.3-70b-versatile** for RAG and document intelligence. |
+| **Vector Storage**| **Supabase (pgvector)**| Storage for 1536D OpenAI embeddings enabling semantic community search. |
+| **Embeddings** | **OpenAI API** | Standardized `text-embedding-3-small` for reliable semantic representation. |
+| **Framework** | **Next.js 15.5.9** | App Router, Server Actions, and Dynamic Subdomain routing. |
+| **Real-time** | **Supabase Realtime** | WebSocket-based instant chat and reaction broadcasting. |
+| **Database** | **Supabase (PostgreSQL)** | Relational data with strict Row-Level Security (RLS) for tenant isolation. |
+| **Auth** | **Supabase SSR** | Secure, multi-tenant aware auth with JWT and session management. |
+| **Styling** | **Tailwind CSS 4** | Utility-first CSS for a premium, responsive design system. |
+| **Components** | **shadcn/ui (Radix UI)** | Accessible, unstyled primitives for complex UI elements like Modals, Selects, and Tabs. |
+| **Animations** | **Framer Motion** | Smooth micro-interactions and page transitions. |
+| **Forms** | **React Hook Form + Zod** | Type-safe form management and schema-based validation. |
+| **Tables** | **TanStack Table** | Headless table logic for complex data displays in the admin panel. |
+| **AI Vision/OCR** | **Tesseract.js / Groq** | OCR capabilities for extracting text from community-shared images. |
+| **File Handling** | **Mammoth / XLSX / PDF-Parse**| Server-side extraction of text from Word, Excel, and PDF documents. |
+| **Charts** | **Recharts** | Interactive data visualizations for the leaderboard and admin analytics. |
+| **Icons** | **Lucide React** | Consistent, high-quality stroke icons across the platform. |
 
 ## 📁 Project Structure
 
@@ -111,4 +158,4 @@ To test the full subdomain experience (e.g., `genius.localhost:3000`):
 > In a production Vercel environment, you must configure **Wildcard Domains** (`*.yourdomain.com`) in your project settings and ensure your DNS provider supports wildcard CNAME records. For the demo, path-based fallback (`domain.com/genius`) is also supported.
 
 ---
-Built with ❤️ for AI Manthan Hackathon.
+Built with ❤️ by team Businessmen.

@@ -44,9 +44,9 @@ Using Next.js Server Actions and Middleware, we reduce the distance between the 
 
 | Technology | Where it is used | Why we used it |
 | :--- | :--- | :--- |
-| **Next.js 15** | Entire Frontend/Backend | Best-in-class performance, SEO, and developer experience with App Router. |
-| **Supabase** | Auth, DB, Realtime, Storage | Unified platform that handles the complexities of real-time sync and security. |
-| **pgvector** | AI Search | Allows us to perform AI-powered searches directly inside our primary database. |
-| **Gemini 2.5 Flash** | AI Chat / Summary | High speed and large context window for processing long community chats. |
+| **Next.js 15** | Entire Frontend/Backend | Best-in-class performance and dynamic subdomain routing. |
+| **Groq API** | Sangam AI Engine | We use **llama-3.3-70b-versatile** for its incredible speed and reasoning capabilities in RAG workflows. |
+| **Supabase** | Auth, DB, Realtime | Unified platform that handles the complexities of real-time sync and security. |
+| **pgvector** | Vector Storage | Allows us to store and query 1536-dimensional OpenAI embeddings directly inside PostgreSQL. |
 | **OpenAI Embeddings** | Vector Search | Industry standard for reliable semantic understanding of text. |
-| **Tailwind CSS 4** | Styling | Rapid UI development with a consistent design system. |
+| **Tailwind CSS 4** | Styling | Rapid UI development with a consistent, premium design system. |
