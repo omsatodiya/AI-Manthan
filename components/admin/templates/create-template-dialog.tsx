@@ -59,6 +59,7 @@ interface CreateTemplateDialogProps {
   onOpenChange?: (open: boolean) => void;
   onTemplateCreated: () => void;
   defaultBlueprint?: Template | null;
+  tenantId?: string | null;
 }
 
 export function CreateTemplateDialog({
@@ -66,6 +67,7 @@ export function CreateTemplateDialog({
   onOpenChange,
   onTemplateCreated,
   defaultBlueprint,
+  tenantId: propTenantId,
 }: CreateTemplateDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +75,9 @@ export function CreateTemplateDialog({
   const [jsonError, setJsonError] = useState("");
   const [fieldsJsonInput, setFieldsJsonInput] = useState("");
   const [fieldsJsonError, setFieldsJsonError] = useState("");
-  const { tenantId } = useTenant();
+  const { tenantId: contextTenantId } = useTenant();
+  
+  const tenantId = propTenantId ?? contextTenantId;
   
   const open = externalOpen !== undefined ? externalOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;

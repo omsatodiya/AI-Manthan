@@ -16,11 +16,13 @@ const CREATE_CATEGORIES = TEMPLATE_CATEGORIES.filter((c) => c.id !== "general");
 interface PickTemplateCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  createPathBase?: string;
 }
 
 export function PickTemplateCategoryDialog({
   open,
   onOpenChange,
+  createPathBase = "/admin/templates/create",
 }: PickTemplateCategoryDialogProps) {
   const router = useRouter();
 
@@ -43,7 +45,7 @@ export function PickTemplateCategoryDialog({
                 className="h-auto justify-start gap-3 py-4 px-4 text-left whitespace-normal"
                 onClick={() => {
                   onOpenChange(false);
-                  router.push(`/admin/templates/create/${cat.id}`);
+                  router.push(`${createPathBase}/${cat.id}`);
                 }}
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">

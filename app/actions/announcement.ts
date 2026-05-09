@@ -41,6 +41,7 @@ export async function createAnnouncementAction(
 
       revalidatePath("/admin/announcements");
       revalidatePath("/announcements");
+      revalidatePath("/community-management/announcements");
       
       return { success: true, data: { ...opportunity, createdBy: opportunity.userId } as Announcement };
     } else {
@@ -61,6 +62,7 @@ export async function createAnnouncementAction(
 
       revalidatePath("/admin/announcements");
       revalidatePath("/announcements");
+      revalidatePath("/community-management/announcements");
 
       return { success: true, data: announcement };
     }
@@ -129,6 +131,7 @@ export async function updateAnnouncementAction(
 
     revalidatePath("/admin/announcements");
     revalidatePath("/announcements");
+    revalidatePath("/community-management/announcements");
 
     return { success: true, data: announcement };
   } catch (error) {
@@ -157,6 +160,7 @@ export async function deleteAnnouncementAction(tenantId: string, id: string) {
 
     revalidatePath("/admin/announcements");
     revalidatePath("/announcements");
+    revalidatePath("/community-management/announcements");
 
     return { success: true };
   } catch (error) {

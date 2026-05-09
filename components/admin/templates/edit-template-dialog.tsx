@@ -58,15 +58,18 @@ interface EditTemplateDialogProps {
   template: Template | null;
   onTemplateUpdated: () => void;
   onOpenChange?: (open: boolean) => void;
+  tenantId?: string | null;
 }
 
-export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange }: EditTemplateDialogProps) {
+export function EditTemplateDialog({ template, onTemplateUpdated, onOpenChange, tenantId: propTenantId }: EditTemplateDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jsonInput, setJsonInput] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [fieldsJsonInput, setFieldsJsonInput] = useState("");
   const [fieldsJsonError, setFieldsJsonError] = useState("");
-  const { tenantId } = useTenant();
+  const { tenantId: contextTenantId } = useTenant();
+  
+  const tenantId = propTenantId ?? contextTenantId;
   
   const open = template !== null ? true : false;
   const setOpen = (newOpen: boolean) => {

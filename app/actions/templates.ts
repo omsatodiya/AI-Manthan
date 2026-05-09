@@ -5,6 +5,7 @@ import {
   getTemplateById,
 } from "@/lib/database/templates";
 import type { TemplateCategoryId } from "@/constants/templates";
+import { revalidatePath } from "next/cache";
 
 export async function getTemplatesAction(tenantId: string) {
   try {
@@ -63,6 +64,9 @@ export async function createTemplateAction(
       category: templateData.category ?? "general",
       created_at: new Date().toISOString(),
     });
+    
+    revalidatePath("/admin/templates");
+    revalidatePath("/community-management/templates");
 
     return { success: true, data: template };
   } catch (error) {
@@ -94,6 +98,9 @@ export async function updateTemplateAction(
 
     const { updateTemplate } = await import("@/lib/database/templates");
     const template = await updateTemplate(tenantId, templateId, updates);
+    
+    revalidatePath("/admin/templates");
+    revalidatePath("/community-management/templates");
 
     return { success: true, data: template };
   } catch (error) {
@@ -110,6 +117,9 @@ export async function deleteTemplateAction(tenantId: string, templateId: string)
 
     const { deleteTemplate } = await import("@/lib/database/templates");
     await deleteTemplate(tenantId, templateId);
+    
+    revalidatePath("/admin/templates");
+    revalidatePath("/community-management/templates");
 
     return { success: true };
   } catch (error) {

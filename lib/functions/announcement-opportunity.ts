@@ -17,8 +17,8 @@ export const announcementOpportunityFunctions = {
           title: data.title,
           description: data.description,
           link: data.link,
-          tenant_id: data.tenantId,
-          user_id: data.userId,
+          tenantId: data.tenantId,
+          userId: data.userId,
           response: data.response,
         })
         .select()
@@ -34,8 +34,8 @@ export const announcementOpportunityFunctions = {
         title: opportunity.title,
         description: opportunity.description,
         link: opportunity.link,
-        tenantId: opportunity.tenant_id,
-        userId: opportunity.user_id,
+        tenantId: opportunity.tenantId,
+        userId: opportunity.userId,
         response: opportunity.response,
         createdAt: opportunity.created_at,
       };
@@ -50,7 +50,7 @@ export const announcementOpportunityFunctions = {
       const { data: opportunities, error } = await supabase
         .from("announcement_opportunity")
         .select("*")
-        .eq("tenant_id", tenantId)
+        .eq("tenantId", tenantId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -63,8 +63,8 @@ export const announcementOpportunityFunctions = {
         title: opportunity.title,
         description: opportunity.description,
         link: opportunity.link,
-        tenantId: opportunity.tenant_id,
-        userId: opportunity.user_id,
+        tenantId: opportunity.tenantId,
+        userId: opportunity.userId,
         response: opportunity.response,
         createdAt: opportunity.created_at,
       }));
@@ -80,7 +80,7 @@ export const announcementOpportunityFunctions = {
         .from("announcement_opportunity")
         .select("*")
         .eq("id", id)
-        .eq("tenant_id", tenantId)
+        .eq("tenantId", tenantId)
         .single();
 
       if (error) {
@@ -93,8 +93,8 @@ export const announcementOpportunityFunctions = {
         title: opportunity.title,
         description: opportunity.description,
         link: opportunity.link,
-        tenantId: opportunity.tenant_id,
-        userId: opportunity.user_id,
+        tenantId: opportunity.tenantId,
+        userId: opportunity.userId,
         response: opportunity.response,
         createdAt: opportunity.created_at,
       };
@@ -119,7 +119,7 @@ export const announcementOpportunityFunctions = {
           response: data.response,
         })
         .eq("id", id)
-        .eq("tenant_id", tenantId)
+        .eq("tenantId", tenantId)
         .select()
         .single();
 
@@ -133,8 +133,8 @@ export const announcementOpportunityFunctions = {
         title: opportunity.title,
         description: opportunity.description,
         link: opportunity.link,
-        tenantId: opportunity.tenant_id,
-        userId: opportunity.user_id,
+        tenantId: opportunity.tenantId,
+        userId: opportunity.userId,
         response: opportunity.response,
         createdAt: opportunity.created_at,
       };
@@ -150,7 +150,7 @@ export const announcementOpportunityFunctions = {
         .from("announcement_opportunity")
         .delete()
         .eq("id", id)
-        .eq("tenant_id", tenantId);
+        .eq("tenantId", tenantId);
 
       if (error) {
         console.error("Error deleting announcement opportunity:", error);
@@ -172,8 +172,8 @@ export const announcementOpportunityFunctions = {
       const { data: opportunities, error } = await supabase
         .from("announcement_opportunity")
         .select("*")
-        .eq("user_id", userId)
-        .eq("tenant_id", tenantId)
+        .eq("userId", userId)
+        .eq("tenantId", tenantId)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -186,8 +186,8 @@ export const announcementOpportunityFunctions = {
         title: opportunity.title,
         description: opportunity.description,
         link: opportunity.link,
-        tenantId: opportunity.tenant_id,
-        userId: opportunity.user_id,
+        tenantId: opportunity.tenantId,
+        userId: opportunity.userId,
         response: opportunity.response,
         createdAt: opportunity.created_at,
       }));

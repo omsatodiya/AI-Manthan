@@ -75,7 +75,7 @@ export const ctaConfig: CTAConfig = {
   buttons: [
     {
       text: "Get Started",
-      href: "/community",
+      href: "/signup",
       variant: "primary",
     },
     {

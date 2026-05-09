@@ -7,7 +7,9 @@ import {
   Building2,
   LayoutDashboard,
   Users,
-  MessageSquare
+  MessageSquare,
+  FileText,
+  Megaphone
 } from "lucide-react";
 import {
   CommunityManagementProvider,
@@ -33,6 +35,8 @@ function CommunityManagementLayoutContent({ children }: { children: React.ReactN
     { label: "Overview", href: "/community-management", icon: LayoutDashboard },
     { label: "Join Requests", href: "/community-management/requests", icon: MessageSquare },
     { label: "Members", href: "/community-management/users", icon: Users },
+    { label: "Templates", href: "/community-management/templates", icon: FileText },
+    { label: "Announcements", href: "/community-management/announcements", icon: Megaphone },
   ];
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;

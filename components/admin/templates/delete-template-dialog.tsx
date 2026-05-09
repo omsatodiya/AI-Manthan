@@ -21,11 +21,14 @@ interface DeleteTemplateDialogProps {
   template: Template | null;
   onTemplateDeleted: () => void;
   onOpenChange?: (open: boolean) => void;
+  tenantId?: string | null;
 }
 
-export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange }: DeleteTemplateDialogProps) {
+export function DeleteTemplateDialog({ template, onTemplateDeleted, onOpenChange, tenantId: propTenantId }: DeleteTemplateDialogProps) {
   const [isDeleting, setIsDeleting] = useState(false);
-  const { tenantId } = useTenant();
+  const { tenantId: contextTenantId } = useTenant();
+  
+  const tenantId = propTenantId ?? contextTenantId;
   
   const open = template !== null ? true : false;
   const setOpen = (newOpen: boolean) => {

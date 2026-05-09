@@ -38,6 +38,7 @@ export async function createAnnouncementOpportunityAction(
 
     revalidatePath("/admin/announcements");
     revalidatePath("/announcements");
+    revalidatePath("/community-management/announcements");
 
     return { success: true, data: opportunity };
   } catch (error) {
@@ -110,6 +111,7 @@ export async function deleteAnnouncementOpportunityAction(tenantId: string, id: 
 
     revalidatePath("/admin/announcements");
     revalidatePath("/announcements");
+    revalidatePath("/community-management/announcements");
 
     return { success: true };
   } catch (error) {
@@ -142,6 +144,7 @@ export async function updateAnnouncementOpportunityAction(
 
     revalidatePath("/admin/announcements");
     revalidatePath("/announcements");
+    revalidatePath("/community-management/announcements");
     return { success: true, data: updated };
   } catch (error) {
     console.error("Error updating announcement opportunity:", error);
