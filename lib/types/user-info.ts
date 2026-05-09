@@ -1,7 +1,6 @@
 export interface UserInfo {
   id: string;
   userId: string;
-  tenantId?: string | null;
   role?: string | null;
   organizationType?: string | null;
   businessStage?: string | null;

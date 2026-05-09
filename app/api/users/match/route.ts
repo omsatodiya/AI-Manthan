@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     // Get the current user's info, including their embedding
     console.log("🔵 /api/users/match: Fetching current user info");
-    const currentUserInfo = await db.getUserInfo(currentUser.id, tenantId);
+    const currentUserInfo = await db.getUserInfo(currentUser.id);
 
     if (!currentUserInfo) {
       console.error("🔴 /api/users/match: No user profile found");
@@ -79,42 +79,12 @@ export async function GET(request: NextRequest) {
       })),
     });
 
-    let filteredMatches = matches;
-
-    // If a tenantId is provided, filter matches to only include active members of that tenant.
-    // We look this up in tenant_members (source of truth for tenant scoping)
-    // since the User type no longer carries a tenantId field.
-    if (tenantId) {
-      const { getSupabaseServerClient } = await import("@/lib/database/clients");
-      const supabase = getSupabaseServerClient();
-
-      const { data: tenantMemberRows } = await supabase
-        .from("tenant_members")
-        .select("user_id")
-        .eq("tenant_id", tenantId)
-        .eq("status", "active");
-
-      const tenantMemberIds = new Set(
-        (tenantMemberRows ?? []).map((r: { user_id: string }) => r.user_id)
-      );
-
-      filteredMatches = matches.filter((match) =>
-        tenantMemberIds.has(match.userId)
-      );
-
-      console.log("🔵 /api/users/match: Filtered matches by tenant membership", {
-        originalCount: matches.length,
-        filteredCount: filteredMatches.length,
-        tenantId,
-      });
-    }
-
     return NextResponse.json({
       success: true,
-      data: filteredMatches,
+      data: matches,
       meta: {
         threshold: matchThreshold,
-        count: filteredMatches.length,
+        count: matches.length,
         requestedCount: matchCount,
         originalCount: matches.length,
       },

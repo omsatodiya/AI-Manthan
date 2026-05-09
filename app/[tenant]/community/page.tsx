@@ -16,7 +16,7 @@ interface CommunityPageProps {
   }>;
 }
 
-const CommunityPage = async ({ params }: CommunityPageProps) => {
+const CommunityPage = async () => {
   const currentUser = await getCurrentUserAction();
 
   if (!currentUser) {

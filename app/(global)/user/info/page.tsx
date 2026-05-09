@@ -33,7 +33,7 @@ import { Form } from "@/components/ui/form";
 import { Progress } from "@/components/ui/progress";
 import { QuestionRenderer } from "@/components/user/question-renderer";
 
-export default function UserInfoPage() {
+export default function GlobalUserInfoPage() {
   const router = useRouter();
   const { tenantId } = useTenant();
   const [user, setUser] = useState<SessionUser | null>(null);

@@ -11,34 +11,18 @@ function getSupabaseServiceClient() {
 
 export const userInfoFunctions = {
   async getUserInfo(
-    userId: string,
-    tenantId?: string
+    userId: string
   ): Promise<UserInfo | null> {
     const supabase = getSupabaseServiceClient();
 
-    const { data: initialData, error: initialError } = await supabase
+    const { data, error } = await supabase
       .from("user_info")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
-    let data = initialData;
-    const error = initialError;
-    if (!error && tenantId) {
-      const scoped = await supabase
-        .from("user_info")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("tenant_id", tenantId)
-        .maybeSingle();
-      if (!scoped.error) {
-        data = scoped.data;
-      } else if (
-        scoped.error.code === "42703" ||
-        scoped.error.code === "PGRST204"
-      ) {
-      } else {
-      }
-    } else if (error && error.code !== "PGRST116") {
+
+    if (error && error.code !== "PGRST116") {
+      console.error("getUserInfo error:", error);
     }
 
     if (!data) return null;
@@ -46,7 +30,6 @@ export const userInfoFunctions = {
     return {
       id: data.id,
       userId: data.user_id,
-      tenantId: data.tenant_id,
       role: data.role,
       organizationType: data.organization_type,
       businessStage: data.business_stage,
@@ -94,33 +77,14 @@ export const userInfoFunctions = {
       event_scale: userInfo.eventScale,
       event_format: userInfo.eventFormat,
     };
-    const insertPayload = { ...insertBase, tenant_id: userInfo.tenantId ?? null };
-    const { data: firstInsertData, error: firstInsertError } = await supabase
+    const { data, error } = await supabase
       .from("user_info")
-      .insert(insertPayload)
+      .insert(insertBase)
       .select()
       .single();
-    let data = firstInsertData;
-    const error = firstInsertError;
+
     if (error) {
-      const code = (error as { code?: string }).code;
-      if (code === "23503" && userInfo.tenantId) {
-        const fallback = await supabase
-          .from("user_info")
-          .insert({ ...insertBase, tenant_id: null })
-          .select()
-          .single();
-        data = fallback.data;
-      } else if (code === "42703" || code === "PGRST204") {
-        const retry = await supabase
-          .from("user_info")
-          .insert(insertBase)
-          .select()
-          .single();
-        data = retry.data;
-      } else {
-        console.error("createUserInfo failed:", error);
-      }
+      console.error("createUserInfo failed:", error);
     }
 
     if (!data) return null;
@@ -128,7 +92,6 @@ export const userInfoFunctions = {
     return {
       id: data.id,
       userId: data.user_id,
-      tenantId: data.tenant_id,
       role: data.role,
       organizationType: data.organization_type,
       businessStage: data.business_stage,
@@ -156,8 +119,7 @@ export const userInfoFunctions = {
     userId: string,
     userInfoData: Partial<
       Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">
-    >,
-    tenantId?: string
+    >
   ): Promise<UserInfo | null> {
     const supabase = getSupabaseServiceClient();
     
@@ -183,27 +145,13 @@ export const userInfoFunctions = {
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>;
 
-    let query = supabase.from("user_info").update(updateData).eq("user_id", userId);
-    if (tenantId !== undefined) {
-      query = query.eq("tenant_id", tenantId);
-    }
-    const { data: firstUpdateData, error: firstUpdateError } = await query
+    const query = supabase.from("user_info").update(updateData).eq("user_id", userId);
+    const { data, error } = await query
       .select()
       .maybeSingle();
-    let data = firstUpdateData;
-    const error = firstUpdateError;
-    if (
-      error &&
-      (error as { code?: string }).code &&
-      ((error as { code?: string }).code === "42703" ||
-        (error as { code?: string }).code === "PGRST204")
-    ) {
-      let retryQuery = supabase.from("user_info").update(updateData).eq("user_id", userId);
-      if (tenantId !== undefined) {
-        retryQuery = retryQuery.eq("tenant_id", tenantId);
-      }
-      const retry = await retryQuery.select().maybeSingle();
-      data = retry.data;
+
+    if (error) {
+      console.error("updateUserInfo failed:", error);
     }
 
     if (!data) return null;
@@ -253,7 +201,8 @@ export const userInfoFunctions = {
         query_embedding: embedding,
         match_user_id: userId,
         match_threshold: options.threshold,
-        match_count: options.limit
+        match_count: options.limit,
+        match_tenant_id: options.tenantId || null
       });
 
       if (matchError) {
@@ -302,10 +251,26 @@ export const userInfoFunctions = {
 
         // Get user details for fallback matches
         const fallbackUserIds = processedMatches.map((match: { user_id: string }) => match.user_id);
+        
+        // If a tenantId is provided, filter fallback matches by membership first
+        let matchedUserIds = fallbackUserIds;
+        if (options.tenantId) {
+          const { data: memberRows } = await supabase
+            .from('tenant_members')
+            .select('user_id')
+            .eq('tenant_id', options.tenantId)
+            .eq('status', 'active')
+            .in('user_id', fallbackUserIds);
+          
+          matchedUserIds = (memberRows ?? []).map(r => r.user_id);
+        }
+
+        if (matchedUserIds.length === 0) return [];
+
         const { data: fallbackUsers, error: fallbackUsersError } = await supabase
           .from('users')
-          .select('id, full_name, email, tenant_id')
-          .in('id', fallbackUserIds);
+          .select('id, full_name, email')
+          .in('id', matchedUserIds);
 
         if (fallbackUsersError) {
           console.error("🔴 findUserMatches: Error fetching fallback user details", fallbackUsersError);
@@ -323,12 +288,12 @@ export const userInfoFunctions = {
           return {
             userId: match.user_id,
             similarity: match.similarity,
-            tenantId: foundUser?.tenant_id || null,
+            tenantId: options.tenantId || null,
             user: foundUser ? {
               id: foundUser.id,
               name: toUserName(foundUser),
               email: foundUser.email,
-              tenantId: foundUser.tenant_id
+              tenantId: options.tenantId
             } : undefined
           };
         });
@@ -351,7 +316,7 @@ export const userInfoFunctions = {
       
       const { data: users, error: usersError } = await supabase
         .from('users')
-        .select('id, full_name, email, tenant_id')
+        .select('id, full_name, email')
         .in('id', userIds);
 
       console.log("🔵 findUserMatches: User details fetched", {
@@ -377,12 +342,12 @@ export const userInfoFunctions = {
         return {
           userId: userId,
           similarity: match.similarity,
-          tenantId: foundUser?.tenant_id || null,
+          tenantId: options.tenantId || null,
           user: foundUser ? {
             id: foundUser.id,
             name: toUserName(foundUser),
             email: foundUser.email,
-            tenantId: foundUser.tenant_id
+            tenantId: options.tenantId
           } : undefined
         };
       });

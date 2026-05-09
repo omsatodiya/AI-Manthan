@@ -16,14 +16,13 @@ export interface DatabaseAdapter {
   getAdminAnalytics(tenantId?: string): Promise<AdminAnalytics>;
   getPaginatedUsers(params: GetUsersParams): Promise<PaginatedUsersResult>;
 
-  getUserInfo(userId: string, tenantId?: string): Promise<UserInfo | null>;
+  getUserInfo(userId: string): Promise<UserInfo | null>;
   createUserInfo(
     userInfo: Omit<UserInfo, "id" | "createdAt" | "updatedAt">
   ): Promise<UserInfo | null>;
   updateUserInfo(
     userId: string,
-    data: Partial<Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">>,
-    tenantId?: string
+    data: Partial<Omit<UserInfo, "id" | "userId" | "createdAt" | "updatedAt">>
   ): Promise<UserInfo | null>;
   findUserMatches(
     userId: string,

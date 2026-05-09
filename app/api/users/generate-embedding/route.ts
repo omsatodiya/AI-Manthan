@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     const tenantId = searchParams.get("tenantId") || undefined;
 
     console.log("🔵 /api/users/generate-embedding: Fetching user info");
-    const currentUserInfo = await db.getUserInfo(currentUser.id, tenantId);
+    const currentUserInfo = await db.getUserInfo(currentUser.id);
 
     if (!currentUserInfo) {
       console.error("🔴 /api/users/generate-embedding: No user profile found");

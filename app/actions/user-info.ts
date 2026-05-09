@@ -226,9 +226,7 @@ async function retry<T>(
 // Get user info
 // -----------------------------------------
 
-export async function getUserInfoAction(
-  tenantId?: string
-) {
+export async function getUserInfoAction() {
   try {
     const currentUser =
       await getCurrentUserAction();
@@ -243,8 +241,7 @@ export async function getUserInfoAction(
     const db = await getDb();
 
     const userInfo = await db.getUserInfo(
-      currentUser.id,
-      tenantId
+      currentUser.id
     );
 
     return {
@@ -300,8 +297,7 @@ export async function saveUserInfoAction(
 
     const existingUserInfo =
       await db.getUserInfo(
-        currentUser.id,
-        tenantId
+        currentUser.id
       );
 
     let result;
@@ -314,8 +310,7 @@ export async function saveUserInfoAction(
       result = await retry(() =>
         db.updateUserInfo(
           currentUser.id,
-          cleanData,
-          tenantId
+          cleanData
         )
       );
     } else {
@@ -326,7 +321,6 @@ export async function saveUserInfoAction(
       result = await retry(() =>
         db.createUserInfo({
           userId: currentUser.id,
-          tenantId: tenantId || null,
           ...cleanData,
         })
       );
@@ -369,9 +363,7 @@ export async function saveUserInfoAction(
 // Call after final onboarding step
 // -----------------------------------------
 
-export async function generateAndSaveEmbeddingAction(
-  tenantId?: string
-) {
+export async function generateAndSaveEmbeddingAction() {
   try {
     console.log(
       "🔵 generateAndSaveEmbeddingAction started"
@@ -391,8 +383,7 @@ export async function generateAndSaveEmbeddingAction(
 
     const userInfo =
       await db.getUserInfo(
-        currentUser.id,
-        tenantId
+        currentUser.id
       );
 
     if (!userInfo) {
@@ -496,8 +487,7 @@ export async function generateAndSaveEmbeddingAction(
         currentUser.id,
         {
           embedding,
-        },
-        tenantId
+        }
       )
     );
 
