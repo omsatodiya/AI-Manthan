@@ -28,6 +28,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
+import { invalidateCurrentUserCache } from "@/lib/auth-client-cache";
+
 const formSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
   password: z.string().min(1, "Password is required."),
@@ -61,12 +63,8 @@ export default function LoginPage() {
       }
 
       toast.success("Logged in successfully!");
-
-      if (data.role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/user");
-      }
+      invalidateCurrentUserCache();
+      router.push("/");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Login failed";
       toast.error(message);

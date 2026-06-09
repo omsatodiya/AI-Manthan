@@ -58,6 +58,8 @@ const formSchema = z
     path: ["confirmPassword"],
   });
 
+import { invalidateCurrentUserCache } from "@/lib/auth-client-cache";
+
 export default function SignupPage() {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
@@ -95,12 +97,8 @@ export default function SignupPage() {
       }
 
       toast.success("Account created successfully!");
-
-      if (data.role === "admin") {
-        router.push("/admin");
-      } else {
-        router.push("/user");
-      }
+      invalidateCurrentUserCache();
+      router.push("/");
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Signup failed";
       toast.error(message);

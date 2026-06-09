@@ -86,7 +86,7 @@ export function Navbar() {
 
   useEffect(() => {
     checkUser();
-  }, [checkUser]);
+  }, [checkUser, pathname]);
 
   const handleLogout = async () => {
     try {
