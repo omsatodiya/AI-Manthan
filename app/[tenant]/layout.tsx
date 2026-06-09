@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/lib/database";
 import { getCurrentUserAction } from "@/app/actions/auth";
 import { TenantHydrator } from "@/components/tenant/tenant-hydrator";
+import { cookies } from "next/headers";
 
 interface TenantLayoutProps {
   children: React.ReactNode;
@@ -20,6 +21,9 @@ export default async function TenantLayout({
   // 1. Fetch Tenant by Slug
   const tenant = await db.findTenantBySlug(tenantSlug);
   if (!tenant) {
+    // Clear the invalid tenant cookie to prevent incorrect redirection states
+    const cookieStore = await cookies();
+    cookieStore.delete("current_tenant");
     // If community doesn't exist, go back to lobby
     redirect("/");
   }

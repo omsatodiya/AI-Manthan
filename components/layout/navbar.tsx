@@ -18,7 +18,7 @@ import Image from "next/image";
 import { Menu, ArrowRight, User as UserIcon, LogOut, Settings, Shield, Building2, LayoutGrid } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useParams } from "next/navigation";
 import { NAVBAR } from "@/constants/layout/navbar-constants";
 import { logoutAction } from "@/app/actions/auth";
 import {
@@ -32,12 +32,16 @@ import { isSuperAdmin } from "@/lib/super-admin";
 export function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams();
+  const tenantSlug = params?.tenant as string | undefined;
+
   const [scrolled, setScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCommunityAdmin, setIsCommunityAdmin] = useState(false);
   const [isSubdomain, setIsSubdomain] = useState(false);
+  const [hasActualSubdomain, setHasActualSubdomain] = useState(false);
   const isAdmin = useMemo(() => isSuperAdmin(user), [user]);
 
   useEffect(() => {
@@ -46,14 +50,26 @@ export function Navbar() {
     const isLocal = hostname.endsWith('.localhost');
     const isVercel = hostname.endsWith('.vercel.app');
     
+    let hasSub = false;
     if (isLocal) {
-      setIsSubdomain(parts.length > 1);
+      hasSub = parts.length > 1;
     } else if (isVercel) {
-      setIsSubdomain(parts.length > 3);
+      hasSub = parts.length > 3;
     } else {
-      setIsSubdomain(parts.length > 2 && parts[0] !== 'www');
+      hasSub = parts.length > 2 && parts[0] !== 'www';
     }
-  }, []);
+    
+    setHasActualSubdomain(hasSub);
+    setIsSubdomain(hasSub || !!tenantSlug);
+  }, [tenantSlug]);
+
+  const getTenantLink = useCallback((path: string) => {
+    if (tenantSlug && !hasActualSubdomain) {
+      if (path === "/") return `/${tenantSlug}`;
+      return `/${tenantSlug}${path}`;
+    }
+    return path;
+  }, [hasActualSubdomain, tenantSlug]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -134,12 +150,12 @@ export function Navbar() {
       .map((link) => {
         const Icon = link.icon;
         return {
-          href: link.href,
+          href: getTenantLink(link.href),
           label: link.label,
           icon: <Icon className="h-4 w-4" />,
         };
       });
-  }, [isSubdomain]);
+  }, [isSubdomain, getTenantLink]);
 
   useEffect(() => {
     const onWindowFocus = () => {
@@ -172,7 +188,7 @@ export function Navbar() {
       transition={{ duration: 0.5, delay: 0.8 }}>
       <div className="px-4 md:px-6 py-2">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="flex items-center gap-2 z-10">
+          <Link href={getTenantLink("/")} className="flex items-center gap-2 z-10">
             <Image
               src={scrolled ? NAVBAR.logo.dark : NAVBAR.logo.light}
               alt={NAVBAR.logo.alt}
@@ -261,7 +277,7 @@ export function Navbar() {
                   )}
                   {isSubdomain && isCommunityAdmin && (
                     <DropdownMenuItem asChild>
-                      <Link href="/community-management" className="cursor-pointer">
+                      <Link href={getTenantLink("/community-management")} className="cursor-pointer">
                         <Building2 className="mr-2 h-4 w-4" />
                         Community Management
                       </Link>
@@ -404,7 +420,7 @@ export function Navbar() {
                               variant="outline"
                               className="w-full">
                               <Link
-                                href="/community-management"
+                                href={getTenantLink("/community-management")}
                                 className="flex items-center justify-center gap-2"
                                 onClick={() => setIsOpen(false)}>
                                 <Building2 className="h-4 w-4" />

@@ -52,7 +52,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Silent Rewrite Logic
+  // 2. Silent Rewrite / Redirect Logic
   const isGlobalPath = [
     "/login",
     "/signup",
@@ -63,15 +63,59 @@ export async function middleware(request: NextRequest) {
     "/organization-requests"
   ].some(path => pathname.startsWith(path));
 
-  if (!subdomain || isGlobalPath) {
-    // Root domain or Global path -> No rewrite needed. 
-    // Next.js automatically matches routes in the (global) group.
-    return NextResponse.next();
-  } else {
+  if (subdomain) {
     // Tenant subdomain -> Route to the specific community workspace
     // This will match the app/[tenant]/... file structure
-    return NextResponse.rewrite(new URL(`/${subdomain}${pathname}`, request.url));
+    const response = NextResponse.rewrite(new URL(`/${subdomain}${pathname}`, request.url));
+    response.cookies.set("current_tenant", subdomain, { path: "/" });
+    return response;
   }
+
+  // No subdomain
+  if (isGlobalPath) {
+    return NextResponse.next();
+  }
+
+  // Check if pathname starts with a tenant slug or is a direct tenant subpath on root domain
+  const segments = pathname.split("/").filter(Boolean);
+  
+  if (segments.length > 0) {
+    const firstSegment = segments[0];
+    
+    // Top-level global routes that shouldn't be matched as tenant slugs
+    const globalTopLevelRoutes = ["admin", "user"];
+    
+    // Sub-paths that exist inside a tenant workspace
+    const tenantSubPaths = [
+      "announcements",
+      "chat",
+      "community",
+      "community-management",
+      "connections",
+      "events",
+      "leaderboard",
+      "profile",
+      "templates"
+    ];
+    
+    if (tenantSubPaths.includes(firstSegment)) {
+      // User is accessing a tenant route directly (e.g. /community)
+      // Redirect to /${currentTenant}/community if cookie exists
+      const currentTenant = request.cookies.get("current_tenant")?.value;
+      if (currentTenant) {
+        const redirectUrl = new URL(`/${currentTenant}${pathname}`, request.url);
+        return NextResponse.redirect(redirectUrl);
+      }
+    } else if (!globalTopLevelRoutes.includes(firstSegment)) {
+      // Treat first segment as tenant slug (e.g. /genius/community or /genius)
+      const tenantSlug = firstSegment;
+      const response = NextResponse.next();
+      response.cookies.set("current_tenant", tenantSlug, { path: "/" });
+      return response;
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {
