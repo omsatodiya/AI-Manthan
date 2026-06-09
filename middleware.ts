@@ -21,6 +21,11 @@ function getSubdomain(host: string | null): string | null {
     return parts.length > 1 ? parts[0] : null;
   }
 
+  // Vercel deployment domains handling (e.g., project.vercel.app)
+  if (hostname.endsWith(".vercel.app")) {
+    return parts.length > 3 ? parts[0] : null;
+  }
+
   // Standard domain handling (e.g., genius.connectiq.com)
   // Assuming a 2-part root domain (connectiq.com)
   if (parts.length > 2) {

@@ -44,9 +44,12 @@ export function Navbar() {
     const hostname = window.location.hostname;
     const parts = hostname.split('.');
     const isLocal = hostname.endsWith('.localhost');
+    const isVercel = hostname.endsWith('.vercel.app');
     
     if (isLocal) {
       setIsSubdomain(parts.length > 1);
+    } else if (isVercel) {
+      setIsSubdomain(parts.length > 3);
     } else {
       setIsSubdomain(parts.length > 2 && parts[0] !== 'www');
     }
